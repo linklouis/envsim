@@ -28,7 +28,6 @@ public class Agent  extends Entity {
      * The amount of energy an agent needs to start regenerating health.
      */
     private static final double HEALTH_REGENERATION_THRESHOLD = 25;
-    private static final double HEALTH_REGEN_SPEED = 1;
     private static final double HEALTH_REGEN_COST = 1;
 
     private @NotNull Environment environment;
@@ -52,6 +51,7 @@ public class Agent  extends Entity {
      * TODO: Should the agent be able to see obstacles? (Probably not)
      */
     private double visionRadius;
+    private double healthRegenSpeed;
 
     // State:
     private Vector direction;
@@ -78,7 +78,8 @@ public class Agent  extends Entity {
                 Math.random() * 100,
                 Math.random() * 4,
                 radius,
-                Math.random() * 100);
+                Math.random() * 100,
+                Math.random() * 2);
 
         this(agentData, env);
     }
@@ -92,6 +93,7 @@ public class Agent  extends Entity {
         maxSpeed = agentData.speed();
         size = agentData.size();
         visionRadius = agentData.visionRadius();
+        healthRegenSpeed = agentData.healthRegenSpeed();
 
         direction = Vector.random(1);
     }
@@ -123,8 +125,8 @@ public class Agent  extends Entity {
         // TODO: Health regen could instead be something the NN can decide to consume energy to do.
         if (energy > HEALTH_REGENERATION_THRESHOLD && getRadius() < size) {
             // TODO: Have passive health regen speed be partially based on how low health is?
-            setRadius(getRadius() + (Math.random() * HEALTH_REGEN_SPEED));
-            energy -= HEALTH_REGEN_COST; // TODO: Have the cost be based on how successful the regen was?
+            setRadius(getRadius() + (Math.random() * healthRegenSpeed));
+            energy -= HEALTH_REGEN_COST * healthRegenSpeed; // TODO: Have the cost be based on how successful the regen was?
             if (getRadius() > size) {
                 setRadius(size);
             }
@@ -246,7 +248,8 @@ public class Agent  extends Entity {
                 this.energy,
                 this.maxSpeed,
                 this.size,
-                this.visionRadius
+                this.visionRadius,
+                this.healthRegenSpeed
         );
     }
 }
