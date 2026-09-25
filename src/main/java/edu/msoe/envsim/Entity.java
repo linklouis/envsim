@@ -45,6 +45,9 @@ public abstract class Entity {
     protected Color getColor() {
         return color;
     }
+    protected void setColor(Color color) {
+        this.color = color;
+    }
     protected double getRadius() {
         return radius;
     }

@@ -11,7 +11,8 @@ import java.util.List;
 
 public class Environment extends Canvas {
     private List<Entity> entities = new ArrayList<>();
-    private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>(); // TODO
+    private final List<Entity> toRemove = new ArrayList<>();
     private final GraphicsContext gc;
 
     public Environment(int width, int height) {
@@ -52,16 +53,26 @@ public class Environment extends Canvas {
             pendingEntities.clear();
         }
 
+        if (!toRemove.isEmpty()) {
+            entities.removeAll(toRemove);
+            toRemove.clear();
+        }
+
         reset();
 
-        entities.parallelStream().forEach(Entity::step);
+//        entities.parallelStream().forEach(Entity::step);
         for (Entity entity : entities) {
+            entity.step();
             entity.paint(gc);
         }
     }
 
     public void addEntity(Entity entity) {
         pendingEntities.add(entity);
+    }
+
+    public void removeEntity(Entity entity) {
+        toRemove.add(entity);
     }
 
     public Vector getSize() {
