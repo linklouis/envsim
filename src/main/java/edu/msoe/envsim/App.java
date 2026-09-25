@@ -23,13 +23,13 @@ public class App extends Application {
 
         environment = new Environment(width, height);
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 20; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
 
             new Agent(Math.random() * 20, randomColor, environment);
         }
 
-        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < 80; i++) {
             Vector position = Vector.random(new Vector(0, 0), new Vector(environment.getWidth(), environment.getHeight()));
             new Food(position, Math.random() * 5, environment);
         }

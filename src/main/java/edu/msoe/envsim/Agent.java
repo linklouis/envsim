@@ -9,8 +9,9 @@ public class Agent  extends Entity {
     /**
      * TODO: Should maybe scale with radius?
      */
-    private static final double MAX_EXPECTED_ENERGY = 150;
+    private static final double MAX_EXPECTED_ENERGY = 200;
     private static final double REPRODUCTON_ENERGY_THRESHOLD = 30;
+    private static final double REPRODUCTION_COST = 0.3;
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
      */
@@ -33,6 +34,11 @@ public class Agent  extends Entity {
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.3;
+    /**
+     * The amount of energy cost per time step per pixel of vision radius
+     */
+    private static final double VISION_QUALITY_COST = 0.001;
+    public static final double SPEED_COST = 0.005; // TODO: Increase this once NN in implemented
 
 
     private @NotNull Environment environment;
@@ -58,6 +64,7 @@ public class Agent  extends Entity {
     private double visionRadius;
     private double healthRegenSpeed;
 
+
     // State:
     private Vector direction;
     /**
@@ -69,6 +76,8 @@ public class Agent  extends Entity {
      */
     private double energy;
     private boolean desiresReproduction = true;
+    private double timeSinceReproduction = 100000;
+    private boolean alive = true;
     /*
      * radius is the health of the Agent. If it hits 0, it dies.
      * This value is **not** inherited by children.
@@ -80,7 +89,7 @@ public class Agent  extends Entity {
         AgentData agentData = new AgentData(
                 position,
                 color,
-                Math.random() * 100,
+                100,
                 Math.random() * 4,
                 radius,
                 Math.random() * 100,
@@ -91,7 +100,7 @@ public class Agent  extends Entity {
 
 
     public Agent(@NotNull AgentData agentData, @NotNull Environment env) {
-        super(agentData.position(), agentData.size(), agentData.color(), env);
+        super(agentData.position().add(Vector.random(20)), agentData.size(), agentData.color(), env);
 
         environment = env;
         energy = agentData.energy();
@@ -110,14 +119,17 @@ public class Agent  extends Entity {
      * @param env
      */
     public Agent(@NotNull AgentData parent1Data, @NotNull AgentData parent2Data, @NotNull Environment env) {
-        this(parent1Data, env); // TODO
+        this(parent1Data.energy() > parent2Data.energy() ? parent1Data : parent2Data, env); // TODO
     }
 
     @Override
     public void step() {
+        if (!alive) return;
+
+        timeSinceReproduction++;
         boolean desiresPredation = getOutput();
 
-        move((Math.random() - 0.5) * 30, (Math.random() - 0.0) * maxSpeed * 2);
+        move((Math.random() - 0.5) * 30, (Math.random() + 0.1) * maxSpeed);
 
         for (Entity entity : environment.getCollisions(this)) {
             if (entity instanceof Food food) {
@@ -139,6 +151,8 @@ public class Agent  extends Entity {
             }
         }
 
+        energy -= getPassiveEnergyCost();
+
         if (energy <= 0) {
             die();
             return;
@@ -149,11 +163,12 @@ public class Agent  extends Entity {
 
     /**
      * TODO: Implement NN
+     * TODO: Pass in how related the current agent is to the one it's seeing
      * @return
      */
     private boolean getOutput() {
-        double reproductionDesire = Math.random();
-        double predationDesire = Math.random();
+        double reproductionDesire = Math.random() - 1/timeSinceReproduction;
+        double predationDesire = Math.random() * 0.9 - 1/timeSinceReproduction;// TODO: Remove time since reproduction
 
         boolean desiresPredation;
 
@@ -186,7 +201,7 @@ public class Agent  extends Entity {
     }
 
     private void interact(Agent agent, boolean attemptPredation) {
-        if (desiresReproduction && agent.desiresReproduction && sameSpecies(this, agent)) {
+        if (desiresReproduction && agent.desiresReproduction && isSameSpecies(this, agent)) {
             reproduce(this, agent);
         } else if (attemptPredation) {
             attemptPredation(agent);
@@ -197,12 +212,12 @@ public class Agent  extends Entity {
         double hue = getColor().getHue();
         double saturation = getColor().getSaturation();
 
-        Color newColor = Color.hsb(hue, saturation, energy / MAX_EXPECTED_ENERGY);
+        Color newColor = Color.hsb(hue, saturation, Math.clamp(energy / MAX_EXPECTED_ENERGY, 0, 1));
         setColor(newColor);
     }
 
     private boolean prepareForReproduction() {
-        energy /= 2;
+        energy -= energy * REPRODUCTION_COST;
         return desiresReproduction && energy * 2 >= REPRODUCTON_ENERGY_THRESHOLD;
     }
 
@@ -213,10 +228,13 @@ public class Agent  extends Entity {
         if (prey.getRadius() / getRadius() <= MIN_RAD_DIFF_FOR_PREDATION) {
             energy += prey.energy * PREDATION_EFFICIENCY;
             prey.die();
+            System.out.println("Predation!");
+            timeSinceReproduction = 0; // TODO: Remove once decisions aren't made randomly every frame.
         } else {
             setRadius(getRadius() - FAILED_PREDATION_COST);
             prey.setRadius(prey.getRadius() - FAILED_PREDATION_COST);
             // TODO: Also lose energy?
+            System.out.println("Failed Predation!");
         }
     }
 
@@ -230,10 +248,13 @@ public class Agent  extends Entity {
         // TODO: Maybe have failed reproduction take less energy?
         if (parent1.prepareForReproduction() && parent2.prepareForReproduction()) {
             new Agent(parent1.getAgentData(), parent2.getAgentData(), env);
+            parent1.timeSinceReproduction = 0;
+            parent2.timeSinceReproduction = 0;
+            System.out.println("Reproduction!");
         }
     }
 
-    private static boolean sameSpecies(Agent agent1, Agent agent2) {
+    private static boolean isSameSpecies(Agent agent1, Agent agent2) {
         return true; // TODO
     }
 
@@ -242,10 +263,13 @@ public class Agent  extends Entity {
     public void paint(@NotNull GraphicsContext gc) {
         gc.setFill(getColor());
         gc.fillOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
+        gc.setStroke(Color.WHITE);
+        gc.strokeOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
     }
 
     protected void die() {
         environment.removeEntity(this);
+        alive = false;
     }
 
 
@@ -267,7 +291,11 @@ public class Agent  extends Entity {
     }
 
     private double getMovementCost(double actualSpeed) {
-        return 0.01 * actualSpeed;
+        return SPEED_COST * actualSpeed;
+    }
+
+    private double getPassiveEnergyCost() {
+        return visionRadius * VISION_QUALITY_COST;
     }
 
     @Contract(" -> new")
@@ -275,7 +303,7 @@ public class Agent  extends Entity {
         return new AgentData(
                 getPosition(),
                 getColor(),
-                this.energy,
+                this.energy, // TODO: Children should actually get the cost subtracted from each parent's health
                 this.maxSpeed,
                 this.size,
                 this.visionRadius,

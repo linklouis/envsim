@@ -6,6 +6,8 @@ import org.jetbrains.annotations.NotNull;
 
 public class Food extends Entity {
     private final static double RADIUS_VALUE_SCALE = 1;
+    private static final double GROWTH_SPEED = 0.002;
+    public static final int MAX_SIZE = 10;
 
     public Food(Vector position, double value, @NotNull Environment env) {
         super(position, value * RADIUS_VALUE_SCALE, Color.YELLOW, env);
@@ -19,11 +21,11 @@ public class Food extends Entity {
 
     @Override
     public void step() {
-        setRadius(getRadius() + 0.01);
+        setRadius(getRadius() + GROWTH_SPEED * (MAX_SIZE - getRadius()));
     }
 
     public double getValue() {
-        return getRadius() / RADIUS_VALUE_SCALE;
+        return getRadius() * RADIUS_VALUE_SCALE;
     }
 
     public void getEaten() {
