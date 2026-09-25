@@ -6,10 +6,12 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Environment extends Canvas {
     private List<Entity> entities = new ArrayList<>();
+    private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final GraphicsContext gc;
 
     public Environment(int width, int height) {
@@ -44,18 +46,43 @@ public class Environment extends Canvas {
     }
 
     private void step() {
+        // Flush newly created entities into main list before iterating
+        if (!pendingEntities.isEmpty()) {
+            entities.addAll(pendingEntities);
+            pendingEntities.clear();
+        }
+
         reset();
+
+        entities.parallelStream().forEach(Entity::step);
         for (Entity entity : entities) {
-            entity.step();
             entity.paint(gc);
         }
     }
 
     public void addEntity(Entity entity) {
-        entities.add(entity);
+        pendingEntities.add(entity);
     }
 
     public Vector getSize() {
         return new Vector(getWidth(), getHeight());
+    }
+
+    public List<Entity> getCollisions(Entity entity) {
+        return getCollisions(entity, (_, _) -> true);
+    }
+
+    public List<Entity> getCollisions(Entity entity, CollisionRequirement collisionRequirement) {
+        if (!entities.contains(entity)) {
+            return Collections.emptyList();
+        }
+
+        List<Entity> collisions = new ArrayList<>();
+        for (Entity entity2 : entities) {
+            if (entity != entity2 && entity.isColliding(entity2) && collisionRequirement.checkCollision(entity, entity2)) {
+                collisions.add(entity2);
+            }
+        }
+        return collisions;
     }
 }

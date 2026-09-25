@@ -7,9 +7,11 @@ import org.jetbrains.annotations.NotNull;
 public abstract class Entity {
     private Vector position;
     private Color color;
+    private double radius;
 
-    public Entity(Vector position, Color color, @NotNull Environment env) {
+    public Entity(Vector position, double radius, Color color, @NotNull Environment env) {
         this.position = position;
+        this.radius = radius;
         this.color = color;
         env.addEntity(this);
     }
@@ -19,6 +21,12 @@ public abstract class Entity {
     }
 
     public abstract void paint(GraphicsContext gc);
+
+    public boolean isColliding(@NotNull Entity other) {
+        return getPosition().distance(other.getPosition()) <= radius + other.getRadius();
+    }
+
+
 
     protected Vector getPosition() {
         return position;
@@ -36,5 +44,11 @@ public abstract class Entity {
     }
     protected Color getColor() {
         return color;
+    }
+    protected double getRadius() {
+        return radius;
+    }
+    protected void setRadius(double radius) {
+        this.radius = radius;
     }
 }

@@ -5,8 +5,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
 import javafx.scene.control.TitledPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -31,6 +29,11 @@ public class App extends Application {
             new Agent(Math.random() * 50, randomColor, environment);
         }
 
+        for (int i = 0; i < 30; i++) {
+            Vector position = Vector.random(new Vector(0, 0), new Vector(environment.getWidth(), environment.getHeight()));
+            new Food(position, Math.random() * 10, environment);
+        }
+
         // Build Collapsible Overlay Menu
         TitledPane collapsibleMenu = createMenu();
 
@@ -48,18 +51,22 @@ public class App extends Application {
         stage.show();
     }
 
+    /**
+     * Creats a temp menu
+     * @return
+     */
     private @NotNull TitledPane createMenu() {
         VBox menuContent = new VBox(10);
         menuContent.setPadding(new Insets(10));
         menuContent.setStyle("-fx-background-color: rgba(255, 255, 255, 0.9);");
 
-        Button clearBtn = new Button("Clear Canvas");
-        clearBtn.setOnAction(e -> environment.reset());
+//        Button clearBtn = new Button("Clear Canvas");
+//        clearBtn.setOnAction(e -> environment.reset());
 
-        Button drawRandomBtn = new Button("Draw Random Circles");
-        drawRandomBtn.setOnAction(e -> drawRandomShapes(environment.getGraphicsContext2D()));
+//        Button drawRandomBtn = new Button("Draw Random Circles");
+//        drawRandomBtn.setOnAction(e -> drawRandomShapes(environment.getGraphicsContext2D()));
 
-        menuContent.getChildren().addAll(new Label("Simulation Controls"), drawRandomBtn, clearBtn);
+//        menuContent.getChildren().addAll(new Label("Simulation Controls"), drawRandomBtn, clearBtn);
 
         TitledPane collapsibleMenu = new TitledPane("Menu", menuContent);
         collapsibleMenu.setAnimated(true);
