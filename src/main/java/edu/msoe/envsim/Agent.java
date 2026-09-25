@@ -51,7 +51,7 @@ public class Agent  extends Entity {
                 position,
                 color,
                 Math.random() * 100,
-                Math.random() * 7,
+                Math.random() * 4,
                 radius,
                 Math.random() * 100);
 
@@ -84,7 +84,7 @@ public class Agent  extends Entity {
     @Override
     public void step() {
         setPosition(getPosition().add(direction.scale(speed)));
-        direction = direction.turn((Math.random() - 0.5) * 20);
+        direction = direction.turn((Math.random() - 0.5) * 30);
 
         setPosition(getPosition().clamp(Vector.zero, getBounds()));
 
@@ -98,8 +98,11 @@ public class Agent  extends Entity {
         );
         for  (Entity entity : collisions) {
             energy += ((Food) entity).getValue();
+            setRadius(getRadius() + ((Food) entity).getValue()/3);
             ((Food) entity).getEaten();
         }
+        setRadius(getRadius() - getRadius() * 0.0002 * speed);
+
     }
 
     @Override

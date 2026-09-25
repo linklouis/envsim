@@ -17,6 +17,11 @@ public class Food extends Entity {
         gc.fillOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
     }
 
+    @Override
+    public void step() {
+        setRadius(getRadius() + 0.01);
+    }
+
     public double getValue() {
         return getRadius() / RADIUS_VALUE_SCALE;
     }

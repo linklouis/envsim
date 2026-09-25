@@ -26,12 +26,12 @@ public class App extends Application {
         for (int i = 0; i < 10; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
 
-            new Agent(Math.random() * 50, randomColor, environment);
+            new Agent(Math.random() * 20, randomColor, environment);
         }
 
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 50; i++) {
             Vector position = Vector.random(new Vector(0, 0), new Vector(environment.getWidth(), environment.getHeight()));
-            new Food(position, Math.random() * 10, environment);
+            new Food(position, Math.random() * 5, environment);
         }
 
         // Build Collapsible Overlay Menu
