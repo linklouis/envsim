@@ -9,7 +9,7 @@ public class Agent  extends Entity {
     /**
      * TODO: Should maybe scale with radius?
      */
-    private static final double MAX_EXPECTED_ENERGY = 100;
+    private static final double MAX_EXPECTED_ENERGY = 150;
     private static final double REPRODUCTON_ENERGY_THRESHOLD = 30;
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
@@ -29,6 +29,11 @@ public class Agent  extends Entity {
      */
     private static final double HEALTH_REGENERATION_THRESHOLD = 25;
     private static final double HEALTH_REGEN_COST = 1;
+    /**
+     * The smallest value the NN can output that's still considered true for a boolean output
+     */
+    private static final double BOOLEAN_DECISION_THRESHOLD = 0.3;
+
 
     private @NotNull Environment environment;
 
@@ -63,7 +68,7 @@ public class Agent  extends Entity {
      * Can be replenished by eating.
      */
     private double energy;
-    private boolean desiresReproduction = false;
+    private boolean desiresReproduction = true;
     /*
      * radius is the health of the Agent. If it hits 0, it dies.
      * This value is **not** inherited by children.
@@ -110,13 +115,15 @@ public class Agent  extends Entity {
 
     @Override
     public void step() {
-        move((Math.random() - 0.5) * 30, (Math.random() - 0.5) * maxSpeed * 2);
+        boolean desiresPredation = getOutput();
+
+        move((Math.random() - 0.5) * 30, (Math.random() - 0.0) * maxSpeed * 2);
 
         for (Entity entity : environment.getCollisions(this)) {
             if (entity instanceof Food food) {
                 eat(food);
             } else if (entity instanceof Agent agent) {
-                interact(agent, false);
+                interact(agent, desiresPredation);
                 // TODO: Add attribute for whether predator or not, or maybe just have the larger agent always eat a smaller one if they collide unless both want to mate?
                 // TODO: Actually, just have the network output a decision of whether or not to try to eat another agent, and it only actually works if it's touching another agent that is sufficiently smaller than itself. If it's not, it gets punished.
             }
@@ -140,6 +147,30 @@ public class Agent  extends Entity {
         updateColor();
     }
 
+    /**
+     * TODO: Implement NN
+     * @return
+     */
+    private boolean getOutput() {
+        double reproductionDesire = Math.random();
+        double predationDesire = Math.random();
+
+        boolean desiresPredation;
+
+        if (reproductionDesire > predationDesire && reproductionDesire > BOOLEAN_DECISION_THRESHOLD) {
+            desiresReproduction = true;
+            desiresPredation = false;
+        } else if (reproductionDesire < predationDesire && predationDesire > BOOLEAN_DECISION_THRESHOLD) {
+            desiresReproduction = false;
+            desiresPredation = true;
+        } else {
+            desiresReproduction = false;
+            desiresPredation = false;
+        }
+
+        return desiresPredation;
+    }
+
     private void move(double turn, double speed) {
         direction = direction.turn(turn);
         if (energy >= getMovementCost(speed)) {
@@ -151,7 +182,6 @@ public class Agent  extends Entity {
 
     private void eat(@NotNull Food food) {
         energy += food.getValue();
-        setRadius(getRadius() + food.getValue()/3);
         food.getEaten();
     }
 
