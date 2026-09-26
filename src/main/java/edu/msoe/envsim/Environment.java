@@ -8,6 +8,7 @@ import javafx.scene.paint.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class Environment extends Canvas {
     private List<Entity> entities = new ArrayList<>();
@@ -95,5 +96,22 @@ public class Environment extends Canvas {
             }
         }
         return collisions;
+    }
+
+    public Entity getClosestEntity(Vector position, Predicate<Entity> predicate) {
+        double minDist = Double.MAX_VALUE;
+        Entity closestEntity = null;
+
+        for (Entity entity : entities) {
+            if (!predicate.test(entity)) continue;
+
+            double dist = entity.getPosition().distance(position);
+            if (dist < minDist) {
+                minDist = dist;
+                closestEntity = entity;
+            }
+        }
+
+        return closestEntity;
     }
 }

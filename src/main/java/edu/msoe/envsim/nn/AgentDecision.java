@@ -1,4 +1,6 @@
 package edu.msoe.envsim.nn;
 
-public record AgentDecision(double speed, double turn, boolean desiresReproduction, boolean desiresPredation) {
+import edu.msoe.envsim.Vector;
+
+public record AgentDecision(double speed, Vector direction, boolean desiresReproduction, boolean desiresPredation) {
 }

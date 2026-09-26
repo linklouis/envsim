@@ -7,7 +7,10 @@ import org.jetbrains.annotations.NotNull;
 public class Food extends Entity {
     private final static double RADIUS_VALUE_SCALE = 1;
     private static final double GROWTH_SPEED = 0.002;
-    public static final int MAX_SIZE = 10;
+    private static final int MAX_SIZE = 10;
+    private static final int REGROWTH_TIME = 10;
+
+    private int regrowthTimer = 0;
 
     public Food(Vector position, double value, @NotNull Environment env) {
         super(position, value * RADIUS_VALUE_SCALE, Color.YELLOW, env);
@@ -21,7 +24,11 @@ public class Food extends Entity {
 
     @Override
     public void step() {
-        setRadius(getRadius() + GROWTH_SPEED * (MAX_SIZE - getRadius()));
+        if (regrowthTimer == 0) {
+            setRadius(getRadius() + GROWTH_SPEED * (MAX_SIZE - getRadius()));
+        } else {
+            regrowthTimer--;
+        }
     }
 
     public double getValue() {
@@ -29,7 +36,7 @@ public class Food extends Entity {
     }
 
     public void getEaten() {
-        // TODO: Should grow over time?
         setRadius(0);
+        regrowthTimer = REGROWTH_TIME;
     }
 }

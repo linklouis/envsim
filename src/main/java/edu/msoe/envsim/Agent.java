@@ -1,5 +1,9 @@
 package edu.msoe.envsim;
 
+import edu.msoe.envsim.nn.ActivationFunction;
+import edu.msoe.envsim.nn.AgentDecision;
+import edu.msoe.envsim.nn.AgentTarget;
+import edu.msoe.envsim.nn.NeuralNetwork;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
@@ -39,6 +43,9 @@ public class Agent  extends Entity {
      */
     private static final double VISION_QUALITY_COST = 0.001;
     public static final double SPEED_COST = 0.005; // TODO: Increase this once NN in implemented
+    public static final int NUM_INPUTS = 5;
+    public static final double MUTATION_CHANCE = 0.05;
+    public static final double MUTATION_SIZE = 0.02;
 
 
     private @NotNull Environment environment;
@@ -84,6 +91,14 @@ public class Agent  extends Entity {
      * TODO: Maybe the agent can decide to spend energy to regain health?
      */
 
+    /**
+     * Inputs (For now): direction, energy, health, desiresRep, timeSinceRep
+     * Ouputs (For now): speed, turn, repDesire, predDesire
+     */
+    private final @NotNull NeuralNetwork brain;
+
+
+
     public Agent(double radius, Color color, @NotNull Environment env) {
         Vector position = Vector.random(new Vector(0, 0), new Vector(env.getWidth(), env.getHeight()));
         AgentData agentData = new AgentData(
@@ -93,7 +108,8 @@ public class Agent  extends Entity {
                 Math.random() * 4,
                 radius,
                 Math.random() * 100,
-                Math.random() * 2);
+                Math.random() * 2,
+                newBrain());
 
         this(agentData, env);
     }
@@ -108,6 +124,7 @@ public class Agent  extends Entity {
         size = agentData.size();
         visionRadius = agentData.visionRadius();
         healthRegenSpeed = agentData.healthRegenSpeed();
+        brain =  agentData.brain();
 
         direction = Vector.random(1);
     }
@@ -127,15 +144,16 @@ public class Agent  extends Entity {
         if (!alive) return;
 
         timeSinceReproduction++;
-        boolean desiresPredation = getOutput();
+        AgentDecision agentDecision = getAction();
 
-        move((Math.random() - 0.5) * 30, (Math.random() + 0.1) * maxSpeed);
+        direction = agentDecision.direction();
+        move(0, agentDecision.speed() * maxSpeed);
 
         for (Entity entity : environment.getCollisions(this)) {
             if (entity instanceof Food food) {
                 eat(food);
             } else if (entity instanceof Agent agent) {
-                interact(agent, desiresPredation);
+                interact(agent, agentDecision.desiresPredation());
                 // TODO: Add attribute for whether predator or not, or maybe just have the larger agent always eat a smaller one if they collide unless both want to mate?
                 // TODO: Actually, just have the network output a decision of whether or not to try to eat another agent, and it only actually works if it's touching another agent that is sufficiently smaller than itself. If it's not, it gets punished.
             }
@@ -161,35 +179,10 @@ public class Agent  extends Entity {
         updateColor();
     }
 
-    /**
-     * TODO: Implement NN
-     * TODO: Pass in how related the current agent is to the one it's seeing
-     * @return
-     */
-    private boolean getOutput() {
-        double reproductionDesire = Math.random() - 1/timeSinceReproduction;
-        double predationDesire = Math.random() * 0.9 - 1/timeSinceReproduction;// TODO: Remove time since reproduction
-
-        boolean desiresPredation;
-
-        if (reproductionDesire > predationDesire && reproductionDesire > BOOLEAN_DECISION_THRESHOLD) {
-            desiresReproduction = true;
-            desiresPredation = false;
-        } else if (reproductionDesire < predationDesire && predationDesire > BOOLEAN_DECISION_THRESHOLD) {
-            desiresReproduction = false;
-            desiresPredation = true;
-        } else {
-            desiresReproduction = false;
-            desiresPredation = false;
-        }
-
-        return desiresPredation;
-    }
-
     private void move(double turn, double speed) {
         direction = direction.turn(turn);
         if (energy >= getMovementCost(speed)) {
-            setPosition(getPosition().add(direction.scale(speed)));
+            setPosition(getPosition().add(direction.atMagnitude(speed)));
             energy -= getMovementCost(speed);
         }
         setPosition(getPosition().clamp(Vector.zero, getBounds()));
@@ -258,6 +251,108 @@ public class Agent  extends Entity {
         return true; // TODO
     }
 
+    private static @NotNull NeuralNetwork newBrain() {
+        NeuralNetwork neuralNetwork = new NeuralNetwork(NUM_INPUTS);
+        neuralNetwork.newLayer(16);
+        neuralNetwork.newLayer(8);
+        neuralNetwork.newLayer(5, ActivationFunction.sigmoid());
+
+        return neuralNetwork;
+    }
+
+
+    /**
+     * Inputs (For now): direction, energy, health, desiresRep, timeSinceRep
+     * Ouputs (For now): speed, repDesire, predDesire, targetFood, targetAgent
+     */
+    @Contract(" -> new")
+    private float @NotNull [] getInput() {
+        return new float[] {
+                (float) direction.angle(),
+                (float) energy,
+                (float) (getRadius() / size),
+                desiresReproduction ? 1f : 0f,
+                (float) timeSinceReproduction
+        };
+    }
+
+    /**
+     * TODO: Implement NN
+     * TODO: Pass in how related the current agent is to the one it's seeing
+     * @return
+     */
+    @Contract(" -> new")
+    private @NotNull AgentDecision getAction() {
+        float[] output = brain.predict(getInput());
+
+        double reproductionDesire = output[1] - 1/timeSinceReproduction;
+        double predationDesire = output[2] * 0.9 - 1/timeSinceReproduction;// TODO: Remove time since reproduction
+
+        boolean desiresPredation;
+
+        if (reproductionDesire > predationDesire && reproductionDesire > BOOLEAN_DECISION_THRESHOLD) {
+            desiresReproduction = true;
+            desiresPredation = false;
+        } else if (reproductionDesire < predationDesire && predationDesire > BOOLEAN_DECISION_THRESHOLD) {
+            desiresReproduction = false;
+            desiresPredation = true;
+        } else {
+            desiresReproduction = false;
+            desiresPredation = false;
+        }
+
+        double targetFood = output[3];
+        double targetAgent = output[4];
+        AgentTarget target = AgentTarget.NONE;
+        boolean towards = true;
+        if (Math.abs(targetFood) > Math.abs(targetAgent) && Math.abs(targetFood) > BOOLEAN_DECISION_THRESHOLD) {
+            target = AgentTarget.FOOD;
+        } else if (Math.abs(targetAgent) > Math.abs(targetFood) && Math.abs(targetAgent) > BOOLEAN_DECISION_THRESHOLD) {
+            target = AgentTarget.CLOSEST_AGENT;
+            if (targetAgent < 0) {
+                towards = false;
+            }
+        } else {
+            desiresReproduction = false;
+            desiresPredation = false;
+        }
+
+        return new AgentDecision(
+                output[0] * 2 - 1,
+                getTargetVector(target, towards),
+                desiresReproduction,
+                desiresPredation
+        );
+    }
+
+    /**
+     * TODO: If we keep the targeting system, we can probably get rid of the AgentTarget class and just move this logic into GetAction.
+     * @param target
+     * @param towards
+     * @return
+     */
+    private Vector getTargetVector(AgentTarget target, boolean towards) {
+        if (target == AgentTarget.FOOD) {
+            return getClosestFood().getPosition().subtract(getPosition());
+        } else if (target == AgentTarget.CLOSEST_AGENT) {
+            Vector direction = getClosestAgent().getPosition().subtract(getPosition());
+            if (towards) {
+                return direction.scale(-1);
+            }
+            return direction;
+        }
+
+        return this.direction;
+    }
+
+    private Agent getClosestAgent() {
+        return (Agent) environment.getClosestEntity(getPosition(), entity -> entity instanceof Agent);
+    }
+
+    private Food getClosestFood() {
+        return (Food) environment.getClosestEntity(getPosition(), entity -> entity instanceof Food && entity.getRadius() > 0);
+    }
+
 
     @Override
     public void paint(@NotNull GraphicsContext gc) {
@@ -307,7 +402,8 @@ public class Agent  extends Entity {
                 this.maxSpeed,
                 this.size,
                 this.visionRadius,
-                this.healthRegenSpeed
+                this.healthRegenSpeed,
+                this.brain.child(MUTATION_CHANCE, MUTATION_SIZE)
         );
     }
 }
