@@ -23,7 +23,7 @@ public class App extends Application {
 
         environment = new Environment(width, height);
 
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 200; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
 
             new Agent(Math.random() * 20, randomColor, environment);
