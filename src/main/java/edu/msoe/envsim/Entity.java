@@ -28,6 +28,14 @@ public abstract class Entity {
 
 
 
+    public double distance(@NotNull Entity other) {
+        return other.getPosition().distance(getPosition());
+    }
+
+    public Vector directionTo(@NotNull Entity other) {
+        return other.getPosition().subtract(getPosition());
+    }
+
     protected Vector getPosition() {
         return position;
     }

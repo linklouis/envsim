@@ -9,17 +9,19 @@ import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
+
 public class Agent  extends Entity {
     /**
      * TODO: Should maybe scale with radius?
      */
     private static final double MAX_EXPECTED_ENERGY = 200;
-    private static final double REPRODUCTON_ENERGY_THRESHOLD = 30;
+    private static final double REPRODUCTON_ENERGY_THRESHOLD = 50;
     private static final double REPRODUCTION_COST = 0.3;
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
      */
-    private static final double MIN_RAD_DIFF_FOR_PREDATION = 0.3;
+    private static final double MIN_RAD_DIFF_FOR_PREDATION = 0.4;
     /**
      * The amount of energy wasted when catching and eating prey.
      */
@@ -43,7 +45,7 @@ public class Agent  extends Entity {
      */
     private static final double VISION_QUALITY_COST = 0.001;
     public static final double SPEED_COST = 0.005; // TODO: Increase this once NN in implemented
-    public static final int NUM_INPUTS = 5;
+    public static final int NUM_INPUTS = 6;
     public static final double MUTATION_CHANCE = 0.05;
     public static final double MUTATION_SIZE = 0.02;
 
@@ -92,10 +94,25 @@ public class Agent  extends Entity {
      */
 
     /**
-     * Inputs (For now): direction, energy, health, desiresRep, timeSinceRep
-     * Ouputs (For now): speed, turn, repDesire, predDesire
+     * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, desiresRep, timeSinceRep
+     * Outputs (For now): speed, repDesire, predDesire, targetFood, targetPrey, runFromThreat, turn
      */
     private final @NotNull NeuralNetwork brain;
+    /**
+     * Inputs: food size, distance
+     * Output: value
+     */
+    private final @NotNull NeuralNetwork foodEvaluator;
+    /**
+     * Inputs: self size, agent size, distance // TODO: In the future, maybe add whether the other wants to mate, if it's the same species, and what direction it's moving in?
+     * Outputs: Value (1 = invaluble, 0 = useless, -1 = deadly threat)
+     */
+    private final @NotNull NeuralNetwork preyEvaluator;
+    private final @NotNull NeuralNetwork predatorEvaluator;
+
+    private Food bestFood;
+    private Agent bestPrey;
+    private Agent worstThreat;
 
 
 
@@ -107,9 +124,13 @@ public class Agent  extends Entity {
                 100,
                 Math.random() * 4,
                 radius,
-                Math.random() * 100,
+                Math.random() * 150 + 50,
                 Math.random() * 2,
-                newBrain());
+                newBrain(),
+                newFoodEvaluator(),
+                newAgentEvaluator(),
+                newAgentEvaluator()
+                );
 
         this(agentData, env);
     }
@@ -125,6 +146,9 @@ public class Agent  extends Entity {
         visionRadius = agentData.visionRadius();
         healthRegenSpeed = agentData.healthRegenSpeed();
         brain =  agentData.brain();
+        foodEvaluator = agentData.foodEvaluator();
+        preyEvaluator = agentData.preyEvaluator();
+        predatorEvaluator = agentData.predatorEvaluator();
 
         direction = Vector.random(1);
     }
@@ -147,7 +171,7 @@ public class Agent  extends Entity {
         AgentDecision agentDecision = getAction();
 
         direction = agentDecision.direction();
-        move(0, agentDecision.speed() * maxSpeed);
+        move(agentDecision.turn(), agentDecision.speed() * maxSpeed);
 
         for (Entity entity : environment.getCollisions(this)) {
             if (entity instanceof Food food) {
@@ -253,27 +277,115 @@ public class Agent  extends Entity {
 
     private static @NotNull NeuralNetwork newBrain() {
         NeuralNetwork neuralNetwork = new NeuralNetwork(NUM_INPUTS);
-        neuralNetwork.newLayer(16);
+//        neuralNetwork.newLayer(16);
         neuralNetwork.newLayer(8);
-        neuralNetwork.newLayer(5, ActivationFunction.sigmoid());
+        neuralNetwork.newLayer(7, ActivationFunction.sigmoid());
+
+        return neuralNetwork;
+    }
+
+    private static @NotNull NeuralNetwork newFoodEvaluator() {
+        NeuralNetwork neuralNetwork = new NeuralNetwork(2);
+        neuralNetwork.newLayer(4);
+        neuralNetwork.newLayer(1,ActivationFunction.sigmoid());
+
+        return neuralNetwork;
+    }
+
+    private static @NotNull NeuralNetwork newAgentEvaluator() {
+        NeuralNetwork neuralNetwork = new NeuralNetwork(3);
+        neuralNetwork.newLayer(6);
+        neuralNetwork.newLayer(1,ActivationFunction.sigmoid());
 
         return neuralNetwork;
     }
 
 
     /**
-     * Inputs (For now): direction, energy, health, desiresRep, timeSinceRep
-     * Ouputs (For now): speed, repDesire, predDesire, targetFood, targetAgent
+     * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, desiresRep, timeSinceRep
+     * Outputs (For now): speed, repDesire, predDesire, targetFood, targetPrey, runFromThreat, turn
      */
     @Contract(" -> new")
     private float @NotNull [] getInput() {
         return new float[] {
-                (float) direction.angle(),
-                (float) energy,
+                (float) (energy / MAX_EXPECTED_ENERGY),
                 (float) (getRadius() / size),
-                desiresReproduction ? 1f : 0f,
-                (float) timeSinceReproduction
+                evaluateFood(),
+                evaluatePrey(),
+                evaluateThreats(),
+                desiresReproduction ? 1f : 0f
         };
+    }
+
+    private float evaluateFood() {
+        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
+                entity -> entity instanceof Food && entity.getRadius() > 0, visionRadius);
+
+        float maxValue = 0;
+        Entity mostValuableFood = null;
+
+        for  (Entity entity : entitiesInRange) {
+            float value = foodEvaluator.predict(new float[] {
+                    (float) this.distance(entity),
+                    (float) entity.getRadius()
+            })[0];
+
+            if (value > maxValue) {
+                maxValue = value;
+                mostValuableFood = entity;
+            }
+        }
+
+        this.bestFood = (Food) mostValuableFood;
+        return maxValue;
+    }
+
+    private float evaluatePrey() {
+        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
+                entity -> entity instanceof Agent, visionRadius);
+
+        float maxValue = 0;
+        Entity mostValuablePrey = null;
+
+        for  (Entity entity : entitiesInRange) {
+            float value = preyEvaluator.predict(new float[] {
+                    (float) this.getRadius(),
+                    (float) this.distance(entity),
+                    (float) entity.getRadius()
+            })[0];
+
+            if (value > maxValue) {
+                maxValue = value;
+                mostValuablePrey = entity;
+            }
+        }
+
+        this.bestPrey = (Agent) mostValuablePrey;
+        return maxValue;
+    }
+
+    private float evaluateThreats() {
+        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
+                entity -> entity instanceof Agent, visionRadius);
+
+        float maxValue = 0;
+        Entity mostThreateningPredator = null;
+
+        for  (Entity entity : entitiesInRange) {
+            float value = predatorEvaluator.predict(new float[] {
+                    (float) this.getRadius(),
+                    (float) this.distance(entity),
+                    (float) entity.getRadius()
+            })[0];
+
+            if (value > maxValue) {
+                maxValue = value;
+                mostThreateningPredator = entity;
+            }
+        }
+
+        this.worstThreat = (Agent) mostThreateningPredator;
+        return maxValue;
     }
 
     /**
@@ -283,9 +395,10 @@ public class Agent  extends Entity {
      */
     @Contract(" -> new")
     private @NotNull AgentDecision getAction() {
-        float[] output = brain.predict(getInput());
+        float[] inputs = getInput();
+        float[] output = brain.predict(inputs);
 
-        double reproductionDesire = output[1] - 1/timeSinceReproduction;
+        double reproductionDesire = energy >= REPRODUCTON_ENERGY_THRESHOLD ? output[1] - 1/timeSinceReproduction : 0;   // TODO: Ideally, they should handle the threshold thing themselves, but I'll be nice to them
         double predationDesire = output[2] * 0.9 - 1/timeSinceReproduction;// TODO: Remove time since reproduction
 
         boolean desiresPredation;
@@ -301,25 +414,26 @@ public class Agent  extends Entity {
             desiresPredation = false;
         }
 
-        double targetFood = output[3];
-        double targetAgent = output[4];
-        AgentTarget target = AgentTarget.NONE;
-        boolean towards = true;
-        if (Math.abs(targetFood) > Math.abs(targetAgent) && Math.abs(targetFood) > BOOLEAN_DECISION_THRESHOLD) {
-            target = AgentTarget.FOOD;
-        } else if (Math.abs(targetAgent) > Math.abs(targetFood) && Math.abs(targetAgent) > BOOLEAN_DECISION_THRESHOLD) {
-            target = AgentTarget.CLOSEST_AGENT;
-            if (targetAgent < 0) {
-                towards = false;
-            }
+        double targetFood = bestFood == null ? 0 : output[3];
+        double targetPrey = bestPrey == null ? 0 : output[4];
+        double runFromThreat = worstThreat == null ? 0 :output[5];
+
+        Vector target;
+
+        if (targetFood > targetPrey && targetFood > runFromThreat && targetFood > BOOLEAN_DECISION_THRESHOLD) {
+            target = directionTo(bestFood);
+        } else if (targetPrey > targetFood && targetPrey > runFromThreat && targetPrey > BOOLEAN_DECISION_THRESHOLD) {
+            target = directionTo(bestPrey);
+        } else if (runFromThreat > targetFood && runFromThreat > targetPrey && runFromThreat > BOOLEAN_DECISION_THRESHOLD) {
+            target = directionTo(worstThreat).scale(-1);
         } else {
-            desiresReproduction = false;
-            desiresPredation = false;
+            target = direction;
         }
 
         return new AgentDecision(
                 output[0] * 2 - 1,
-                getTargetVector(target, towards),
+                target,
+                target == direction ? 0 : output[6] * 80 - 40,
                 desiresReproduction,
                 desiresPredation
         );
@@ -403,7 +517,10 @@ public class Agent  extends Entity {
                 this.size,
                 this.visionRadius,
                 this.healthRegenSpeed,
-                this.brain.child(MUTATION_CHANCE, MUTATION_SIZE)
+                this.brain.child(MUTATION_CHANCE, MUTATION_SIZE),
+                this.foodEvaluator.child(MUTATION_CHANCE, MUTATION_SIZE),
+                this.preyEvaluator.child(MUTATION_CHANCE, MUTATION_SIZE),
+                this.predatorEvaluator.child(MUTATION_CHANCE, MUTATION_SIZE)
         );
     }
 }

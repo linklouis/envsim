@@ -114,4 +114,21 @@ public class Environment extends Canvas {
 
         return closestEntity;
     }
+
+    public List<Entity> getEntitiesInRange(Vector position, Predicate<Entity> predicate, double maxDistance) {
+        List<Entity> entitiesInRange = new ArrayList<>();
+
+        for (Entity entity : entities) {
+            if (!predicate.test(entity)) {
+                continue;
+            }
+
+            double dist = entity.getPosition().distance(position);
+            if (dist < maxDistance) {
+                entitiesInRange.add(entity);
+            }
+        }
+
+        return entitiesInRange;
+    }
 }

@@ -5,10 +5,10 @@ import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
 
 public class Food extends Entity {
-    private final static double RADIUS_VALUE_SCALE = 1;
+    private final static double RADIUS_VALUE_SCALE = 1.3;
     private static final double GROWTH_SPEED = 0.002;
-    private static final int MAX_SIZE = 10;
-    private static final int REGROWTH_TIME = 10;
+    private final double MAX_SIZE = Math.random() * 10 + 5;
+    private static final int REGROWTH_TIME = 100;
 
     private int regrowthTimer = 0;
 
