@@ -26,10 +26,10 @@ public class App extends Application {
         for (int i = 0; i < 400; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
 
-            new Agent(Math.random() * 15, randomColor, environment);
+            new Agent(Math.random() * 5 + 2, randomColor, environment);
         }
 
-        for (int i = 0; i < 200; i++) {
+        for (int i = 0; i < 600; i++) {
             Vector position = Vector.random(new Vector(0, 0), new Vector(environment.getWidth(), environment.getHeight()));
             new Food(position, Math.random() * 5, environment);
         }

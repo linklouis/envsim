@@ -2,7 +2,6 @@ package edu.msoe.envsim;
 
 import edu.msoe.envsim.nn.ActivationFunction;
 import edu.msoe.envsim.nn.AgentDecision;
-import edu.msoe.envsim.nn.AgentTarget;
 import edu.msoe.envsim.nn.NeuralNetwork;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
@@ -15,7 +14,7 @@ public class Agent  extends Entity {
     /**
      * TODO: Should maybe scale with radius?
      */
-    private static final double MAX_EXPECTED_ENERGY = 200;
+    private static final double MAX_EXPECTED_ENERGY = 120;
     private static final double REPRODUCTON_ENERGY_THRESHOLD = 50;
     private static final double REPRODUCTION_COST = 0.3;
     /**
@@ -29,7 +28,7 @@ public class Agent  extends Entity {
     /**
      * The amount of health lost from attacking an Agent larger than yourself.
      */
-    private static final double FAILED_PREDATION_COST = 5;
+    private static final double FAILED_PREDATION_COST = 0.7;
     private static final double PREDATION_EFFICIENCY = 0.6;
     /**
      * The amount of energy an agent needs to start regenerating health.
@@ -43,7 +42,7 @@ public class Agent  extends Entity {
     /**
      * The amount of energy cost per time step per pixel of vision radius
      */
-    private static final double VISION_QUALITY_COST = 0.001;
+    private static final double VISION_QUALITY_COST = 0.0002;
     public static final double SPEED_COST = 0.005; // TODO: Increase this once NN in implemented
     public static final int NUM_INPUTS = 6;
     public static final double MUTATION_CHANCE = 0.05;
@@ -124,7 +123,7 @@ public class Agent  extends Entity {
                 100,
                 Math.random() * 4,
                 radius,
-                Math.random() * 150 + 50,
+                Math.random() * 200 + 80,
                 Math.random() * 2,
                 newBrain(),
                 newFoodEvaluator(),
@@ -271,6 +270,14 @@ public class Agent  extends Entity {
         }
     }
 
+    private static void reproduce(@NotNull Agent parent1) {
+        if (parent1.prepareForReproduction()) { // TODO: SHOULD SPLIT THE ENERGY EQUALLY BETWEEN THEM
+            new Agent(parent1.getAgentData(), parent1.environment);
+            parent1.timeSinceReproduction = 0;
+            System.out.println("Cloning!");
+        }
+    }
+
     private static boolean isSameSpecies(Agent agent1, Agent agent2) {
         return true; // TODO
     }
@@ -325,10 +332,11 @@ public class Agent  extends Entity {
         Entity mostValuableFood = null;
 
         for  (Entity entity : entitiesInRange) {
-            float value = foodEvaluator.predict(new float[] {
-                    (float) this.distance(entity),
-                    (float) entity.getRadius()
-            })[0];
+            float value = (float) (entity.getRadius() / this.distance(entity));
+//                    foodEvaluator.predict(new float[] {
+//                    (float) this.distance(entity),
+//                    (float) entity.getRadius()
+//            })[0];
 
             if (value > maxValue) {
                 maxValue = value;
@@ -403,6 +411,11 @@ public class Agent  extends Entity {
 
         boolean desiresPredation;
 
+        //if (reproductionDesire > 0.6 && energy > 80) {
+        if (energy > 100 && getRadius() / size > 0.8) {
+            reproduce(this); // TODO: IF WE KEEP THIS, MOVE IT TO STEP. ONLY HERE FOR TESTING BALANCE.
+        }
+
         if (reproductionDesire > predationDesire && reproductionDesire > BOOLEAN_DECISION_THRESHOLD) {
             desiresReproduction = true;
             desiresPredation = false;
@@ -431,40 +444,12 @@ public class Agent  extends Entity {
         }
 
         return new AgentDecision(
-                output[0] * 2 - 1,
+                output[0],// * 2 - 1,
                 target,
-                target == direction ? 0 : output[6] * 80 - 40,
+                target == direction ? output[6] * 80 - 40 : 0,
                 desiresReproduction,
                 desiresPredation
         );
-    }
-
-    /**
-     * TODO: If we keep the targeting system, we can probably get rid of the AgentTarget class and just move this logic into GetAction.
-     * @param target
-     * @param towards
-     * @return
-     */
-    private Vector getTargetVector(AgentTarget target, boolean towards) {
-        if (target == AgentTarget.FOOD) {
-            return getClosestFood().getPosition().subtract(getPosition());
-        } else if (target == AgentTarget.CLOSEST_AGENT) {
-            Vector direction = getClosestAgent().getPosition().subtract(getPosition());
-            if (towards) {
-                return direction.scale(-1);
-            }
-            return direction;
-        }
-
-        return this.direction;
-    }
-
-    private Agent getClosestAgent() {
-        return (Agent) environment.getClosestEntity(getPosition(), entity -> entity instanceof Agent);
-    }
-
-    private Food getClosestFood() {
-        return (Food) environment.getClosestEntity(getPosition(), entity -> entity instanceof Food && entity.getRadius() > 0);
     }
 
 
@@ -500,7 +485,7 @@ public class Agent  extends Entity {
     }
 
     private double getMovementCost(double actualSpeed) {
-        return SPEED_COST * actualSpeed;
+        return SPEED_COST * Math.abs(actualSpeed);
     }
 
     private double getPassiveEnergyCost() {
