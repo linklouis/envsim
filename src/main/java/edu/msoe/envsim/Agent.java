@@ -13,6 +13,7 @@ import java.util.List;
 public class Agent  extends Entity {
     /**
      * TODO: Should maybe scale with radius?
+     * TODO: Should definitely scale with radius.
      */
     private static final double MAX_EXPECTED_ENERGY = 120;
     private static final double REPRODUCTON_ENERGY_THRESHOLD = 50;
@@ -20,16 +21,19 @@ public class Agent  extends Entity {
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
      */
-    private static final double MIN_RAD_DIFF_FOR_PREDATION = 0.4;
+    private static final double MIN_RAD_DIFF_FOR_PREDATION = 0.5;
     /**
      * The amount of energy wasted when catching and eating prey.
+     * <p>
+     * Scales with the size ratio (so it's easier to eat something smaller.)
+     * </p>
      */
-    private static final double PREDATION_COST = 5;
+    private static final double PREDATION_COST = 7;
     /**
      * The amount of health lost from attacking an Agent larger than yourself.
      */
-    private static final double FAILED_PREDATION_COST = 0.7;
-    private static final double PREDATION_EFFICIENCY = 0.6;
+    private static final double FAILED_PREDATION_COST = 3;
+    private static final double PREDATION_EFFICIENCY = 0.7;
     /**
      * The amount of energy an agent needs to start regenerating health.
      */
@@ -43,9 +47,10 @@ public class Agent  extends Entity {
      * The amount of energy cost per time step per pixel of vision radius
      */
     private static final double VISION_QUALITY_COST = 0.0002;
-    public static final double SPEED_COST = 0.005; // TODO: Increase this once NN in implemented
+    public static final double SPEED_COST = 0.006;
+    public static final double SIZE_COST = 0.001;
     public static final int NUM_INPUTS = 6;
-    public static final double MUTATION_CHANCE = 0.05;
+    public static final double MUTATION_CHANCE = 0.1;
     public static final double MUTATION_SIZE = 0.02;
 
 
@@ -116,7 +121,7 @@ public class Agent  extends Entity {
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
-        Vector position = Vector.random(new Vector(0, 0), new Vector(env.getWidth(), env.getHeight()));
+        Vector position = Vector.random(Vector.zero, env.getSize());
         AgentData agentData = new AgentData(
                 position,
                 color,
@@ -124,7 +129,7 @@ public class Agent  extends Entity {
                 Math.random() * 4,
                 radius,
                 Math.random() * 200 + 80,
-                Math.random() * 2,
+                Math.random(),
                 newBrain(),
                 newFoodEvaluator(),
                 newAgentEvaluator(),
@@ -194,7 +199,7 @@ public class Agent  extends Entity {
 
         energy -= getPassiveEnergyCost();
 
-        if (energy <= 0) {
+        if (energy <= 0 || getRadius() <= 0) {
             die();
             return;
         }
@@ -204,10 +209,14 @@ public class Agent  extends Entity {
 
     private void move(double turn, double speed) {
         direction = direction.turn(turn);
-        if (energy >= getMovementCost(speed)) {
-            setPosition(getPosition().add(direction.atMagnitude(speed)));
-            energy -= getMovementCost(speed);
+
+        double functionalSpeed = speed / Math.max(Math.pow(getRadius() / 13, 2), 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
+        double cost = getMovementCost(functionalSpeed);
+        if (energy >= cost) {
+            setPosition(getPosition().add(direction.atMagnitude(functionalSpeed)));
+            energy -= cost;
         }
+
         setPosition(getPosition().clamp(Vector.zero, getBounds()));
     }
 
@@ -232,21 +241,27 @@ public class Agent  extends Entity {
         setColor(newColor);
     }
 
-    private boolean prepareForReproduction() {
-        energy -= energy * REPRODUCTION_COST;
+    private boolean prepareForReproduction(boolean isClone) {
+        if (isClone) {
+            energy /= 2;
+        } else {
+            energy -= energy * REPRODUCTION_COST;
+        }
         return desiresReproduction && energy * 2 >= REPRODUCTON_ENERGY_THRESHOLD;
     }
 
     private void attemptPredation(@NotNull Agent prey) {
         // TODO: INSTEAD OF A THRESHOLD, HAVE THE CHANCES FOR AN AGENT TO KILL ANOTHER BE BASED ON THE SIZE DIFFERENCE. (OR EVEN JUST HOW MUCH DAMAGE IT DOES, SO THAT A SMALL AGENT CAN DO DAMAGE TO A LARGE ONE, EVEN IF IT DOESN'T KILL IT? [Is that actually something we want?])
         // TODO: Pass the radius ratio for whatever other agent this one is seeing as input for NN.
-        energy -= PREDATION_COST;
+        energy -= PREDATION_COST * prey.getRadius() / getRadius();
         if (prey.getRadius() / getRadius() <= MIN_RAD_DIFF_FOR_PREDATION) {
             energy += prey.energy * PREDATION_EFFICIENCY;
             prey.die();
             System.out.println("Predation!");
             timeSinceReproduction = 0; // TODO: Remove once decisions aren't made randomly every frame.
         } else {
+            // TODO: If we fail, but the other dies, we should still gain the energy.
+            // TODO: Maybe that wouldn't happen cuz the decision of whether we succeed or not is based on health?
             setRadius(getRadius() - FAILED_PREDATION_COST);
             prey.setRadius(prey.getRadius() - FAILED_PREDATION_COST);
             // TODO: Also lose energy?
@@ -262,19 +277,19 @@ public class Agent  extends Entity {
         }
 
         // TODO: Maybe have failed reproduction take less energy?
-        if (parent1.prepareForReproduction() && parent2.prepareForReproduction()) {
+        if (parent1.prepareForReproduction(false) && parent2.prepareForReproduction(false)) {
             new Agent(parent1.getAgentData(), parent2.getAgentData(), env);
             parent1.timeSinceReproduction = 0;
             parent2.timeSinceReproduction = 0;
-            System.out.println("Reproduction!");
+//            System.out.println("Reproduction!");
         }
     }
 
     private static void reproduce(@NotNull Agent parent1) {
-        if (parent1.prepareForReproduction()) { // TODO: SHOULD SPLIT THE ENERGY EQUALLY BETWEEN THEM
+        if (parent1.prepareForReproduction(true)) {
             new Agent(parent1.getAgentData(), parent1.environment);
             parent1.timeSinceReproduction = 0;
-            System.out.println("Cloning!");
+//            System.out.println("Cloning!");
         }
     }
 
@@ -293,7 +308,7 @@ public class Agent  extends Entity {
 
     private static @NotNull NeuralNetwork newFoodEvaluator() {
         NeuralNetwork neuralNetwork = new NeuralNetwork(2);
-        neuralNetwork.newLayer(4);
+        neuralNetwork.newLayer(2);
         neuralNetwork.newLayer(1,ActivationFunction.sigmoid());
 
         return neuralNetwork;
@@ -301,7 +316,7 @@ public class Agent  extends Entity {
 
     private static @NotNull NeuralNetwork newAgentEvaluator() {
         NeuralNetwork neuralNetwork = new NeuralNetwork(3);
-        neuralNetwork.newLayer(6);
+        neuralNetwork.newLayer(3);
         neuralNetwork.newLayer(1,ActivationFunction.sigmoid());
 
         return neuralNetwork;
@@ -459,6 +474,8 @@ public class Agent  extends Entity {
         gc.fillOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
         gc.setStroke(Color.WHITE);
         gc.strokeOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
+
+        gc.strokeOval(x() - visionRadius, y() - visionRadius, visionRadius * 2, visionRadius * 2);
     }
 
     protected void die() {
@@ -489,7 +506,7 @@ public class Agent  extends Entity {
     }
 
     private double getPassiveEnergyCost() {
-        return visionRadius * VISION_QUALITY_COST;
+        return visionRadius * VISION_QUALITY_COST + getRadius() * SIZE_COST;
     }
 
     @Contract(" -> new")
@@ -498,10 +515,10 @@ public class Agent  extends Entity {
                 getPosition(),
                 getColor(),
                 this.energy, // TODO: Children should actually get the cost subtracted from each parent's health
-                this.maxSpeed,
-                this.size,
-                this.visionRadius,
-                this.healthRegenSpeed,
+                this.maxSpeed + Math.random() * 2 - 1,
+                this.size + Math.random() * 2 - 1,
+                this.visionRadius + Math.random() * 2 - 1,
+                this.healthRegenSpeed + Math.random() * 2 - 1,
                 this.brain.child(MUTATION_CHANCE, MUTATION_SIZE),
                 this.foodEvaluator.child(MUTATION_CHANCE, MUTATION_SIZE),
                 this.preyEvaluator.child(MUTATION_CHANCE, MUTATION_SIZE),

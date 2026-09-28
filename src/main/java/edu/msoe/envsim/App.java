@@ -18,19 +18,21 @@ public class App extends Application {
 
     @Override
     public void start(@NotNull Stage stage) {
-        int width = 2200;
-        int height = 1280;
+        int viewWidth = 1500;
+        int viewHeight = 900;
+        int worldWidth = (int) (5060 * 1.3);
+        int worldHeight = (int) (2944 * 1.3);
 
-        environment = new Environment(width, height);
+        environment = new Environment(viewWidth, viewHeight, worldWidth, worldHeight);
 
-        for (int i = 0; i < 400; i++) {
+        for (int i = 0; i < 500; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
 
-            new Agent(Math.random() * 5 + 2, randomColor, environment);
+            new Agent(Math.random() * 25 + 3, randomColor, environment);
         }
 
-        for (int i = 0; i < 600; i++) {
-            Vector position = Vector.random(new Vector(0, 0), new Vector(environment.getWidth(), environment.getHeight()));
+        for (int i = 0; i < 1200; i++) {
+            Vector position = Vector.random(Vector.zero, environment.getSize());
             new Food(position, Math.random() * 5, environment);
         }
 
@@ -45,7 +47,7 @@ public class App extends Application {
         StackPane.setAlignment(collapsibleMenu, Pos.TOP_LEFT);
         StackPane.setMargin(collapsibleMenu, new Insets(15));
 
-        Scene scene = new Scene(root, width, height);
+        Scene scene = new Scene(root, viewWidth, viewHeight);
         stage.setScene(scene);
         stage.setTitle("Environment Simulation - JavaFX 27");
         stage.show();
