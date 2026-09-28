@@ -18,10 +18,10 @@ public class App extends Application {
 
     @Override
     public void start(@NotNull Stage stage) {
-        int viewWidth = 1500;
-        int viewHeight = 900;
-        int worldWidth = (int) (5060 * 1.3);
-        int worldHeight = (int) (2944 * 1.3);
+        int viewWidth = 2500;
+        int viewHeight = 1300;
+        int worldWidth = (int) (viewWidth * 2.5);//(int) (5060 * 1.3);
+        int worldHeight = (int) (viewHeight * 2.5);//(int) (2944 * 1.3);
 
         environment = new Environment(viewWidth, viewHeight, worldWidth, worldHeight);
 

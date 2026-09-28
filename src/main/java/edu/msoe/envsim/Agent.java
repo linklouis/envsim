@@ -21,7 +21,7 @@ public class Agent  extends Entity {
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
      */
-    private static final double MIN_RAD_DIFF_FOR_PREDATION = 0.5;
+    private static final double MIN_RAD_DIFF_FOR_PREDATION = 0.8;
     /**
      * The amount of energy wasted when catching and eating prey.
      * <p>
@@ -40,18 +40,18 @@ public class Agent  extends Entity {
     private static final double HEALTH_REGENERATION_THRESHOLD = 25;
     private static final double HEALTH_REGEN_COST = 1;
     /**
-     * The smallest value the NN can output that's still considered true for a boolean output
-     */
-    private static final double BOOLEAN_DECISION_THRESHOLD = 0.3;
-    /**
      * The amount of energy cost per time step per pixel of vision radius
      */
-    private static final double VISION_QUALITY_COST = 0.0002;
-    public static final double SPEED_COST = 0.006;
-    public static final double SIZE_COST = 0.001;
+    private static final double VISION_QUALITY_COST = 0.0006;
+    public static final double SPEED_COST = 0.01;
+    public static final double SIZE_COST = 0.0004;
     public static final int NUM_INPUTS = 6;
     public static final double MUTATION_CHANCE = 0.1;
     public static final double MUTATION_SIZE = 0.02;
+    /**
+     * The smallest value the NN can output that's still considered true for a boolean output
+     */
+    private static final double BOOLEAN_DECISION_THRESHOLD = 0.3;
 
 
     private @NotNull Environment environment;
@@ -98,10 +98,10 @@ public class Agent  extends Entity {
      */
 
     /**
-     * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, desiresRep, timeSinceRep
+     * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, desiresRep
      * Outputs (For now): speed, repDesire, predDesire, targetFood, targetPrey, runFromThreat, turn
      */
-    private final @NotNull NeuralNetwork brain;
+    public final @NotNull NeuralNetwork brain;
     /**
      * Inputs: food size, distance
      * Output: value
@@ -126,7 +126,7 @@ public class Agent  extends Entity {
                 position,
                 color,
                 100,
-                Math.random() * 4,
+                Math.random() * 2 + 0.3,
                 radius,
                 Math.random() * 200 + 80,
                 Math.random(),
@@ -262,8 +262,8 @@ public class Agent  extends Entity {
         } else {
             // TODO: If we fail, but the other dies, we should still gain the energy.
             // TODO: Maybe that wouldn't happen cuz the decision of whether we succeed or not is based on health?
-            setRadius(getRadius() - FAILED_PREDATION_COST);
-            prey.setRadius(prey.getRadius() - FAILED_PREDATION_COST);
+            setRadius(getRadius() - FAILED_PREDATION_COST * prey.getRadius() / getRadius());
+            prey.setRadius(prey.getRadius() - FAILED_PREDATION_COST * getRadius() / prey.getRadius());
             // TODO: Also lose energy?
             System.out.println("Failed Predation!");
         }
@@ -300,7 +300,7 @@ public class Agent  extends Entity {
     private static @NotNull NeuralNetwork newBrain() {
         NeuralNetwork neuralNetwork = new NeuralNetwork(NUM_INPUTS);
 //        neuralNetwork.newLayer(16);
-        neuralNetwork.newLayer(8);
+        neuralNetwork.newLayer(5);
         neuralNetwork.newLayer(7, ActivationFunction.sigmoid());
 
         return neuralNetwork;
@@ -308,14 +308,14 @@ public class Agent  extends Entity {
 
     private static @NotNull NeuralNetwork newFoodEvaluator() {
         NeuralNetwork neuralNetwork = new NeuralNetwork(2);
-        neuralNetwork.newLayer(2);
+        neuralNetwork.newLayer(3);
         neuralNetwork.newLayer(1,ActivationFunction.sigmoid());
 
         return neuralNetwork;
     }
 
     private static @NotNull NeuralNetwork newAgentEvaluator() {
-        NeuralNetwork neuralNetwork = new NeuralNetwork(3);
+        NeuralNetwork neuralNetwork = new NeuralNetwork(2);
         neuralNetwork.newLayer(3);
         neuralNetwork.newLayer(1,ActivationFunction.sigmoid());
 
@@ -324,7 +324,7 @@ public class Agent  extends Entity {
 
 
     /**
-     * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, desiresRep, timeSinceRep
+     * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, desiresRep
      * Outputs (For now): speed, repDesire, predDesire, targetFood, targetPrey, runFromThreat, turn
      */
     @Contract(" -> new")
@@ -372,9 +372,8 @@ public class Agent  extends Entity {
 
         for  (Entity entity : entitiesInRange) {
             float value = preyEvaluator.predict(new float[] {
-                    (float) this.getRadius(),
-                    (float) this.distance(entity),
-                    (float) entity.getRadius()
+                    (float) (entity.getRadius() / this.getRadius()),
+                    (float) this.distance(entity)
             })[0];
 
             if (value > maxValue) {
@@ -396,9 +395,8 @@ public class Agent  extends Entity {
 
         for  (Entity entity : entitiesInRange) {
             float value = predatorEvaluator.predict(new float[] {
-                    (float) this.getRadius(),
-                    (float) this.distance(entity),
-                    (float) entity.getRadius()
+                    (float) (entity.getRadius() / this.getRadius()),
+                    (float) this.distance(entity)
             })[0];
 
             if (value > maxValue) {
@@ -502,11 +500,11 @@ public class Agent  extends Entity {
     }
 
     private double getMovementCost(double actualSpeed) {
-        return SPEED_COST * Math.abs(actualSpeed);
+        return SPEED_COST * Math.pow(actualSpeed, 2);
     }
 
     private double getPassiveEnergyCost() {
-        return visionRadius * VISION_QUALITY_COST + getRadius() * SIZE_COST;
+        return visionRadius * VISION_QUALITY_COST + Math.pow(getRadius(), 2) * SIZE_COST;
     }
 
     @Contract(" -> new")

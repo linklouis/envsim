@@ -18,7 +18,7 @@ public class Environment extends Canvas {
 
     private final int worldWidth;
     private final int worldHeight;
-    private double scale = 0.3;
+    private double scale = 1/2.5;
     private double translateX = 0.0;
     private double translateY = 0.0;
     private double lastMouseX;
@@ -119,6 +119,13 @@ public class Environment extends Canvas {
             entity.step();
             entity.paint(gc);
         }
+
+//        for (Entity entity : entities) {
+//            if (entity instanceof Agent) {
+//                ((Agent) entity).brain.display(gc, 500, 500);
+//                break;
+//            }
+//        }
     }
 
     public void addEntity(Entity entity) {
