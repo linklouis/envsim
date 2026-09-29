@@ -14,6 +14,7 @@ public class Agent  extends Entity {
     /**
      * TODO: Should maybe scale with radius?
      * TODO: Should definitely scale with radius.
+     * TODO: Can get rid of this if we stick with only cloning
      */
     private static final double MAX_EXPECTED_ENERGY = 120;
     private static final double REPRODUCTON_ENERGY_THRESHOLD = 50;
@@ -57,8 +58,13 @@ public class Agent  extends Entity {
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.3;
-    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.01;
+    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.06;
 
+    private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
+
+
+
+    private final Color baseSpeciesColor;
 
     private @NotNull Environment environment;
 
@@ -78,7 +84,7 @@ public class Agent  extends Entity {
     /**
      * How close an entity must be for the Agent to see it.
      * Higher values consume more {@link energy} each time step.
-     * TODO: Should the agent be able to see obstacles? (Probably not)
+     * TODO: Should the agent be able to see obstacles? (Probably not) [Why did I say probably not?]
      */
     private double visionRadius;
     private double healthRegenSpeed;
@@ -95,7 +101,11 @@ public class Agent  extends Entity {
      */
     private double energy;
     private boolean desiresReproduction = true;
+    /**
+     * TODO: Can get rid of if we keep only cloning
+     */
     private double timeSinceReproduction = 100000;
+    private Food justAte;
     private boolean alive = true;
     /*
      * radius is the health of the Agent. If it hits 0, it dies.
@@ -132,7 +142,7 @@ public class Agent  extends Entity {
                 position,
                 color,
                 100,
-                Math.random() * 1.2 + 0.2,
+                Math.random() * 1.7 + 0.2,
                 radius,
                 Math.random() * 200 + 80,
                 Math.random(),
@@ -161,6 +171,12 @@ public class Agent  extends Entity {
         predatorEvaluator = agentData.predatorEvaluator();
 
         direction = Vector.random(1);
+
+        this.baseSpeciesColor = COLOR_MAPPER.getBaseSpeciesColor(
+                maxSpeed, size, visionRadius, healthRegenSpeed,
+                brain, foodEvaluator, preyEvaluator, predatorEvaluator
+        );
+        updateColor();
     }
 
     /**
@@ -188,8 +204,6 @@ public class Agent  extends Entity {
                 eat(food);
             } else if (entity instanceof Agent agent) {
                 interact(agent, agentDecision.desiresPredation());
-                // TODO: Add attribute for whether predator or not, or maybe just have the larger agent always eat a smaller one if they collide unless both want to mate?
-                // TODO: Actually, just have the network output a decision of whether or not to try to eat another agent, and it only actually works if it's touching another agent that is sufficiently smaller than itself. If it's not, it gets punished.
             }
         }
 
@@ -216,7 +230,7 @@ public class Agent  extends Entity {
     private void move(double turn, double speed) {
         direction = direction.turn(turn);
 
-        double functionalSpeed = speed / Math.max(Math.pow(getRadius() / 13, 2), 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
+        double functionalSpeed = speed / (Math.pow(getRadius() / 18, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
         double cost = getMovementCost(functionalSpeed);
         if (energy >= cost) {
             setPosition(getPosition().add(direction.atMagnitude(functionalSpeed)));
@@ -227,8 +241,11 @@ public class Agent  extends Entity {
     }
 
     private void eat(@NotNull Food food) {
-        energy += food.getValue();
-        food.getEaten();
+        if (food == justAte) return;
+        double consumptionSize = Math.min(food.getValue(), getRadius());    // TODO: Maybe switch to max energy once it relies on radius?
+        energy += consumptionSize;
+        food.getEaten(consumptionSize);
+        justAte = food;
     }
 
     private void interact(Agent agent, boolean attemptPredation) {
@@ -242,11 +259,8 @@ public class Agent  extends Entity {
     }
 
     private void updateColor() {
-        double hue = getColor().getHue();
-        double saturation = getColor().getSaturation();
-
-        Color newColor = Color.hsb(hue, saturation, Math.clamp(energy / MAX_EXPECTED_ENERGY, 0, 1));
-        setColor(newColor);
+        double brightness = Math.clamp(getRadius() / size, 0.0, 1.0);
+        setColor(Color.hsb(baseSpeciesColor.getHue(), baseSpeciesColor.getSaturation(), brightness));
     }
 
     private boolean prepareForReproduction(boolean isClone) {
@@ -259,6 +273,8 @@ public class Agent  extends Entity {
     }
 
     private void attemptPredation(@NotNull Agent prey) {
+        // TODO: Punish agents for outputting the predation signal when not touching another agent?`
+
         // TODO: INSTEAD OF A THRESHOLD, HAVE THE CHANCES FOR AN AGENT TO KILL ANOTHER BE BASED ON THE SIZE DIFFERENCE. (OR EVEN JUST HOW MUCH DAMAGE IT DOES, SO THAT A SMALL AGENT CAN DO DAMAGE TO A LARGE ONE, EVEN IF IT DOESN'T KILL IT? [Is that actually something we want?])
         // TODO: Pass the radius ratio for whatever other agent this one is seeing as input for NN.
         changeEnergy(-(PREDATION_COST * prey.getRadius() / getRadius()));

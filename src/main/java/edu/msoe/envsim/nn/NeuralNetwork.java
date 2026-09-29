@@ -5,6 +5,8 @@ import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class NeuralNetwork implements Serializable {
     private final int numInputs;
@@ -190,6 +192,18 @@ public class NeuralNetwork implements Serializable {
 
     public Layer getInputLayer() {
         return inputLayer;
+    }
+
+    public List<Float> getWeights() {
+        List<Float> weights = new ArrayList<>();
+        Layer layer = inputLayer;
+        while (layer != null) {
+            for (float weight : layer.getWeights()) {
+                weights.add(weight);
+            }
+            layer = layer.getNext();
+        }
+        return weights;
     }
 }
 

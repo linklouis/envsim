@@ -36,8 +36,10 @@ public class Food extends Entity {
         return getRadius() * RADIUS_VALUE_SCALE;
     }
 
-    public void getEaten() {
-        setRadius(0);
-        regrowthTimer = REGROWTH_TIME;
+    public void getEaten(double consumptionSize) {
+        setRadius(getRadius() - consumptionSize);
+        if (getRadius() <= 0) {
+            regrowthTimer = REGROWTH_TIME;
+        }
     }
 }

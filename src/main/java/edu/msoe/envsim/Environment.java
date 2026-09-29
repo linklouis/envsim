@@ -26,18 +26,19 @@ public class Environment extends Canvas {
     private final int worldWidth;
     private final int worldHeight;
     private final Vector cellSize;
-    private double scale = 1/2.5;
+    private double scale;
     private double translateX = 0.0;
     private double translateY = 0.0;
     private double lastMouseX;
     private double lastMouseY;
 
-    public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight) {
+    public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom) {
         super(viewWidth, viewHeight);
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
         this.cellSize = new Vector((double) worldWidth / (NUM_CELLS - 1), (double) worldHeight / (NUM_CELLS - 1));
         gc = getGraphicsContext2D();
+        scale = zoom;
 
         // Panning controls
         setOnMousePressed(e -> {
@@ -245,5 +246,20 @@ public class Environment extends Canvas {
 
     private List<Entity> getCell(@NotNull Vector indices) {
         return cells[(int) indices.x()][(int) indices.y()];
+    }
+
+    @Override
+    public boolean isResizable() {
+        return true;
+    }
+
+    @Override
+    public double prefWidth(double height) {
+        return getWidth();
+    }
+
+    @Override
+    public double prefHeight(double width) {
+        return getHeight();
     }
 }

@@ -3,12 +3,14 @@ package edu.msoe.envsim;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.TitledPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,12 +20,18 @@ public class App extends Application {
 
     @Override
     public void start(@NotNull Stage stage) {
-        int viewWidth = 2500;
-        int viewHeight = 1300;
-        int worldWidth = (int) (viewWidth * 2.5);//(int) (5060 * 1.3);
-        int worldHeight = (int) (viewHeight * 2.5);//(int) (2944 * 1.3);
+        int viewWidth = 1080;
+        int viewHeight = 720;
+        Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
+        double aspectRatio = screenBounds.getHeight() / screenBounds.getWidth();
+        int worldWidth = (int) (7000 * 1.0);
+        int worldHeight = (int) (worldWidth * aspectRatio);
+        double zoom = screenBounds.getWidth() / worldWidth;
 
-        environment = new Environment(viewWidth, viewHeight, worldWidth, worldHeight);
+        environment = new Environment(viewWidth, viewHeight, worldWidth, worldHeight, zoom);
+
+        environment.widthProperty().bind(stage.widthProperty());
+        environment.heightProperty().bind(stage.heightProperty());
 
         for (int i = 0; i < 500; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
@@ -41,7 +49,7 @@ public class App extends Application {
 
         // Layer Controls over Canvas using StackPane
         StackPane root = new StackPane();
-        root.getChildren().addAll(environment, collapsibleMenu);
+        root.getChildren().addAll(environment);//, collapsibleMenu);
 
         // Align the floating menu to the top-left corner
         StackPane.setAlignment(collapsibleMenu, Pos.TOP_LEFT);
@@ -49,7 +57,7 @@ public class App extends Application {
 
         Scene scene = new Scene(root, viewWidth, viewHeight);
         stage.setScene(scene);
-        stage.setTitle("Environment Simulation - JavaFX 27");
+        stage.setTitle("EnvSim");
         stage.show();
     }
 
