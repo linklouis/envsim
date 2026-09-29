@@ -31,9 +31,9 @@ public class App extends Application {
             new Agent(Math.random() * 25 + 3, randomColor, environment);
         }
 
-        for (int i = 0; i < 1200; i++) {
+        for (int i = 0; i < 2000; i++) {
             Vector position = Vector.random(Vector.zero, environment.getSize());
-            new Food(position, Math.random() * 5, environment);
+            new Food(position, Math.random() * 10 + 5, environment);
         }
 
         // Build Collapsible Overlay Menu

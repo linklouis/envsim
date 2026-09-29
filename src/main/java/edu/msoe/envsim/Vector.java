@@ -152,5 +152,10 @@ public record Vector(double x, double y) {
     public @NotNull Vector turn(double degrees) {
         return fromAngle(angle() + Math.toRadians(degrees));
     }
+
+    @Contract("_ -> new")
+    public @NotNull Vector elementWiseDivision(@NotNull Vector other) {
+        return new Vector(x() / other.x(), y() / other.y());
+    }
 }
 

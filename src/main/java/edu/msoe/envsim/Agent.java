@@ -19,6 +19,11 @@ public class Agent  extends Entity {
     private static final double REPRODUCTON_ENERGY_THRESHOLD = 50;
     private static final double REPRODUCTION_COST = 0.3;
     /**
+     * The energy at which an entity will clone.
+     * TODO: Have this depend on max size?
+     */
+    public static final int CLONE_THRESHOLD = 100;
+    /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
      */
     private static final double MIN_RAD_DIFF_FOR_PREDATION = 0.8;
@@ -43,7 +48,7 @@ public class Agent  extends Entity {
      * The amount of energy cost per time step per pixel of vision radius
      */
     private static final double VISION_QUALITY_COST = 0.0006;
-    public static final double SPEED_COST = 0.01;
+    public static final double SPEED_COST = 0.006;
     public static final double SIZE_COST = 0.0004;
     public static final int NUM_INPUTS = 6;
     public static final double MUTATION_CHANCE = 0.1;
@@ -52,6 +57,7 @@ public class Agent  extends Entity {
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.3;
+    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.01;
 
 
     private @NotNull Environment environment;
@@ -126,7 +132,7 @@ public class Agent  extends Entity {
                 position,
                 color,
                 100,
-                Math.random() * 2 + 0.3,
+                Math.random() * 1.2 + 0.2,
                 radius,
                 Math.random() * 200 + 80,
                 Math.random(),
@@ -191,13 +197,13 @@ public class Agent  extends Entity {
         if (energy > HEALTH_REGENERATION_THRESHOLD && getRadius() < size) {
             // TODO: Have passive health regen speed be partially based on how low health is?
             setRadius(getRadius() + (Math.random() * healthRegenSpeed));
-            energy -= HEALTH_REGEN_COST * healthRegenSpeed; // TODO: Have the cost be based on how successful the regen was?
+            changeEnergy(-(HEALTH_REGEN_COST * healthRegenSpeed)); // TODO: Have the cost be based on how successful the regen was?
             if (getRadius() > size) {
                 setRadius(size);
             }
         }
 
-        energy -= getPassiveEnergyCost();
+        changeEnergy(-getPassiveEnergyCost());
 
         if (energy <= 0 || getRadius() <= 0) {
             die();
@@ -214,7 +220,7 @@ public class Agent  extends Entity {
         double cost = getMovementCost(functionalSpeed);
         if (energy >= cost) {
             setPosition(getPosition().add(direction.atMagnitude(functionalSpeed)));
-            energy -= cost;
+            changeEnergy(-cost);
         }
 
         setPosition(getPosition().clamp(Vector.zero, getBounds()));
@@ -226,8 +232,10 @@ public class Agent  extends Entity {
     }
 
     private void interact(Agent agent, boolean attemptPredation) {
+        if (!this.alive || !agent.alive) return;
+
         if (desiresReproduction && agent.desiresReproduction && isSameSpecies(this, agent)) {
-            reproduce(this, agent);
+//            reproduce(this, agent);
         } else if (attemptPredation) {
             attemptPredation(agent);
         }
@@ -253,7 +261,7 @@ public class Agent  extends Entity {
     private void attemptPredation(@NotNull Agent prey) {
         // TODO: INSTEAD OF A THRESHOLD, HAVE THE CHANCES FOR AN AGENT TO KILL ANOTHER BE BASED ON THE SIZE DIFFERENCE. (OR EVEN JUST HOW MUCH DAMAGE IT DOES, SO THAT A SMALL AGENT CAN DO DAMAGE TO A LARGE ONE, EVEN IF IT DOESN'T KILL IT? [Is that actually something we want?])
         // TODO: Pass the radius ratio for whatever other agent this one is seeing as input for NN.
-        energy -= PREDATION_COST * prey.getRadius() / getRadius();
+        changeEnergy(-(PREDATION_COST * prey.getRadius() / getRadius()));
         if (prey.getRadius() / getRadius() <= MIN_RAD_DIFF_FOR_PREDATION) {
             energy += prey.energy * PREDATION_EFFICIENCY;
             prey.die();
@@ -262,8 +270,8 @@ public class Agent  extends Entity {
         } else {
             // TODO: If we fail, but the other dies, we should still gain the energy.
             // TODO: Maybe that wouldn't happen cuz the decision of whether we succeed or not is based on health?
-            setRadius(getRadius() - FAILED_PREDATION_COST * prey.getRadius() / getRadius());
-            prey.setRadius(prey.getRadius() - FAILED_PREDATION_COST * getRadius() / prey.getRadius());
+            setRadius(Math.max(0.001, getRadius() - FAILED_PREDATION_COST * prey.getRadius() / getRadius()));
+            prey.setRadius(Math.max(0.001, prey.getRadius() - FAILED_PREDATION_COST * getRadius() / prey.getRadius()));
             // TODO: Also lose energy?
             System.out.println("Failed Predation!");
         }
@@ -425,7 +433,7 @@ public class Agent  extends Entity {
         boolean desiresPredation;
 
         //if (reproductionDesire > 0.6 && energy > 80) {
-        if (energy > 100 && getRadius() / size > 0.8) {
+        if (energy > CLONE_THRESHOLD && getRadius() / size > 0.8) {
             reproduce(this); // TODO: IF WE KEEP THIS, MOVE IT TO STEP. ONLY HERE FOR TESTING BALANCE.
         }
 
@@ -522,5 +530,9 @@ public class Agent  extends Entity {
                 this.preyEvaluator.child(MUTATION_CHANCE, MUTATION_SIZE),
                 this.predatorEvaluator.child(MUTATION_CHANCE, MUTATION_SIZE)
         );
+    }
+
+    private void changeEnergy(double change) {
+        energy += change * GLOBAL_ENERGY_LOSS_FACTOR;
     }
 }

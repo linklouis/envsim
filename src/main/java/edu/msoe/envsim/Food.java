@@ -5,15 +5,16 @@ import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
 
 public class Food extends Entity {
-    private final static double RADIUS_VALUE_SCALE = 1.6;
+    private final static double RADIUS_VALUE_SCALE = 2;
     private static final double GROWTH_SPEED = 0.002;
-    private final double MAX_SIZE = Math.random() * 10 + 5;
     private static final int REGROWTH_TIME = 100;
 
+    private double maxSize;
     private int regrowthTimer = 0;
 
-    public Food(Vector position, double value, @NotNull Environment env) {
-        super(position, value * RADIUS_VALUE_SCALE, Color.YELLOW, env);
+    public Food(Vector position, double maxSize, @NotNull Environment env) {
+        super(position, maxSize, Color.YELLOW, env);
+        this.maxSize = maxSize;
     }
 
     @Override
@@ -25,7 +26,7 @@ public class Food extends Entity {
     @Override
     public void step() {
         if (regrowthTimer == 0) {
-            setRadius(getRadius() + GROWTH_SPEED * (MAX_SIZE - getRadius()));
+            setRadius(getRadius() + GROWTH_SPEED * (maxSize - getRadius()));
         } else {
             regrowthTimer--;
         }

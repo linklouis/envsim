@@ -4,6 +4,8 @@ import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,6 +13,11 @@ import java.util.List;
 import java.util.function.Predicate;
 
 public class Environment extends Canvas {
+    public static final int NUM_CELLS = 50;
+
+    @SuppressWarnings("unchecked")
+    private List<Entity>[][] cells = (List<Entity>[][]) new List[NUM_CELLS][NUM_CELLS];
+
     private List<Entity> entities = new ArrayList<>();
     private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>(); // TODO
     private final List<Entity> toRemove = new ArrayList<>();
@@ -18,6 +25,7 @@ public class Environment extends Canvas {
 
     private final int worldWidth;
     private final int worldHeight;
+    private final Vector cellSize;
     private double scale = 1/2.5;
     private double translateX = 0.0;
     private double translateY = 0.0;
@@ -28,6 +36,7 @@ public class Environment extends Canvas {
         super(viewWidth, viewHeight);
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
+        this.cellSize = new Vector((double) worldWidth / (NUM_CELLS - 1), (double) worldHeight / (NUM_CELLS - 1));
         gc = getGraphicsContext2D();
 
         // Panning controls
@@ -57,6 +66,12 @@ public class Environment extends Canvas {
             translateY = mouseY - (mouseY - translateY) * actualZoomFactor;
             scale = newScale;
         });
+
+        for (int i = 0; i < NUM_CELLS; i++) {
+            for (int j = 0; j < NUM_CELLS; j++) {
+                cells[i][j] = new ArrayList<>();
+            }
+        }
 
         reset();
 
@@ -103,12 +118,18 @@ public class Environment extends Canvas {
     private void step() {
         // Flush newly created entities into main list before iterating
         if (!pendingEntities.isEmpty()) {
-            entities.addAll(pendingEntities);
+            for (Entity entity : pendingEntities) {
+                entities.add(entity);
+                updateCell(entity);
+            }
             pendingEntities.clear();
         }
 
         if (!toRemove.isEmpty()) {
-            entities.removeAll(toRemove);
+            for (Entity entity : toRemove) {
+                entities.remove(entity);
+                getCell(entity.getCell()).remove(entity);
+            }
             toRemove.clear();
         }
 
@@ -144,34 +165,85 @@ public class Environment extends Canvas {
         return getCollisions(entity, (_, _) -> true);
     }
 
+    public List<Entity> getEntitiesInRange(@NotNull Vector position, Predicate<Entity> predicate, double maxDistance) {
+        List<Entity> entitiesInRange = new ArrayList<>();
+
+        // Calculate the min and max cell indices that overlap with the vision bounding box
+        int minCellX = (int) Math.max(0, (position.x() - maxDistance) / cellSize.x());
+        int maxCellX = (int) Math.min(NUM_CELLS - 1, (position.x() + maxDistance) / cellSize.x());
+        int minCellY = (int) Math.max(0, (position.y() - maxDistance) / cellSize.y());
+        int maxCellY = (int) Math.min(NUM_CELLS - 1, (position.y() + maxDistance) / cellSize.y());
+
+        // Iterate through only the cells within that bounding box
+        for (int x = minCellX; x <= maxCellX; x++) {
+            for (int y = minCellY; y <= maxCellY; y++) {
+                for (Entity entity : cells[x][y]) {
+                    if (!predicate.test(entity)) {
+                        continue;
+                    }
+
+                    double dist = entity.getPosition().distance(position);
+                    if (dist <= maxDistance) {
+                        entitiesInRange.add(entity);
+                    }
+                }
+            }
+        }
+
+        return entitiesInRange;
+    }
+
     public List<Entity> getCollisions(Entity entity, CollisionRequirement collisionRequirement) {
         if (!entities.contains(entity)) {
             return Collections.emptyList();
         }
 
         List<Entity> collisions = new ArrayList<>();
-        for (Entity entity2 : entities) {
-            if (entity != entity2 && entity.isColliding(entity2) && collisionRequirement.checkCollision(entity, entity2)) {
-                collisions.add(entity2);
+
+        // Add a buffer to account for the other entity's radius (assuming max entity radius is ~100)
+        double searchRadius = entity.getRadius() + 100;
+
+        // Calculate bounding box for collision checks
+        int minCellX = (int) Math.max(0, (entity.x() - searchRadius) / cellSize.x());
+        int maxCellX = (int) Math.min(NUM_CELLS - 1, (entity.x() + searchRadius) / cellSize.x());
+        int minCellY = (int) Math.max(0, (entity.y() - searchRadius) / cellSize.y());
+        int maxCellY = (int) Math.min(NUM_CELLS - 1, (entity.y() + searchRadius) / cellSize.y());
+
+        for (int x = minCellX; x <= maxCellX; x++) {
+            for (int y = minCellY; y <= maxCellY; y++) {
+                for (Entity entity2 : cells[x][y]) {
+                    // Check strict collision math for entities in adjacent cells
+                    if (entity != entity2 && entity.isColliding(entity2) && collisionRequirement.checkCollision(entity, entity2)) {
+                        collisions.add(entity2);
+                    }
+                }
             }
         }
+
         return collisions;
     }
 
-    public List<Entity> getEntitiesInRange(Vector position, Predicate<Entity> predicate, double maxDistance) {
-        List<Entity> entitiesInRange = new ArrayList<>();
-
-        for (Entity entity : entities) {
-            if (!predicate.test(entity)) {
-                continue;
-            }
-
-            double dist = entity.getPosition().distance(position);
-            if (dist < maxDistance) {
-                entitiesInRange.add(entity);
-            }
+    public Vector updateCell(@NotNull Entity entity) {
+        if (entity.getCell() != null) {
+            getCell(entity.getCell()).remove(entity);
         }
 
-        return entitiesInRange;
+        Vector cell = getCellIndexFromPosition(entity.getPosition());
+        getCell(cell).add(entity);
+
+        return cell;
+    }
+
+    @Contract("_ -> new")
+    private @NotNull Vector getCellIndexFromPosition(@NotNull Vector position) {
+        return position.elementWiseDivision(cellSize);
+    }
+
+    private List<Entity> getCellFromPosition(@NotNull Vector position) {
+        return getCell(getCellIndexFromPosition(position));
+    }
+
+    private List<Entity> getCell(@NotNull Vector indices) {
+        return cells[(int) indices.x()][(int) indices.y()];
     }
 }
