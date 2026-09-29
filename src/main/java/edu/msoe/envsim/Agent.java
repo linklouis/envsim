@@ -49,7 +49,7 @@ public class Agent  extends Entity {
      * The amount of energy cost per time step per pixel of vision radius
      */
     private static final double VISION_QUALITY_COST = 0.0006;
-    public static final double SPEED_COST = 0.006;
+    public static final double SPEED_COST = 0.01;
     public static final double SIZE_COST = 0.0004;
     public static final int NUM_INPUTS = 6;
     public static final double MUTATION_CHANCE = 0.1;
@@ -199,7 +199,7 @@ public class Agent  extends Entity {
         direction = agentDecision.direction();
         move(agentDecision.turn(), agentDecision.speed() * maxSpeed);
 
-        for (Entity entity : environment.getCollisions(this)) {
+        for (Entity entity : environment.getCollisions(this, (_, entity2) -> entity2.getRadius() > 0)) {
             if (entity instanceof Food food) {
                 eat(food);
             } else if (entity instanceof Agent agent) {
@@ -230,7 +230,7 @@ public class Agent  extends Entity {
     private void move(double turn, double speed) {
         direction = direction.turn(turn);
 
-        double functionalSpeed = speed / (Math.pow(getRadius() / 18, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
+        double functionalSpeed = speed / (Math.pow(getRadius() / 22, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
         double cost = getMovementCost(functionalSpeed);
         if (energy >= cost) {
             setPosition(getPosition().add(direction.atMagnitude(functionalSpeed)));
@@ -242,8 +242,8 @@ public class Agent  extends Entity {
 
     private void eat(@NotNull Food food) {
         if (food == justAte) return;
-        double consumptionSize = Math.min(food.getValue(), getRadius());    // TODO: Maybe switch to max energy once it relies on radius?
-        energy += consumptionSize;
+        double consumptionSize = Math.min(1, getRadius() * MIN_RAD_DIFF_FOR_PREDATION / food.getRadius());    // TODO: Does this make any sense? The idea is for agents to not be able to eat an entire food if they are smaller than it. They should only be able to eat MAX_DIF... % of their  // TODO: Maybe switch to max energy once it relies on radius?
+        energy += consumptionSize * food.getValue();
         food.getEaten(consumptionSize);
         justAte = food;
     }
@@ -338,6 +338,9 @@ public class Agent  extends Entity {
         return neuralNetwork;
     }
 
+    /**
+     * TODO: consider velocity?
+      */
     private static @NotNull NeuralNetwork newAgentEvaluator() {
         NeuralNetwork neuralNetwork = new NeuralNetwork(2);
         neuralNetwork.newLayer(3);
@@ -371,6 +374,7 @@ public class Agent  extends Entity {
         Entity mostValuableFood = null;
 
         for  (Entity entity : entitiesInRange) {
+            if (entity == justAte) continue;
             float value = (float) (entity.getRadius() / this.distance(entity));
 //                    foodEvaluator.predict(new float[] {
 //                    (float) this.distance(entity),
@@ -495,6 +499,7 @@ public class Agent  extends Entity {
         gc.setFill(getColor());
         gc.fillOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
         gc.setStroke(Color.WHITE);
+        gc.setLineWidth(3);
         gc.strokeOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
 
         gc.strokeOval(x() - visionRadius, y() - visionRadius, visionRadius * 2, visionRadius * 2);

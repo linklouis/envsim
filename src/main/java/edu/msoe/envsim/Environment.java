@@ -16,12 +16,13 @@ public class Environment extends Canvas {
     public static final int NUM_CELLS = 50;
 
     @SuppressWarnings("unchecked")
-    private List<Entity>[][] cells = (List<Entity>[][]) new List[NUM_CELLS][NUM_CELLS];
+    private List<Entity>[][] cells = (List<Entity>[][]) new java.util.concurrent.CopyOnWriteArrayList[NUM_CELLS][NUM_CELLS];
 
-    private List<Entity> entities = new ArrayList<>();
+    private List<Entity> entities = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>(); // TODO
-    private final List<Entity> toRemove = new ArrayList<>();
+    private final List<Entity> toRemove = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final GraphicsContext gc;
+    private final Clock clock;
 
     private final int worldWidth;
     private final int worldHeight;
@@ -40,6 +41,15 @@ public class Environment extends Canvas {
         gc = getGraphicsContext2D();
         scale = zoom;
 
+        clock = new Clock();
+
+        setupCells();
+        setupCameraControls();
+        resetCanvas();
+        start();
+    }
+
+    private void setupCameraControls() {
         // Panning controls
         setOnMousePressed(e -> {
             lastMouseX = e.getX();
@@ -67,25 +77,35 @@ public class Environment extends Canvas {
             translateY = mouseY - (mouseY - translateY) * actualZoomFactor;
             scale = newScale;
         });
+    }
 
+    private void setupCells() {
         for (int i = 0; i < NUM_CELLS; i++) {
             for (int j = 0; j < NUM_CELLS; j++) {
-                cells[i][j] = new ArrayList<>();
+                cells[i][j] = new java.util.concurrent.CopyOnWriteArrayList<>();
             }
         }
+    }
 
-        reset();
-
+    private void start() {
         AnimationTimer timer = new AnimationTimer() {
             @Override
             public void handle(long now) {
-                step();
+                visualStep();
             }
         };
         timer.start();
+
+        Thread simulationThread = new Thread(() -> {
+            while (true) {
+                simulationStep();
+            }
+        });
+        simulationThread.start();
     }
 
-    public void reset() {
+
+    public void resetCanvas() {
         // 1. Clear the entire viewport (outside the world bounds)
         gc.setTransform(1, 0, 0, 1, 0, 0);
         gc.setFill(Color.web("#151515")); // Darker void color
@@ -116,7 +136,7 @@ public class Environment extends Canvas {
         gc.setLineWidth(1.0);
     }
 
-    private void step() {
+    private void visualStep() {
         // Flush newly created entities into main list before iterating
         if (!pendingEntities.isEmpty()) {
             for (Entity entity : pendingEntities) {
@@ -134,20 +154,19 @@ public class Environment extends Canvas {
             toRemove.clear();
         }
 
-        reset();
+        resetCanvas();
 
-//        entities.parallelStream().forEach(Entity::step);
         for (Entity entity : entities) {
-            entity.step();
             entity.paint(gc);
         }
+    }
 
-//        for (Entity entity : entities) {
-//            if (entity instanceof Agent) {
-//                ((Agent) entity).brain.display(gc, 500, 500);
-//                break;
-//            }
-//        }
+    private void simulationStep() {
+        for (Entity entity : entities) {
+            entity.step();
+        }
+
+        clock.update();
     }
 
     public void addEntity(Entity entity) {
@@ -237,7 +256,11 @@ public class Environment extends Canvas {
 
     @Contract("_ -> new")
     private @NotNull Vector getCellIndexFromPosition(@NotNull Vector position) {
-        return position.elementWiseDivision(cellSize);
+        Vector rawIndex = position.elementWiseDivision(cellSize);
+        return new Vector(
+                Math.clamp(rawIndex.x(), 0, NUM_CELLS - 1),
+                Math.clamp(rawIndex.y(), 0, NUM_CELLS - 1)
+        );
     }
 
     private List<Entity> getCellFromPosition(@NotNull Vector position) {

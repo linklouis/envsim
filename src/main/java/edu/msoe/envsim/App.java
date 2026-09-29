@@ -41,7 +41,7 @@ public class App extends Application {
 
         for (int i = 0; i < 2000; i++) {
             Vector position = Vector.random(Vector.zero, environment.getSize());
-            new Food(position, Math.random() * 10 + 5, environment);
+            new Food(position, Math.pow(Math.random(), 3) * 40 + 5, environment);
         }
 
         // Build Collapsible Overlay Menu
