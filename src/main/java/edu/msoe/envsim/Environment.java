@@ -21,6 +21,9 @@ public class Environment extends Canvas {
     private List<Entity> entities = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>(); // TODO
     private final List<Entity> toRemove = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    private final List<DebugMessage> debugMessages = new ArrayList<>();
+
     private final GraphicsContext gc;
     private final Clock clock;
 
@@ -159,6 +162,10 @@ public class Environment extends Canvas {
         for (Entity entity : entities) {
             entity.paint(gc);
         }
+
+        for (DebugMessage message : debugMessages) {
+            message.update();
+        }
     }
 
     private void simulationStep() {
@@ -175,6 +182,10 @@ public class Environment extends Canvas {
 
     public void removeEntity(Entity entity) {
         toRemove.add(entity);
+    }
+
+    public void addDebugMessage(DebugMessage debugMessage) {
+        debugMessages.add(debugMessage);
     }
 
     public Vector getSize() {
@@ -284,5 +295,19 @@ public class Environment extends Canvas {
     @Override
     public double prefHeight(double width) {
         return getHeight();
+    }
+
+    public double getSimUpdateRate() {
+        return clock.getFormattedUpdateRate(2);
+    }
+
+    public int getNumAgents() {
+        int num = 0;
+        for (Entity entity : entities) {
+            if (entity instanceof Agent) {
+                num++;
+            }
+        }
+        return num;
     }
 }

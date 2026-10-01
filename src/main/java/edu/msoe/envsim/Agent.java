@@ -23,7 +23,7 @@ public class Agent  extends Entity {
      * The energy at which an entity will clone.
      * TODO: Have this depend on max size?
      */
-    public static final int CLONE_THRESHOLD = 100;
+    public static final int CLONE_THRESHOLD = 10;
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
      */
@@ -57,8 +57,8 @@ public class Agent  extends Entity {
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
-    private static final double BOOLEAN_DECISION_THRESHOLD = 0.3;
-    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.06;
+    private static final double BOOLEAN_DECISION_THRESHOLD = 0.35;
+    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.13;
 
     private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
 
@@ -88,6 +88,7 @@ public class Agent  extends Entity {
      */
     private double visionRadius;
     private double healthRegenSpeed;
+    private double turnSpeed;
 
 
     // State:
@@ -113,6 +114,7 @@ public class Agent  extends Entity {
      * TODO: Maybe the agent can decide to spend energy to regain health?
      */
 
+
     /**
      * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, desiresRep
      * Outputs (For now): speed, repDesire, predDesire, targetFood, targetPrey, runFromThreat, turn
@@ -125,7 +127,7 @@ public class Agent  extends Entity {
     private final @NotNull NeuralNetwork foodEvaluator;
     /**
      * Inputs: self size, agent size, distance // TODO: In the future, maybe add whether the other wants to mate, if it's the same species, and what direction it's moving in?
-     * Outputs: Value (1 = invaluble, 0 = useless, -1 = deadly threat)
+     * Outputs: Value (1 = invaluable, 0 = useless, -1 = deadly threat)
      */
     private final @NotNull NeuralNetwork preyEvaluator;
     private final @NotNull NeuralNetwork predatorEvaluator;
@@ -141,8 +143,9 @@ public class Agent  extends Entity {
         AgentData agentData = new AgentData(
                 position,
                 color,
-                100,
+                CLONE_THRESHOLD * radius - 1,
                 Math.random() * 1.7 + 0.2,
+                Math.random() * 90 + 20,
                 radius,
                 Math.random() * 200 + 80,
                 Math.random(),
@@ -162,6 +165,7 @@ public class Agent  extends Entity {
         environment = env;
         energy = agentData.energy();
         maxSpeed = agentData.speed();
+        turnSpeed = agentData.turnSpeed();
         size = agentData.size();
         visionRadius = agentData.visionRadius();
         healthRegenSpeed = agentData.healthRegenSpeed();
@@ -196,7 +200,7 @@ public class Agent  extends Entity {
         timeSinceReproduction++;
         AgentDecision agentDecision = getAction();
 
-        direction = agentDecision.direction();
+//        direction = agentDecision.direction();
         move(agentDecision.turn(), agentDecision.speed() * maxSpeed);
 
         for (Entity entity : environment.getCollisions(this, (_, entity2) -> entity2.getRadius() > 0)) {
@@ -230,7 +234,7 @@ public class Agent  extends Entity {
     private void move(double turn, double speed) {
         direction = direction.turn(turn);
 
-        double functionalSpeed = speed / (Math.pow(getRadius() / 22, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
+        double functionalSpeed = speed / (Math.pow(getRadius() / 25, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
         double cost = getMovementCost(functionalSpeed);
         if (energy >= cost) {
             setPosition(getPosition().add(direction.atMagnitude(functionalSpeed)));
@@ -259,7 +263,7 @@ public class Agent  extends Entity {
     }
 
     private void updateColor() {
-        double brightness = Math.clamp(getRadius() / size, 0.0, 1.0);
+        double brightness = Math.clamp(energy / calculateCloneThreshold(), 0.0, 1.0);
         setColor(Color.hsb(baseSpeciesColor.getHue(), baseSpeciesColor.getSaturation(), brightness));
     }
 
@@ -447,14 +451,14 @@ public class Agent  extends Entity {
         float[] inputs = getInput();
         float[] output = brain.predict(inputs);
 
-        double reproductionDesire = energy >= REPRODUCTON_ENERGY_THRESHOLD ? output[1] - 1/timeSinceReproduction : 0;   // TODO: Ideally, they should handle the threshold thing themselves, but I'll be nice to them
-        double predationDesire = output[2] * 0.9 - 1/timeSinceReproduction;// TODO: Remove time since reproduction
+        double reproductionDesire = energy >= REPRODUCTON_ENERGY_THRESHOLD ? output[1] : 0;//- 1/timeSinceReproduction : 0;   // TODO: Ideally, they should handle the threshold thing themselves, but I'll be nice to them
+        double predationDesire = output[2] * 0.9;// - 1/timeSinceReproduction;// TODO: Remove time since reproduction
 
         boolean desiresPredation;
 
         //if (reproductionDesire > 0.6 && energy > 80) {
-        if (energy > CLONE_THRESHOLD && getRadius() / size > 0.8) {
-            reproduce(this); // TODO: IF WE KEEP THIS, MOVE IT TO STEP. ONLY HERE FOR TESTING BALANCE.
+        if (energy > calculateCloneThreshold() && getRadius() / size > 0.8) {
+            reproduce(this); // TODO: IF WE KEEP THIS, MOVE IT TO STEP(). ONLY HERE FOR A QUICK TEST.
         }
 
         if (reproductionDesire > predationDesire && reproductionDesire > BOOLEAN_DECISION_THRESHOLD) {
@@ -473,24 +477,36 @@ public class Agent  extends Entity {
         double runFromThreat = worstThreat == null ? 0 :output[5];
 
         Vector target;
+        double turn;
 
         if (targetFood > targetPrey && targetFood > runFromThreat && targetFood > BOOLEAN_DECISION_THRESHOLD) {
             target = directionTo(bestFood);
+            turn = getTurnToTarget(target);
         } else if (targetPrey > targetFood && targetPrey > runFromThreat && targetPrey > BOOLEAN_DECISION_THRESHOLD) {
             target = directionTo(bestPrey);
+            turn = getTurnToTarget(target);
         } else if (runFromThreat > targetFood && runFromThreat > targetPrey && runFromThreat > BOOLEAN_DECISION_THRESHOLD) {
             target = directionTo(worstThreat).scale(-1);
+            turn = getTurnToTarget(target);
         } else {
             target = direction;
+            turn = ((output[6] * 2) - 1) * turnSpeed;
         }
 
         return new AgentDecision(
                 output[0],// * 2 - 1,
-                target,
-                target == direction ? output[6] * 80 - 40 : 0,
+                target, // TODO: Can probably remove
+                turn,
                 desiresReproduction,
                 desiresPredation
         );
+    }
+
+    private double getTurnToTarget(@NotNull Vector target) {
+        double rawChange = target.angle() - direction.angle();
+        double neededChange = Math.atan2(Math.sin(rawChange), Math.cos(rawChange));
+        double maxTurn = Math.signum(neededChange) * (turnSpeed / getRadius());
+        return Math.abs(maxTurn) > Math.abs(neededChange) ? neededChange : maxTurn;
     }
 
 
@@ -543,6 +559,7 @@ public class Agent  extends Entity {
                 getColor(),
                 this.energy, // TODO: Children should actually get the cost subtracted from each parent's health
                 this.maxSpeed + Math.random() * 2 - 1,
+                this.turnSpeed + Math.random() * 2 - 1,
                 this.size + Math.random() * 2 - 1,
                 this.visionRadius + Math.random() * 2 - 1,
                 this.healthRegenSpeed + Math.random() * 2 - 1,
@@ -555,5 +572,9 @@ public class Agent  extends Entity {
 
     private void changeEnergy(double change) {
         energy += change * GLOBAL_ENERGY_LOSS_FACTOR;
+    }
+
+    private double calculateCloneThreshold() {
+        return CLONE_THRESHOLD * getRadius();
     }
 }

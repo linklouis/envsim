@@ -7,6 +7,7 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.TitledPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -48,12 +49,28 @@ public class App extends Application {
         TitledPane collapsibleMenu = createMenu();
 
         // Layer Controls over Canvas using StackPane
-        StackPane root = new StackPane();
-        root.getChildren().addAll(environment);//, collapsibleMenu);
+        StackPane gamePane = new StackPane();
+        gamePane.getChildren().addAll(environment);//, collapsibleMenu);
 
         // Align the floating menu to the top-left corner
         StackPane.setAlignment(collapsibleMenu, Pos.TOP_LEFT);
         StackPane.setMargin(collapsibleMenu, new Insets(15));
+
+        HBox debugBox = new HBox();
+        DebugMessage fps = new DebugMessage(
+                () -> "Update Rate: " + environment.getSimUpdateRate(),
+                environment
+        );
+        DebugMessage numAgents = new DebugMessage(
+                () -> "Agents: " + environment.getNumAgents(),
+                environment
+        );
+        debugBox.getChildren().addAll(fps, numAgents);
+
+
+        VBox root  = new VBox();
+        root.getChildren().addAll(debugBox, gamePane);
+
 
         Scene scene = new Scene(root, viewWidth, viewHeight);
         stage.setScene(scene);
