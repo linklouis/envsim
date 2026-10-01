@@ -7,6 +7,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -137,6 +138,8 @@ public class Agent  extends Entity {
     private Agent bestPrey;
     private Agent worstThreat;
 
+    private Agent parent;
+
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -156,11 +159,11 @@ public class Agent  extends Entity {
                 newAgentEvaluator()
                 );
 
-        this(agentData, env);
+        this(agentData, env, null);
     }
 
 
-    public Agent(@NotNull AgentData agentData, @NotNull Environment env) {
+    public Agent(@NotNull AgentData agentData, @NotNull Environment env, @Nullable Agent parent) {
         super(agentData.position().add(Vector.random(20)), agentData.size(), agentData.color(), env);
 
         environment = env;
@@ -174,6 +177,8 @@ public class Agent  extends Entity {
         foodEvaluator = agentData.foodEvaluator();
         preyEvaluator = agentData.preyEvaluator();
         predatorEvaluator = agentData.predatorEvaluator();
+
+        this.parent = parent;
 
         direction = Vector.random(1);
 
@@ -191,7 +196,7 @@ public class Agent  extends Entity {
      * @param env
      */
     public Agent(@NotNull AgentData parent1Data, @NotNull AgentData parent2Data, @NotNull Environment env) {
-        this(parent1Data.energy() > parent2Data.energy() ? parent1Data : parent2Data, env); // TODO
+        this(parent1Data.energy() > parent2Data.energy() ? parent1Data : parent2Data, env, null); // TODO
     }
 
     @Override
@@ -278,6 +283,7 @@ public class Agent  extends Entity {
     }
 
     private void attemptPredation(@NotNull Agent prey) {
+        if (this.parent == prey || prey.parent == this) return;
         // TODO: Punish agents for outputting the predation signal when not touching another agent?`
 
         // TODO: INSTEAD OF A THRESHOLD, HAVE THE CHANCES FOR AN AGENT TO KILL ANOTHER BE BASED ON THE SIZE DIFFERENCE. (OR EVEN JUST HOW MUCH DAMAGE IT DOES, SO THAT A SMALL AGENT CAN DO DAMAGE TO A LARGE ONE, EVEN IF IT DOESN'T KILL IT? [Is that actually something we want?])
@@ -316,7 +322,7 @@ public class Agent  extends Entity {
 
     private static void reproduce(@NotNull Agent parent1) {
         if (parent1.prepareForReproduction(true)) {
-            new Agent(parent1.getAgentData(), parent1.environment);
+            new Agent(parent1.getAgentData(), parent1.environment, parent1);
             parent1.timeSinceReproduction = 0;
 //            System.out.println("Cloning!");
         }
@@ -520,7 +526,8 @@ public class Agent  extends Entity {
         gc.strokeOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
 
         if (environment.isDebugMode()) {
-        gc.strokeOval(x() - visionRadius, y() - visionRadius, visionRadius * 2, visionRadius * 2);
+            gc.setLineWidth(1);
+            gc.strokeOval(x() - visionRadius, y() - visionRadius, visionRadius * 2, visionRadius * 2);
         }
     }
 
