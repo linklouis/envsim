@@ -70,9 +70,9 @@ public class Agent  extends Entity {
 
     // Genetic Attributes:
     /**
-     * How far the Agent can move each time step.
-     * Higher values consume more {@link energy} each time step.
-     * TODO: Should the agent always move at max speed? Maybe add sprinting?
+     * The maximum distance an Agent can move each time step in pixels.
+     * <p>Higher values consume more {@link energy} each time step.</p>
+     * <p>The Agent can decide to move any speed from 0 to this value.</p>
      */
     private double maxSpeed;
     /**
@@ -104,6 +104,7 @@ public class Agent  extends Entity {
     private boolean desiresReproduction = true;
     /**
      * TODO: Can get rid of if we keep only cloning
+     * TODO: Actually maybe don't so carnivores don't keep eating their kids?
      */
     private double timeSinceReproduction = 100000;
     private Food justAte;
@@ -285,7 +286,7 @@ public class Agent  extends Entity {
         if (prey.getRadius() / getRadius() <= MIN_RAD_DIFF_FOR_PREDATION) {
             energy += prey.energy * PREDATION_EFFICIENCY;
             prey.die();
-            System.out.println("Predation!");
+//            System.out.println("Predation!");
             timeSinceReproduction = 0; // TODO: Remove once decisions aren't made randomly every frame.
         } else {
             // TODO: If we fail, but the other dies, we should still gain the energy.
@@ -293,7 +294,7 @@ public class Agent  extends Entity {
             setRadius(Math.max(0.001, getRadius() - FAILED_PREDATION_COST * prey.getRadius() / getRadius()));
             prey.setRadius(Math.max(0.001, prey.getRadius() - FAILED_PREDATION_COST * getRadius() / prey.getRadius()));
             // TODO: Also lose energy?
-            System.out.println("Failed Predation!");
+//            System.out.println("Failed Predation!");
         }
     }
 
@@ -518,7 +519,9 @@ public class Agent  extends Entity {
         gc.setLineWidth(3);
         gc.strokeOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
 
+        if (environment.isDebugMode()) {
         gc.strokeOval(x() - visionRadius, y() - visionRadius, visionRadius * 2, visionRadius * 2);
+        }
     }
 
     protected void die() {

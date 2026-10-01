@@ -10,6 +10,8 @@ public class DebugMessage extends Label {
     public DebugMessage(Supplier<Object> messageSupplier, @NotNull Environment environment) {
         this.messageSupplier = () -> messageSupplier.get().toString();
         environment.addDebugMessage(this);
+//        this.setPadding(new Insets(0, 10, 0, 0));
+        this.setMinWidth(70);
     }
 
     public void update() {

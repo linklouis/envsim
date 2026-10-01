@@ -23,6 +23,7 @@ public class Environment extends Canvas {
     private final List<Entity> toRemove = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     private final List<DebugMessage> debugMessages = new ArrayList<>();
+    private boolean debugMode;
 
     private final GraphicsContext gc;
     private final Clock clock;
@@ -36,13 +37,15 @@ public class Environment extends Canvas {
     private double lastMouseX;
     private double lastMouseY;
 
-    public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom) {
+    public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom, boolean debugMode) {
         super(viewWidth, viewHeight);
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
         this.cellSize = new Vector((double) worldWidth / (NUM_CELLS - 1), (double) worldHeight / (NUM_CELLS - 1));
         gc = getGraphicsContext2D();
         scale = zoom;
+
+        this.debugMode = debugMode;
 
         clock = new Clock();
 
@@ -163,8 +166,10 @@ public class Environment extends Canvas {
             entity.paint(gc);
         }
 
-        for (DebugMessage message : debugMessages) {
-            message.update();
+        if (debugMode) {
+            for (DebugMessage message : debugMessages) {
+                message.update();
+            }
         }
     }
 
@@ -309,5 +314,13 @@ public class Environment extends Canvas {
             }
         }
         return num;
+    }
+
+    public boolean isDebugMode() {
+        return debugMode;
+    }
+
+    public void setDebugMode(boolean debugMode) {
+        this.debugMode = debugMode;
     }
 }
