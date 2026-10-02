@@ -21,6 +21,10 @@ public abstract class Entity {
         setPosition(position);
     }
 
+    public void getAction() {
+
+    }
+
     public void step() {
         // Default: stationary entities do nothing on step
     }

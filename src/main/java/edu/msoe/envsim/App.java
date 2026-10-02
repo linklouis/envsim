@@ -35,7 +35,7 @@ public class App extends Application {
         for (int i = 0; i < 500; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
 
-            new Agent(Math.random() * 25 + 3, randomColor, environment);
+            new Agent(Math.random() * 30 + 3, randomColor, environment);
         }
 
         for (int i = 0; i < 2000; i++) {

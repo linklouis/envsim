@@ -139,6 +139,7 @@ public class Agent  extends Entity {
     private Agent worstThreat;
 
     private Agent parent;
+    private AgentDecision decision;
 
 
 
@@ -204,16 +205,19 @@ public class Agent  extends Entity {
         if (!alive) return;
 
         timeSinceReproduction++;
-        AgentDecision agentDecision = getAction();
+        //if (reproductionDesire > 0.6 && energy > 80) {
+        if (energy > calculateCloneThreshold() && getRadius() / size > 0.8) {
+            reproduce(this);
+        }
 
 //        direction = agentDecision.direction();
-        move(agentDecision.turn(), agentDecision.speed() * maxSpeed);
+        move(decision.turn(), decision.speed() * maxSpeed);
 
         for (Entity entity : environment.getCollisions(this, (_, entity2) -> entity2.getRadius() > 0)) {
             if (entity instanceof Food food) {
                 eat(food);
             } else if (entity instanceof Agent agent) {
-                interact(agent, agentDecision.desiresPredation());
+                interact(agent, decision.desiresPredation());
             }
         }
 
@@ -284,7 +288,13 @@ public class Agent  extends Entity {
 
     private void attemptPredation(@NotNull Agent prey) {
         if (this.parent == prey || prey.parent == this) return;
+        if (!this.alive || !prey.alive) return;
         // TODO: Punish agents for outputting the predation signal when not touching another agent?`
+
+        if (prey.decision.desiresPredation() && prey.getRadius() > getRadius()) {
+            prey.attemptPredation(this);
+            return;
+        }
 
         // TODO: INSTEAD OF A THRESHOLD, HAVE THE CHANCES FOR AN AGENT TO KILL ANOTHER BE BASED ON THE SIZE DIFFERENCE. (OR EVEN JUST HOW MUCH DAMAGE IT DOES, SO THAT A SMALL AGENT CAN DO DAMAGE TO A LARGE ONE, EVEN IF IT DOESN'T KILL IT? [Is that actually something we want?])
         // TODO: Pass the radius ratio for whatever other agent this one is seeing as input for NN.
@@ -451,10 +461,9 @@ public class Agent  extends Entity {
     /**
      * TODO: Implement NN
      * TODO: Pass in how related the current agent is to the one it's seeing
-     * @return
      */
-    @Contract(" -> new")
-    private @NotNull AgentDecision getAction() {
+    @Override
+    public void getAction() {
         float[] inputs = getInput();
         float[] output = brain.predict(inputs);
 
@@ -462,11 +471,6 @@ public class Agent  extends Entity {
         double predationDesire = output[2] * 0.9;// - 1/timeSinceReproduction;// TODO: Remove time since reproduction
 
         boolean desiresPredation;
-
-        //if (reproductionDesire > 0.6 && energy > 80) {
-        if (energy > calculateCloneThreshold() && getRadius() / size > 0.8) {
-            reproduce(this); // TODO: IF WE KEEP THIS, MOVE IT TO STEP(). ONLY HERE FOR A QUICK TEST.
-        }
 
         if (reproductionDesire > predationDesire && reproductionDesire > BOOLEAN_DECISION_THRESHOLD) {
             desiresReproduction = true;
@@ -500,7 +504,7 @@ public class Agent  extends Entity {
             turn = ((output[6] * 2) - 1) * turnSpeed;
         }
 
-        return new AgentDecision(
+        this.decision =  new AgentDecision(
                 output[0],// * 2 - 1,
                 target, // TODO: Can probably remove
                 turn,

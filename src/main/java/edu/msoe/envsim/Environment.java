@@ -143,6 +143,20 @@ public class Environment extends Canvas {
     }
 
     private void visualStep() {
+        resetCanvas();
+
+        for (Entity entity : entities) {
+            entity.paint(gc);
+        }
+
+        if (debugMode) {
+            for (DebugMessage message : debugMessages) {
+                message.update();
+            }
+        }
+    }
+
+    private void simulationStep() {
         // Flush newly created entities into main list before iterating
         if (!pendingEntities.isEmpty()) {
             for (Entity entity : pendingEntities) {
@@ -160,20 +174,8 @@ public class Environment extends Canvas {
             toRemove.clear();
         }
 
-        resetCanvas();
+        entities.parallelStream().forEach(Entity::getAction);
 
-        for (Entity entity : entities) {
-            entity.paint(gc);
-        }
-
-        if (debugMode) {
-            for (DebugMessage message : debugMessages) {
-                message.update();
-            }
-        }
-    }
-
-    private void simulationStep() {
         for (Entity entity : entities) {
             entity.step();
         }
