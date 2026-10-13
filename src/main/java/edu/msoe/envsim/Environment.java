@@ -27,6 +27,32 @@ public class Environment extends Canvas {
 
     private final GraphicsContext gc;
     private final Clock clock;
+    private final AnimationTimer graphicsTimer = new AnimationTimer() {
+        @Override
+        public void handle(long now) {
+            visualStep();
+        }
+    };
+
+    private final Object pauseLock = new Object(); // The synchronization anchor
+    private volatile boolean simRunning = false;
+    private final Thread simulationThread = new Thread(() -> {
+        while (!Thread.currentThread().isInterrupted()) {
+            synchronized (pauseLock) {
+                while (!simRunning) {
+                    try {
+                        pauseLock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+            }
+
+            simulationStep();
+        }
+    });
+    private Mode mode = Mode.EDIT;
 
     private final int worldWidth;
     private final int worldHeight;
@@ -36,6 +62,11 @@ public class Environment extends Canvas {
     private double translateY = 0.0;
     private double lastMouseX;
     private double lastMouseY;
+
+    private enum Mode {
+        SIMULATION,
+        EDIT
+    }
 
     public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom, boolean debugMode) {
         super(viewWidth, viewHeight);
@@ -52,7 +83,7 @@ public class Environment extends Canvas {
         setupCells();
         setupCameraControls();
         resetCanvas();
-        start();
+        simulationThread.start();
     }
 
     private void setupCameraControls() {
@@ -93,21 +124,37 @@ public class Environment extends Canvas {
         }
     }
 
-    private void start() {
-        AnimationTimer timer = new AnimationTimer() {
-            @Override
-            public void handle(long now) {
-                visualStep();
-            }
-        };
-        timer.start();
+    public void startSimulation() {
+        if (simRunning) return;
+        if (mode == Mode.EDIT) simMode();
+        graphicsTimer.start();
 
-        Thread simulationThread = new Thread(() -> {
-            while (true) {
-                simulationStep();
-            }
-        });
-        simulationThread.start();
+        synchronized (pauseLock) {
+            simRunning = true;
+            pauseLock.notifyAll();
+        }
+    }
+
+    public void pauseSimulation() {
+        graphicsTimer.stop();
+        simRunning = false;
+    }
+
+    public void toggleSimulation() {
+        if (simRunning) {
+            pauseSimulation();
+        } else {
+            startSimulation();
+        }
+    }
+
+    public void simMode() {
+        mode = Mode.SIMULATION;
+    }
+
+    public void editMode() {
+        mode = Mode.EDIT;
+        pauseSimulation();
     }
 
 

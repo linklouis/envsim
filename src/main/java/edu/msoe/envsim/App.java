@@ -80,15 +80,14 @@ public class App extends Application {
         });
         stage.show();
 
-        setupKeyboardInputs(scene);
+        setupKeyboardInputs(scene, environment);
     }
 
-    private void setupKeyboardInputs(@NotNull Scene scene) {
+    private void setupKeyboardInputs(@NotNull Scene scene, Environment environment) {
         scene.setOnKeyPressed(event -> {
             switch (event.getCode()) {
-                case KeyCode.HOME -> {
-                    toggleDebugMode();
-                }
+                case KeyCode.HOME -> toggleDebugMode();
+                case KeyCode.SPACE -> environment.toggleSimulation();
             }
         });
     }
@@ -104,6 +103,7 @@ public class App extends Application {
 
         environment.widthProperty().bind(stage.widthProperty());
         environment.heightProperty().bind(stage.heightProperty());
+        environment.startSimulation();
     }
 
     /**
