@@ -28,8 +28,9 @@ public class App extends Application {
     public void start(@NotNull Stage stage) {
         int viewWidth = 1080;
         int viewHeight = 720;
+        TitledPane collapsibleMenu = createMenu();
 
-        setupEnvironment(stage,  viewWidth, viewHeight);
+        setupEnvironment(stage,  viewWidth, viewHeight, collapsibleMenu);
 
         // Populate Entities
         for (int i = 0; i < 500; i++) {
@@ -43,16 +44,9 @@ public class App extends Application {
             new Food(position, Math.pow(Math.random(), 3) * 40 + 5, environment);
         }
 
-        // Build Collapsible Overlay Menu
-        TitledPane collapsibleMenu = createMenu();
-
         // Layer Controls over Canvas using StackPane
         StackPane gamePane = new StackPane();
-        gamePane.getChildren().addAll(environment);//, collapsibleMenu);
-
-        // Align the floating menu to the top-left corner
-        StackPane.setAlignment(collapsibleMenu, Pos.TOP_LEFT);
-        StackPane.setMargin(collapsibleMenu, new Insets(15));
+        gamePane.getChildren().addAll(environment, collapsibleMenu);
 
         debugBox = new HBox();
         DebugMessage ticksPerSecond = new DebugMessage(
@@ -88,18 +82,22 @@ public class App extends Application {
             switch (event.getCode()) {
                 case KeyCode.HOME -> toggleDebugMode();
                 case KeyCode.SPACE -> environment.toggleSimulation();
+                case KeyCode.E -> environment.toggleEditMode();
             }
         });
     }
 
-    private void setupEnvironment(@NotNull Stage stage, int viewWidth, int viewHeight) {
+    private void setupEnvironment(@NotNull Stage stage, int viewWidth, int viewHeight, TitledPane editorMenu) {
         Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
         double aspectRatio = screenBounds.getHeight() / screenBounds.getWidth();
         int worldWidth = (int) (7000 * 1.0);
         int worldHeight = (int) (worldWidth * aspectRatio);
         double zoom = screenBounds.getWidth() / worldWidth;
 
-        environment = new Environment(viewWidth, viewHeight, worldWidth, worldHeight, zoom, debugMode);
+        Runnable onSimModeStart = () -> editorMenu.visibleProperty().set(false);
+        Runnable onEditModeStart = () -> editorMenu.visibleProperty().set(true);
+
+        environment = new Environment(viewWidth, viewHeight, worldWidth, worldHeight, zoom, debugMode, onSimModeStart, onEditModeStart);
 
         environment.widthProperty().bind(stage.widthProperty());
         environment.heightProperty().bind(stage.heightProperty());
@@ -127,6 +125,11 @@ public class App extends Application {
         collapsibleMenu.setAnimated(true);
         collapsibleMenu.setCollapsible(true);
         collapsibleMenu.setMaxWidth(200);
+        collapsibleMenu.setFocusTraversable(false);
+
+        // Align the floating menu to the top-left corner
+        StackPane.setAlignment(collapsibleMenu, Pos.TOP_LEFT);
+        StackPane.setMargin(collapsibleMenu, new Insets(15));
 
         return collapsibleMenu;
     }

@@ -1,6 +1,7 @@
 package edu.msoe.envsim;
 
 import javafx.animation.AnimationTimer;
+import javafx.concurrent.Task;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
@@ -35,7 +36,16 @@ public class Environment extends Canvas {
     };
 
     private final Object pauseLock = new Object(); // The synchronization anchor
+    /**
+     * A flag for if the simulation is actually running.
+     */
     private volatile boolean simRunning = false;
+    /**
+     * A flag for if the user has paused the simulation.
+     * {@link simRunning} may be `false` even if this is `false`, if the game is in edit mode.
+     */
+    private boolean simPaused = false;
+
     private final Thread simulationThread = new Thread(() -> {
         while (!Thread.currentThread().isInterrupted()) {
             synchronized (pauseLock) {
@@ -68,13 +78,19 @@ public class Environment extends Canvas {
         EDIT
     }
 
-    public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom, boolean debugMode) {
+    private final Runnable onSimModeStart;
+    private final Runnable onEditModeStart;
+
+    public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom, boolean debugMode, Runnable onSimModeStart, Runnable onEditModeStart) {
         super(viewWidth, viewHeight);
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
         this.cellSize = new Vector((double) worldWidth / (NUM_CELLS - 1), (double) worldHeight / (NUM_CELLS - 1));
         gc = getGraphicsContext2D();
         scale = zoom;
+
+        this.onSimModeStart = onSimModeStart;
+        this.onEditModeStart = onEditModeStart;
 
         this.debugMode = debugMode;
 
@@ -129,15 +145,21 @@ public class Environment extends Canvas {
         if (mode == Mode.EDIT) simMode();
         graphicsTimer.start();
 
+        simPaused = false;
         synchronized (pauseLock) {
             simRunning = true;
             pauseLock.notifyAll();
         }
     }
 
-    public void pauseSimulation() {
+    private void pauseStateless() {
         graphicsTimer.stop();
         simRunning = false;
+    }
+
+    public void pauseSimulation() {
+        pauseStateless();
+        simPaused = true;
     }
 
     public void toggleSimulation() {
@@ -150,11 +172,28 @@ public class Environment extends Canvas {
 
     public void simMode() {
         mode = Mode.SIMULATION;
+        if (simPaused) {
+            pauseStateless();
+        } else {
+            startSimulation();
+        }
+        onSimModeStart.run();
     }
 
     public void editMode() {
         mode = Mode.EDIT;
-        pauseSimulation();
+        pauseStateless();
+        onEditModeStart.run();
+    }
+
+    public void toggleEditMode() {
+        if (mode == Mode.EDIT) {
+            mode = Mode.SIMULATION;
+            simMode();
+        } else {
+            mode = Mode.EDIT;
+            editMode();
+        }
     }
 
 
