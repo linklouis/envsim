@@ -150,7 +150,7 @@ public class Agent  extends Entity {
                 color,
                 CLONE_THRESHOLD * radius - 1,
                 Math.random() * 1.7 + 0.2,
-                Math.random() * 90 + 20,
+                Math.random() * 180 + 50,
                 radius,
                 Math.random() * 200 + 80,
                 Math.random(),
@@ -314,26 +314,10 @@ public class Agent  extends Entity {
         }
     }
 
-
-    private static void reproduce(@NotNull Agent parent1, @NotNull Agent parent2) {
-        Environment env = parent1.environment;
-        if (env != parent2.environment) {
-            throw new IllegalStateException("Agents in different environments cannot reproduce.");
-        }
-
-        // TODO: Maybe have failed reproduction take less energy?
-        if (parent1.prepareForReproduction(false) && parent2.prepareForReproduction(false)) {
-            new Agent(parent1.getAgentData(), parent2.getAgentData(), env);
-            parent1.timeSinceReproduction = 0;
-            parent2.timeSinceReproduction = 0;
-//            System.out.println("Reproduction!");
-        }
-    }
-
-    private static void reproduce(@NotNull Agent parent1) {
-        if (parent1.prepareForReproduction(true)) {
-            new Agent(parent1.getAgentData(), parent1.environment, parent1);
-            parent1.timeSinceReproduction = 0;
+    private static void reproduce(@NotNull Agent parent) {
+        if (parent.prepareForReproduction(true)) {
+            new Agent(parent.getAgentData(), parent.environment, parent);
+            parent.timeSinceReproduction = 0;
 //            System.out.println("Cloning!");
         }
     }
@@ -467,48 +451,36 @@ public class Agent  extends Entity {
         float[] inputs = getInput();
         float[] output = brain.predict(inputs);
 
-        double reproductionDesire = energy >= REPRODUCTON_ENERGY_THRESHOLD ? output[1] : 0;//- 1/timeSinceReproduction : 0;   // TODO: Ideally, they should handle the threshold thing themselves, but I'll be nice to them
-        double predationDesire = output[2] * 0.9;// - 1/timeSinceReproduction;// TODO: Remove time since reproduction
-
-        boolean desiresPredation;
-
-        if (reproductionDesire > predationDesire && reproductionDesire > BOOLEAN_DECISION_THRESHOLD) {
-            desiresReproduction = true;
-            desiresPredation = false;
-        } else if (reproductionDesire < predationDesire && predationDesire > BOOLEAN_DECISION_THRESHOLD) {
-            desiresReproduction = false;
-            desiresPredation = true;
-        } else {
-            desiresReproduction = false;
-            desiresPredation = false;
-        }
-
-        double targetFood = bestFood == null ? 0 : output[3];
-        double targetPrey = bestPrey == null ? 0 : output[4];
-        double runFromThreat = worstThreat == null ? 0 :output[5];
+        double targetFood = bestFood == null ? 0 : output[2];
+        double targetPrey = bestPrey == null ? 0 : output[3];
+        double runFromThreat = worstThreat == null ? 0 :output[4];
 
         Vector target;
         double turn;
+        boolean desiresPredation;
 
         if (targetFood > targetPrey && targetFood > runFromThreat && targetFood > BOOLEAN_DECISION_THRESHOLD) {
             target = directionTo(bestFood);
             turn = getTurnToTarget(target);
+            desiresPredation = false;
         } else if (targetPrey > targetFood && targetPrey > runFromThreat && targetPrey > BOOLEAN_DECISION_THRESHOLD) {
             target = directionTo(bestPrey);
             turn = getTurnToTarget(target);
+            desiresPredation = true;
         } else if (runFromThreat > targetFood && runFromThreat > targetPrey && runFromThreat > BOOLEAN_DECISION_THRESHOLD) {
             target = directionTo(worstThreat).scale(-1);
             turn = getTurnToTarget(target);
+            desiresPredation = false;
         } else {
             target = direction;
             turn = ((output[6] * 2) - 1) * turnSpeed;
+            desiresPredation = false;
         }
 
         this.decision =  new AgentDecision(
                 output[0],// * 2 - 1,
                 target, // TODO: Can probably remove
                 turn,
-                desiresReproduction,
                 desiresPredation
         );
     }
