@@ -6,6 +6,7 @@ import edu.msoe.envsim.nn.ActivationFunction;
 import edu.msoe.envsim.nn.AgentDecision;
 import edu.msoe.envsim.nn.NeuralNetwork;
 import edu.msoe.envsim.utilities.SpeciesColorMapper;
+import edu.msoe.envsim.utilities.TerrainType;
 import edu.msoe.envsim.utilities.Vector;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
@@ -159,7 +160,7 @@ public class Agent  extends Entity {
                 radius,
                 Math.random() * 200 + 80,
                 Math.random(),
-                Math.random(),
+                0,
                 newBrain(),
                 newFoodEvaluator(),
                 newAgentEvaluator(),
@@ -180,6 +181,7 @@ public class Agent  extends Entity {
         size = agentData.size();
         visionRadius = agentData.visionRadius();
         healthRegenSpeed = agentData.healthRegenSpeed();
+        swimSkill = agentData.swimSkill();
         brain =  agentData.brain();
         foodEvaluator = agentData.foodEvaluator();
         preyEvaluator = agentData.preyEvaluator();
@@ -251,7 +253,7 @@ public class Agent  extends Entity {
         direction = direction.turn(turn);
 
         double functionalSpeed = speed / (Math.pow(getRadius() / 25, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
-        double cost = getMovementCost(functionalSpeed); // TODO: Have moving in your preferred terrain cost more energy?
+        double cost = getMovementCost(functionalSpeed); // TODO: Have moving in your non-preferred terrain cost more energy?
         functionalSpeed = functionalSpeed * Math.abs(isOnLand() - swimSkill);
         if (energy >= cost) {
             setPosition(getPosition().add(direction.atMagnitude(functionalSpeed)));
@@ -265,7 +267,7 @@ public class Agent  extends Entity {
      * @return 1 if the {@link Agent} is on a land tile, otherwise 0.
      */
     private int isOnLand() {
-        return 0; // TODO
+        return environment.getStandingTerrainType(this) == TerrainType.STANDARD ? 1 : 0; // TODO
     }
 
     private void eat(@NotNull Food food) {

@@ -2,10 +2,7 @@ package edu.msoe.envsim;
 
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Entity;
-import edu.msoe.envsim.utilities.Clock;
-import edu.msoe.envsim.utilities.CollisionRequirement;
-import edu.msoe.envsim.utilities.DebugMessage;
-import edu.msoe.envsim.utilities.Vector;
+import edu.msoe.envsim.utilities.*;
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -22,7 +19,7 @@ public class Environment extends Canvas {
     public static final int NUM_CELLS = 50;
 
     @SuppressWarnings("unchecked")
-    private final List<Entity>[][] cells = (List<Entity>[][]) new java.util.concurrent.CopyOnWriteArrayList[NUM_CELLS][NUM_CELLS];
+    private final Cell[][] cells = new Cell[NUM_CELLS][NUM_CELLS];
 
     private final List<Entity> entities = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>(); // TODO
@@ -40,7 +37,11 @@ public class Environment extends Canvas {
         }
     };
 
-    private final Object pauseLock = new Object(); // The synchronization anchor
+    /**
+     * Synchronization anchor for the simulation thread.
+     * Helps with pausing.
+     */
+    private final Object pauseLock = new Object();
     /**
      * A flag for if the simulation is actually running.
      */
@@ -62,13 +63,14 @@ public class Environment extends Canvas {
     private double lastMouseX;
     private double lastMouseY;
 
+    private final Runnable onSimModeStart;
+    private final Runnable onEditModeStart;
+
     private enum Mode {
         SIMULATION,
         EDIT
     }
 
-    private final Runnable onSimModeStart;
-    private final Runnable onEditModeStart;
 
     public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom, boolean debugMode, Runnable onSimModeStart, Runnable onEditModeStart) {
         super(viewWidth, viewHeight);
@@ -124,7 +126,7 @@ public class Environment extends Canvas {
     private void setupCells() {
         for (int i = 0; i < NUM_CELLS; i++) {
             for (int j = 0; j < NUM_CELLS; j++) {
-                cells[i][j] = new java.util.concurrent.CopyOnWriteArrayList<>();
+                cells[i][j] = new Cell();
             }
         }
     }
@@ -376,12 +378,20 @@ public class Environment extends Canvas {
         );
     }
 
-    private List<Entity> getCellFromPosition(@NotNull Vector position) {
+    private Cell getCellFromPosition(@NotNull Vector position) {
         return getCell(getCellIndexFromPosition(position));
     }
 
-    private List<Entity> getCell(@NotNull Vector indices) {
+    private Cell getCell(@NotNull Vector indices) {
         return cells[(int) indices.x()][(int) indices.y()];
+    }
+
+    public TerrainType getTerrainType(Vector position) {
+        return getCellFromPosition(position).getTerrainType();
+    }
+
+    public TerrainType getStandingTerrainType(@NotNull Entity entity) {
+        return getTerrainType(entity.getPosition());
     }
 
     @Override
