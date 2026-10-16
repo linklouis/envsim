@@ -13,13 +13,15 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Predicate;
 
 public class Environment extends Canvas {
     public static final int NUM_CELLS = 50;
 
     @SuppressWarnings("unchecked")
-    private final Cell[][] cells = new Cell[NUM_CELLS][NUM_CELLS];
+    private final Set<Entity>[][] cells = (Set<Entity>[][]) new CopyOnWriteArraySet[NUM_CELLS][NUM_CELLS];
 
     private final List<Entity> entities = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>(); // TODO
@@ -126,7 +128,7 @@ public class Environment extends Canvas {
     private void setupCells() {
         for (int i = 0; i < NUM_CELLS; i++) {
             for (int j = 0; j < NUM_CELLS; j++) {
-                cells[i][j] = new Cell();
+                cells[i][j] = new CopyOnWriteArraySet<>();
             }
         }
     }
@@ -266,7 +268,7 @@ public class Environment extends Canvas {
         if (!toRemove.isEmpty()) {
             for (Entity entity : toRemove) {
                 entities.remove(entity);
-                getCell(entity.getCell()).remove(entity);
+                getCell(entity.getCellIndex()).remove(entity);
             }
             toRemove.clear();
         }
@@ -358,15 +360,26 @@ public class Environment extends Canvas {
         return collisions;
     }
 
+    /**
+     * Updates the cell placement for the given {@link Entity}.
+     *
+     * @param entity The {@link Entity} to be updated
+     * @return {@link Vector} representing the x and y index of the new cell the {@link Entity} was assigned.
+     */
     public Vector updateCell(@NotNull Entity entity) {
-        if (entity.getCell() != null) {
-            getCell(entity.getCell()).remove(entity);
+        Vector currentCellIndex = getCellIndexFromPosition(entity.getPosition());
+        Vector previousCellIndex = entity.getCellIndex();
+
+        if (currentCellIndex.equals(previousCellIndex)) {
+            return currentCellIndex;
         }
 
-        Vector cell = getCellIndexFromPosition(entity.getPosition());
-        getCell(cell).add(entity);
+        if (previousCellIndex != null) {
+            getCell(previousCellIndex).remove(entity);
+        }
+        getCell(currentCellIndex).add(entity);
 
-        return cell;
+        return currentCellIndex;
     }
 
     @Contract("_ -> new")
@@ -378,16 +391,16 @@ public class Environment extends Canvas {
         );
     }
 
-    private Cell getCellFromPosition(@NotNull Vector position) {
+    private Set<Entity> getCellFromPosition(@NotNull Vector position) {
         return getCell(getCellIndexFromPosition(position));
     }
 
-    private Cell getCell(@NotNull Vector indices) {
+    private Set<Entity> getCell(@NotNull Vector indices) {
         return cells[(int) indices.x()][(int) indices.y()];
     }
 
     public TerrainType getTerrainType(Vector position) {
-        return getCellFromPosition(position).getTerrainType();
+        return null; // TODO
     }
 
     public TerrainType getStandingTerrainType(@NotNull Entity entity) {

@@ -2,6 +2,7 @@ package edu.msoe.envsim.utilities;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Handles 2D vector math to simplify describing 2D objects.
@@ -156,6 +157,10 @@ public record Vector(double x, double y) {
     @Contract("_ -> new")
     public @NotNull Vector elementWiseDivision(@NotNull Vector other) {
         return new Vector(x() / other.x(), y() / other.y());
+    }
+
+    public boolean equals(@Nullable Vector other) {
+        return (other != null) && (this.x == other.x && this.y == other.y);
     }
 }
 

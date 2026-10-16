@@ -12,7 +12,7 @@ public abstract class Entity {
     private Vector position;
     private Color color;
     private double radius;
-    private Vector cell;
+    private Vector cellIndex;
     private final Function<Entity, Vector> updateCell;
 
     public Entity(@NotNull Vector position, double radius, Color color, @NotNull Environment env) {
@@ -53,7 +53,7 @@ public abstract class Entity {
 
     protected void setPosition(Vector position) {
         this.position = position;
-        this.cell = updateCell.apply(this);
+        this.cellIndex = updateCell.apply(this);
     }
 
     public double x() {
@@ -74,7 +74,7 @@ public abstract class Entity {
     protected void setRadius(double radius) {
         this.radius = radius;
     }
-    public Vector getCell() {
-        return cell;
+    public Vector getCellIndex() {
+        return cellIndex;
     }
 }
