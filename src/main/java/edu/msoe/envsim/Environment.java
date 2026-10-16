@@ -17,9 +17,9 @@ public class Environment extends Canvas {
     public static final int NUM_CELLS = 50;
 
     @SuppressWarnings("unchecked")
-    private List<Entity>[][] cells = (List<Entity>[][]) new java.util.concurrent.CopyOnWriteArrayList[NUM_CELLS][NUM_CELLS];
+    private final List<Entity>[][] cells = (List<Entity>[][]) new java.util.concurrent.CopyOnWriteArrayList[NUM_CELLS][NUM_CELLS];
 
-    private List<Entity> entities = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<Entity> entities = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>(); // TODO
     private final List<Entity> toRemove = new java.util.concurrent.CopyOnWriteArrayList<>();
 
@@ -46,22 +46,6 @@ public class Environment extends Canvas {
      */
     private boolean simPaused = false;
 
-    private final Thread simulationThread = new Thread(() -> {
-        while (!Thread.currentThread().isInterrupted()) {
-            synchronized (pauseLock) {
-                while (!simRunning) {
-                    try {
-                        pauseLock.wait();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                }
-            }
-
-            simulationStep();
-        }
-    });
     private Mode mode = Mode.EDIT;
 
     private final int worldWidth;
@@ -99,7 +83,7 @@ public class Environment extends Canvas {
         setupCells();
         setupCameraControls();
         resetCanvas();
-        simulationThread.start();
+        setupSimulationThread();
     }
 
     private void setupCameraControls() {
@@ -138,6 +122,26 @@ public class Environment extends Canvas {
                 cells[i][j] = new java.util.concurrent.CopyOnWriteArrayList<>();
             }
         }
+    }
+
+    private void setupSimulationThread() {
+        Thread simulationThread = new Thread(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                synchronized (pauseLock) {
+                    while (!simRunning) {
+                        try {
+                            pauseLock.wait();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                }
+
+                simulationStep();
+            }
+        });
+        simulationThread.start();
     }
 
     public void startSimulation() {

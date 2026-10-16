@@ -9,7 +9,7 @@ public class Food extends Entity {
     private static final double GROWTH_SPEED = 0.002;
     private static final int REGROWTH_TIME = 100;
 
-    private double maxSize;
+    private final double maxSize;
     private int regrowthTimer = 0;
 
     public Food(Vector position, double maxSize, @NotNull Environment env) {
