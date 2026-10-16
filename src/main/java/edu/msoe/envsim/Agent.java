@@ -54,7 +54,8 @@ public class Agent  extends Entity {
     public static final double SIZE_COST = 0.0004;
     public static final int NUM_INPUTS = 6;
     public static final double MUTATION_CHANCE = 0.1;
-    public static final double MUTATION_SIZE = 0.02;
+    public static final double NEURON_MUTATION_SIZE = 0.02;
+    public static final double ATTRIBUTE_MUTATION_SIZE = 0.2;
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
@@ -64,10 +65,9 @@ public class Agent  extends Entity {
     private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
 
 
-
     private final Color baseSpeciesColor;
 
-    private @NotNull Environment environment;
+    private final @NotNull Environment environment;
 
     // Genetic Attributes:
     /**
@@ -75,21 +75,22 @@ public class Agent  extends Entity {
      * <p>Higher values consume more {@link energy} each time step.</p>
      * <p>The Agent can decide to move any speed from 0 to this value.</p>
      */
-    private double maxSpeed;
+    private final double maxSpeed;
     /**
      * The "Max Health" of the Agent.
      * The actual size gene that gets passed to descendants.
      * Higher values consume more {@link energy} each time step.
      */
-    private double size;
+    private final double size;
     /**
      * How close an entity must be for the Agent to see it.
      * Higher values consume more {@link energy} each time step.
      * TODO: Should the agent be able to see obstacles? (Probably not) [Why did I say probably not?]
      */
-    private double visionRadius;
-    private double healthRegenSpeed;
-    private double turnSpeed;
+    private final double visionRadius;
+    private final double healthRegenSpeed;
+    private final double turnSpeed;
+    private double swimSkill;
 
 
     // State:
@@ -138,7 +139,7 @@ public class Agent  extends Entity {
     private Agent bestPrey;
     private Agent worstThreat;
 
-    private Agent parent;
+    private final Agent parent;
     private AgentDecision decision;
 
 
@@ -153,6 +154,7 @@ public class Agent  extends Entity {
                 Math.random() * 180 + 50,
                 radius,
                 Math.random() * 200 + 80,
+                Math.random(),
                 Math.random(),
                 newBrain(),
                 newFoodEvaluator(),
@@ -245,13 +247,21 @@ public class Agent  extends Entity {
         direction = direction.turn(turn);
 
         double functionalSpeed = speed / (Math.pow(getRadius() / 25, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
-        double cost = getMovementCost(functionalSpeed);
+        double cost = getMovementCost(functionalSpeed); // TODO: Have moving in your preferred terrain cost more energy?
+        functionalSpeed = functionalSpeed * Math.abs(isOnLand() - swimSkill);
         if (energy >= cost) {
             setPosition(getPosition().add(direction.atMagnitude(functionalSpeed)));
             changeEnergy(-cost);
         }
 
         setPosition(getPosition().clamp(Vector.zero, getBounds()));
+    }
+
+    /**
+     * @return 1 if the {@link Agent} is on a land tile, otherwise 0.
+     */
+    private int isOnLand() {
+        return 0; // TODO
     }
 
     private void eat(@NotNull Food food) {
@@ -329,7 +339,7 @@ public class Agent  extends Entity {
     private static @NotNull NeuralNetwork newBrain() {
         NeuralNetwork neuralNetwork = new NeuralNetwork(NUM_INPUTS);
 //        neuralNetwork.newLayer(16);
-        neuralNetwork.newLayer(5);
+        neuralNetwork.newLayer(10);
         neuralNetwork.newLayer(7, ActivationFunction.sigmoid());
 
         return neuralNetwork;
@@ -361,6 +371,7 @@ public class Agent  extends Entity {
      */
     @Contract(" -> new")
     private float @NotNull [] getInput() {
+        // TODO: Add current terrain
         return new float[] {
                 (float) (energy / MAX_EXPECTED_ENERGY),
                 (float) (getRadius() / size),
@@ -538,21 +549,26 @@ public class Agent  extends Entity {
         return visionRadius * VISION_QUALITY_COST + Math.pow(getRadius(), 2) * SIZE_COST;
     }
 
+    private double mutateAttribute(double attribute) {
+        return attribute + (attribute * Math.random() * ATTRIBUTE_MUTATION_SIZE);
+    }
+
     @Contract(" -> new")
     private @NotNull AgentData getAgentData() {
         return new AgentData(
                 getPosition(),
                 getColor(),
-                this.energy, // TODO: Children should actually get the cost subtracted from each parent's health
-                this.maxSpeed + Math.random() * 2 - 1,
-                this.turnSpeed + Math.random() * 2 - 1,
-                this.size + Math.random() * 2 - 1,
-                this.visionRadius + Math.random() * 2 - 1,
-                this.healthRegenSpeed + Math.random() * 2 - 1,
-                this.brain.child(MUTATION_CHANCE, MUTATION_SIZE),
-                this.foodEvaluator.child(MUTATION_CHANCE, MUTATION_SIZE),
-                this.preyEvaluator.child(MUTATION_CHANCE, MUTATION_SIZE),
-                this.predatorEvaluator.child(MUTATION_CHANCE, MUTATION_SIZE)
+                this.energy, // TODO: Children should actually get the cost subtracted from each parent's health (What did I mean by this?)
+                mutateAttribute(this.maxSpeed),
+                mutateAttribute(this.turnSpeed + Math.random()),
+                mutateAttribute(this.size + Math.random()),
+                mutateAttribute(this.visionRadius),
+                mutateAttribute(this.healthRegenSpeed),
+                mutateAttribute(this.healthRegenSpeed),
+                this.brain.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
+                this.foodEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
+                this.preyEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
+                this.predatorEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE)
         );
     }
 
