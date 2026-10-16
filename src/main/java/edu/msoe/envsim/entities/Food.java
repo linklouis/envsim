@@ -1,5 +1,7 @@
-package edu.msoe.envsim;
+package edu.msoe.envsim.entities;
 
+import edu.msoe.envsim.Environment;
+import edu.msoe.envsim.utilities.Vector;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;

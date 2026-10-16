@@ -1,5 +1,7 @@
-package edu.msoe.envsim;
+package edu.msoe.envsim.entities;
 
+import edu.msoe.envsim.Environment;
+import edu.msoe.envsim.utilities.Vector;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
@@ -45,7 +47,7 @@ public abstract class Entity {
         return other.getPosition().subtract(getPosition());
     }
 
-    protected Vector getPosition() {
+    public Vector getPosition() {
         return position;
     }
 
@@ -54,10 +56,10 @@ public abstract class Entity {
         this.cell = updateCell.apply(this);
     }
 
-    protected double x() {
+    public double x() {
         return position.x();
     }
-    protected double y() {
+    public double y() {
         return position.y();
     }
     protected Color getColor() {
@@ -66,7 +68,7 @@ public abstract class Entity {
     protected void setColor(Color color) {
         this.color = color;
     }
-    protected double getRadius() {
+    public double getRadius() {
         return radius;
     }
     protected void setRadius(double radius) {

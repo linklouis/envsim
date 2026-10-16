@@ -1,7 +1,12 @@
 package edu.msoe.envsim;
 
+import edu.msoe.envsim.entities.Agent;
+import edu.msoe.envsim.entities.Entity;
+import edu.msoe.envsim.utilities.Clock;
+import edu.msoe.envsim.utilities.CollisionRequirement;
+import edu.msoe.envsim.utilities.DebugMessage;
+import edu.msoe.envsim.utilities.Vector;
 import javafx.animation.AnimationTimer;
-import javafx.concurrent.Task;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;

@@ -1,5 +1,6 @@
-package edu.msoe.envsim;
+package edu.msoe.envsim.utilities;
 
+import edu.msoe.envsim.Environment;
 import javafx.scene.control.Label;
 import org.jetbrains.annotations.NotNull;
 

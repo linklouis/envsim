@@ -1,4 +1,4 @@
-package edu.msoe.envsim;
+package edu.msoe.envsim.utilities;
 
 import edu.msoe.envsim.nn.NeuralNetwork;
 import javafx.scene.paint.Color;

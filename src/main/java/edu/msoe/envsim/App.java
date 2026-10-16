@@ -1,5 +1,9 @@
 package edu.msoe.envsim;
 
+import edu.msoe.envsim.entities.Agent;
+import edu.msoe.envsim.entities.Food;
+import edu.msoe.envsim.utilities.DebugMessage;
+import edu.msoe.envsim.utilities.Vector;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;

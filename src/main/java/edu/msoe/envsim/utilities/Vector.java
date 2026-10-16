@@ -1,4 +1,4 @@
-package edu.msoe.envsim;
+package edu.msoe.envsim.utilities;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
