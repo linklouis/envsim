@@ -33,7 +33,7 @@ public class Agent  extends Entity {
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
      */
-    private static final double MIN_RAD_DIFF_FOR_PREDATION = 0.8;
+    private static final double MAX_RAD_RATIO_FOR_PREDATION = 0.8;
     /**
      * The amount of energy wasted when catching and eating prey.
      * <p>
@@ -123,10 +123,6 @@ public class Agent  extends Entity {
      */
 
 
-    /**
-     * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, desiresRep
-     * Outputs (For now): speed, repDesire, predDesire, targetFood, targetPrey, runFromThreat, turn
-     */
     public final @NotNull NeuralNetwork brain;
     /**
      * Inputs: food size, distance
@@ -150,7 +146,7 @@ public class Agent  extends Entity {
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
-        Vector position = Vector.random(Vector.zero, env.getSize());
+        Vector position = Vector.random(new Vector(env.getSize().x() / 2, 0), env.getSize());
         AgentData agentData = new AgentData(
                 position,
                 color,
@@ -160,7 +156,7 @@ public class Agent  extends Entity {
                 radius,
                 Math.random() * 200 + 80,
                 Math.random(),
-                0,
+                Math.pow(Math.random(), 0.2),
                 newBrain(),
                 newFoodEvaluator(),
                 newAgentEvaluator(),
@@ -254,6 +250,7 @@ public class Agent  extends Entity {
 
         double functionalSpeed = speed / (Math.pow(getRadius() / 25, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
         double cost = getMovementCost(functionalSpeed); // TODO: Have moving in your non-preferred terrain cost more energy?
+        // TODO: Have size matter less in the water?
         functionalSpeed = functionalSpeed * Math.abs(isOnLand() - swimSkill);
         if (energy >= cost) {
             setPosition(getPosition().add(direction.atMagnitude(functionalSpeed)));
@@ -272,7 +269,7 @@ public class Agent  extends Entity {
 
     private void eat(@NotNull Food food) {
         if (food == justAte) return;
-        double consumptionSize = Math.min(1, getRadius() * MIN_RAD_DIFF_FOR_PREDATION / food.getRadius());    // TODO: Does this make any sense? The idea is for agents to not be able to eat an entire food if they are smaller than it. They should only be able to eat MAX_DIF... % of their  // TODO: Maybe switch to max energy once it relies on radius?
+        double consumptionSize = Math.min(1, getRadius() * MAX_RAD_RATIO_FOR_PREDATION / food.getRadius());    // TODO: Does this make any sense? The idea is for agents to not be able to eat an entire food if they are smaller than it. They should only be able to eat MAX_DIF... % of their  // TODO: Maybe switch to max energy once it relies on radius?
         energy += consumptionSize * food.getValue();
         food.getEaten(consumptionSize);
         justAte = food;
@@ -315,7 +312,7 @@ public class Agent  extends Entity {
         // TODO: INSTEAD OF A THRESHOLD, HAVE THE CHANCES FOR AN AGENT TO KILL ANOTHER BE BASED ON THE SIZE DIFFERENCE. (OR EVEN JUST HOW MUCH DAMAGE IT DOES, SO THAT A SMALL AGENT CAN DO DAMAGE TO A LARGE ONE, EVEN IF IT DOESN'T KILL IT? [Is that actually something we want?])
         // TODO: Pass the radius ratio for whatever other agent this one is seeing as input for NN.
         changeEnergy(-(PREDATION_COST * prey.getRadius() / getRadius()));
-        if (prey.getRadius() / getRadius() <= MIN_RAD_DIFF_FOR_PREDATION) {
+        if (prey.getRadius() / getRadius() <= MAX_RAD_RATIO_FOR_PREDATION) {
             energy += prey.energy * PREDATION_EFFICIENCY;
             prey.die();
 //            System.out.println("Predation!");
@@ -372,19 +369,21 @@ public class Agent  extends Entity {
 
 
     /**
-     * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, desiresRep
+     * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, currentTerrain
      * Outputs (For now): speed, repDesire, predDesire, targetFood, targetPrey, runFromThreat, turn
      */
     @Contract(" -> new")
     private float @NotNull [] getInput() {
         // TODO: Add current terrain
+        // TODO: Add way to see what terrain is around it.
+        //  Maybe if I add raycasts, have each one also say what the closest new terrain is in that direction?
         return new float[] {
                 (float) (energy / MAX_EXPECTED_ENERGY),
                 (float) (getRadius() / size),
                 evaluateFood(),
                 evaluatePrey(),
                 evaluateThreats(),
-                desiresReproduction ? 1f : 0f
+                environment.getStandingTerrainType(this).ordinal()
         };
     }
 
@@ -570,7 +569,7 @@ public class Agent  extends Entity {
                 mutateAttribute(this.size + Math.random()),
                 mutateAttribute(this.visionRadius),
                 mutateAttribute(this.healthRegenSpeed),
-                mutateAttribute(this.healthRegenSpeed),
+                Math.clamp(mutateAttribute(this.swimSkill), 0, 1),
                 this.brain.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
                 this.foodEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
                 this.preyEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),

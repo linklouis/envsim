@@ -6,6 +6,8 @@ import edu.msoe.envsim.utilities.*;
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.PixelWriter;
+import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -19,9 +21,16 @@ import java.util.function.Predicate;
 
 public class Environment extends Canvas {
     public static final int NUM_CELLS = 50;
+    /**
+     * The number of screen pixels per terrain pixel on each axis.
+     */
+    public static final int TERRAIN_RESOLUTION_RATIO = 4;
 
     @SuppressWarnings("unchecked")
     private final Set<Entity>[][] cells = (Set<Entity>[][]) new CopyOnWriteArraySet[NUM_CELLS][NUM_CELLS];
+    private final TerrainType[][] terrainData;
+    private final WritableImage terrainCacheImage;
+    private final PixelWriter terrainPixelWriter;
 
     private final List<Entity> entities = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>(); // TODO
@@ -82,6 +91,13 @@ public class Environment extends Canvas {
         gc = getGraphicsContext2D();
         scale = zoom;
 
+        int terrainWidth = worldWidth / TERRAIN_RESOLUTION_RATIO;
+        int terrainHeight = worldHeight / TERRAIN_RESOLUTION_RATIO;
+        terrainData = new TerrainType[terrainWidth][terrainHeight];
+        terrainCacheImage = new WritableImage(terrainWidth, terrainHeight);
+        terrainPixelWriter = terrainCacheImage.getPixelWriter();
+        fillTerrain(TerrainType.STANDARD);
+
         this.onSimModeStart = onSimModeStart;
         this.onEditModeStart = onEditModeStart;
 
@@ -129,6 +145,31 @@ public class Environment extends Canvas {
         for (int i = 0; i < NUM_CELLS; i++) {
             for (int j = 0; j < NUM_CELLS; j++) {
                 cells[i][j] = new CopyOnWriteArraySet<>();
+            }
+        }
+    }
+
+    /**
+     * Source: Google Gemini
+     * @param terrainX
+     * @param terrainY
+     * @param brushType
+     */
+    private void setTerrainTile(int terrainX, int terrainY, TerrainType brushType) {
+        if (terrainX >= 0 && terrainX < terrainData.length && terrainY >= 0 && terrainY < terrainData[0].length) {
+            terrainData[terrainX][terrainY] = brushType;
+            terrainPixelWriter.setColor(terrainX, terrainY, brushType.getColor());
+        }
+    }
+
+    private void fillTerrain(TerrainType terrainType) {
+        for (int x = 0; x < terrainData.length; x++) {
+            for (int y = 0; y < terrainData[0].length; y++) {
+                if (x < terrainData.length / 2) {
+                    setTerrainTile(x, y, terrainType);
+                } else {
+                    setTerrainTile(x, y, TerrainType.WATER);
+                }
             }
         }
     }
@@ -209,29 +250,35 @@ public class Environment extends Canvas {
         }
     }
 
-
+    /**
+     * Source: Google Gemini
+     */
     public void resetCanvas() {
-        // 1. Clear the entire viewport (outside the world bounds)
+        // Clear the entire viewport
         gc.setTransform(1, 0, 0, 1, 0, 0);
-        gc.setFill(Color.web("#151515")); // Darker void color
+        gc.setFill(Color.web("#151515"));
         gc.fillRect(0, 0, getWidth(), getHeight());
 
-        // 2. Apply camera transforms
+        // Apply camera transforms
         gc.setTransform(scale, 0, 0, scale, translateX, translateY);
 
-        // 3. Draw the actual world background
-        gc.setFill(Color.web("#1e1e1e"));
-        gc.fillRect(0, 0, worldWidth, worldHeight);
+        // 3. Draw base world background
+//        gc.setFill(Color.web("#1e1e1e"));
+//        gc.fillRect(0, 0, worldWidth, worldHeight);
 
-        // 4. Draw grid overlay
-        gc.setStroke(Color.web("#333333"));
-        gc.setLineWidth(1.0 / scale); // Prevent grid lines from thickening when zooming
-        for (int x = 0; x <= worldWidth; x += 40) {
-            gc.strokeLine(x, 0, x, worldHeight);
-        }
-        for (int y = 0; y <= worldHeight; y += 40) {
-            gc.strokeLine(0, y, worldWidth, y);
-        }
+        // 4. Draw terrain
+        gc.setImageSmoothing(false); // Keeps pixel art/grid lines crisp when scaled up
+        gc.drawImage(terrainCacheImage, 0, 0, worldWidth, worldHeight);
+
+        // 5. Draw grid lines overlay
+//        gc.setStroke(Color.web("#333333"));
+//        gc.setLineWidth(1.0 / scale);
+//        for (int x = 0; x <= worldWidth; x += worldWidth / NUM_CELLS) {
+//            gc.strokeLine(x, 0, x, worldHeight);
+//        }
+//        for (int y = 0; y <= worldHeight; y += worldHeight / NUM_CELLS) {
+//            gc.strokeLine(0, y, worldWidth, y);
+//        }
 
         // Draw world border
         gc.setStroke(Color.web("#555555"));
@@ -281,6 +328,26 @@ public class Environment extends Canvas {
 
         clock.update();
     }
+
+
+    /**
+     * Source: Google Gemini
+     * @param screenX
+     * @param screenY
+     * @param brushType
+     */
+    private void handleTerrainPaint(double screenX, double screenY, TerrainType brushType) {
+        if (mode != Mode.EDIT) return;
+
+        double worldX = (screenX - translateX) / scale;
+        double worldY = (screenY - translateY) / scale;
+
+        int terrainX = (int) (worldX / TERRAIN_RESOLUTION_RATIO);
+        int terrainY = (int) (worldY / TERRAIN_RESOLUTION_RATIO);
+
+        setTerrainTile(terrainX, terrainY, brushType);
+    }
+
 
     public void addEntity(Entity entity) {
         pendingEntities.add(entity);
@@ -399,8 +466,14 @@ public class Environment extends Canvas {
         return cells[(int) indices.x()][(int) indices.y()];
     }
 
-    public TerrainType getTerrainType(Vector position) {
-        return null; // TODO
+    public TerrainType getTerrainType(@NotNull Vector position) {
+        int terrainX = (int) (position.x() / TERRAIN_RESOLUTION_RATIO);
+        int terrainY = (int) (position.y() / TERRAIN_RESOLUTION_RATIO);
+
+        if (terrainX >= 0 && terrainX < terrainData.length && terrainY >= 0 && terrainY < terrainData[0].length) {
+            return terrainData[terrainX][terrainY];
+        }
+        return TerrainType.STANDARD; // Or return a default out-of-bounds terrain type
     }
 
     public TerrainType getStandingTerrainType(@NotNull Entity entity) {
