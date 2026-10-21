@@ -251,12 +251,11 @@ public class Agent  extends Entity {
         double cost = getMovementCost(functionalSpeed); // TODO: Have moving in your non-preferred terrain cost more energy?
         // TODO: Have size matter less in the water?
         functionalSpeed = functionalSpeed * Math.abs(isOnLand() - swimSkill);
-        if (energy >= cost) {
-            setPosition(getPosition().add(direction.atMagnitude(functionalSpeed)));
-            changeEnergy(-cost);
-        }
+        Vector next = energy >= cost ? getPosition().add(direction.atMagnitude(functionalSpeed)) : getPosition();
 
-        setPosition(getPosition().clamp(Vector.zero, getBounds()));
+        if (energy >= cost) changeEnergy(-cost);
+
+        setPosition(next.clamp(Vector.zero, getBounds()));
     }
 
     /**
@@ -375,24 +374,26 @@ public class Agent  extends Entity {
         // TODO: Add current terrain
         // TODO: Add way to see what terrain is around it.
         //  Maybe if I add raycasts, have each one also say what the closest new terrain is in that direction?
+        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(), entity -> entity != this, visionRadius);
         return new float[] {
                 (float) (energy / MAX_EXPECTED_ENERGY),
                 (float) (getRadius() / size),
-                evaluateFood(),
-                evaluatePrey(),
-                evaluateThreats(),
+                evaluateFood(entitiesInRange),
+                evaluatePrey(entitiesInRange),
+                evaluateThreats(entitiesInRange),
                 environment.getStandingTerrainType(this).ordinal()
         };
     }
 
-    private float evaluateFood() {
-        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
-                entity -> entity instanceof Food && entity.getRadius() > 0, visionRadius);
+    private float evaluateFood(@NotNull List<Entity> entitiesInRange) {
+//        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
+//                entity -> entity instanceof Food && entity.getRadius() > 0, visionRadius);
 
         float maxValue = 0;
         Entity mostValuableFood = null;
 
         for  (Entity entity : entitiesInRange) {
+            if (!(entity instanceof Food) || entity.getRadius() < 0) continue;
             if (entity == lastEatenFood) continue;
             float value = (float) (entity.getRadius() / this.distance(entity));
 //                    foodEvaluator.predict(new float[] {
@@ -410,14 +411,15 @@ public class Agent  extends Entity {
         return maxValue;
     }
 
-    private float evaluatePrey() {
-        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
-                entity -> entity instanceof Agent, visionRadius);
+    private float evaluatePrey(@NotNull List<Entity> entitiesInRange) {
+//        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
+//                entity -> entity instanceof Agent, visionRadius);
 
         float maxValue = 0;
         Entity mostValuablePrey = null;
 
         for  (Entity entity : entitiesInRange) {
+            if (!(entity instanceof Agent)) continue;
             float value = preyEvaluator.predict(new float[] {
                     (float) (entity.getRadius() / this.getRadius()),
                     (float) this.distance(entity)
@@ -433,14 +435,15 @@ public class Agent  extends Entity {
         return maxValue;
     }
 
-    private float evaluateThreats() {
-        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
-                entity -> entity instanceof Agent, visionRadius);
+    private float evaluateThreats(@NotNull List<Entity> entitiesInRange) {
+//        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
+//                entity -> entity instanceof Agent, visionRadius);
 
         float maxValue = 0;
         Entity mostThreateningPredator = null;
 
         for  (Entity entity : entitiesInRange) {
+            if (!(entity instanceof Agent)) continue;
             float value = predatorEvaluator.predict(new float[] {
                     (float) (entity.getRadius() / this.getRadius()),
                     (float) this.distance(entity)

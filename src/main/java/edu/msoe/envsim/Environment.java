@@ -399,6 +399,7 @@ public class Environment extends Canvas {
 
     public List<Entity> getEntitiesInRange(@NotNull Vector position, Predicate<Entity> predicate, double maxDistance) {
         List<Entity> entitiesInRange = new ArrayList<>();
+        double maxDistSq = maxDistance * maxDistance;
 
         // Calculate the min and max cell indices that overlap with the vision bounding box
         int minCellX = (int) Math.max(0, (position.x() - maxDistance) / cellSize.x());
@@ -414,8 +415,8 @@ public class Environment extends Canvas {
                         continue;
                     }
 
-                    double dist = entity.getPosition().distance(position);
-                    if (dist <= maxDistance) {
+                    double dist = entity.getPosition().distanceSquared(position);
+                    if (dist <= maxDistSq) {
                         entitiesInRange.add(entity);
                     }
                 }
@@ -481,8 +482,8 @@ public class Environment extends Canvas {
     private @NotNull Vector getCellIndexFromPosition(@NotNull Vector position) {
         Vector rawIndex = position.elementWiseDivision(cellSize);
         return new Vector(
-                Math.clamp(rawIndex.x(), 0, NUM_CELLS - 1),
-                Math.clamp(rawIndex.y(), 0, NUM_CELLS - 1)
+                (int) Math.clamp(rawIndex.x(), 0, NUM_CELLS - 1),
+                (int) Math.clamp(rawIndex.y(), 0, NUM_CELLS - 1)
         );
     }
 

@@ -35,7 +35,8 @@ public abstract class Entity {
     public abstract void paint(GraphicsContext gc);
 
     public boolean isColliding(@NotNull Entity other) {
-        return getPosition().distance(other.getPosition()) <= radius + other.getRadius();
+        double r = radius + other.getRadius();
+        return getPosition().distanceSquared(other.getPosition()) <= r * r;
     }
 
     /** Called by the Environment when this entity is flushed into the active simulation. */

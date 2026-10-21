@@ -100,8 +100,13 @@ public record Vector(double x, double y) {
         return scale(newMagnitude/magnitude());
     }
 
-    public double distance(Vector other) {
-        return Math.abs(subtract(other).magnitude());
+    @Contract(pure = true)
+    public double distanceSquared(@NotNull Vector o) {
+        double dx = x - o.x, dy = y - o.y;
+        return dx*dx + dy*dy;
+    }
+    public double distance(Vector o) {
+        return Math.sqrt(distanceSquared(o));
     }
 
 
