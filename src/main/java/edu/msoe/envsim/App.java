@@ -3,6 +3,7 @@ package edu.msoe.envsim;
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.utilities.DebugMessage;
+import edu.msoe.envsim.utilities.TerrainType;
 import edu.msoe.envsim.utilities.Vector;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -11,6 +12,8 @@ import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TitledPane;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
@@ -94,7 +97,7 @@ public class App extends Application {
     private void setupEnvironment(@NotNull Stage stage, int viewWidth, int viewHeight, TitledPane editorMenu) {
         Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
         double aspectRatio = screenBounds.getHeight() / screenBounds.getWidth();
-        int worldWidth = (int) (7000 * 1.0);
+        int worldWidth = (int) (7000 * 3.0);
         int worldHeight = (int) (worldWidth * aspectRatio);
         double zoom = screenBounds.getWidth() / worldWidth;
 
@@ -117,13 +120,25 @@ public class App extends Application {
         menuContent.setPadding(new Insets(10));
         menuContent.setStyle("-fx-background-color: rgba(255, 255, 255, 0.9);");
 
-//        Button clearBtn = new Button("Clear Canvas");
-//        clearBtn.setOnAction(e -> environment.reset());
+        HBox terrainOptions = new HBox();
+        Button grass = new Button("Grass");
+        Button water = new Button("Water");
+        grass.setOnAction(_ -> environment.setBrush(TerrainType.STANDARD));
+        water.setOnAction(_ -> environment.setBrush(TerrainType.WATER));
+        terrainOptions.getChildren().addAll(grass, water);
 
-//        Button drawRandomBtn = new Button("Draw Random Circles");
-//        drawRandomBtn.setOnAction(e -> drawRandomShapes(environment.getGraphicsContext2D()));
+        Slider brushSize = new Slider(1, 10, 5);
+        brushSize.setMajorTickUnit(1);
+        brushSize.setMinorTickCount(0);
+        brushSize.setSnapToTicks(true);
+        brushSize.setShowTickLabels(true);
+        brushSize.setShowTickMarks(true);
+        brushSize.valueProperty().addListener((observable, oldValue, newValue) -> {
+            environment.setBrushSize(newValue.intValue());
+        });
 
-//        menuContent.getChildren().addAll(new Label("Simulation Controls"), drawRandomBtn, clearBtn);
+
+        menuContent.getChildren().addAll(terrainOptions,  brushSize);
 
         TitledPane collapsibleMenu = new TitledPane("Menu", menuContent);
         collapsibleMenu.setAnimated(true);

@@ -24,7 +24,7 @@ public class Environment extends Canvas {
     /**
      * The number of screen pixels per terrain pixel on each axis.
      */
-    public static final int TERRAIN_RESOLUTION_RATIO = 4;
+    public static final int TERRAIN_RESOLUTION_RATIO = 20;
 
     @SuppressWarnings("unchecked")
     private final Set<Entity>[][] cells = (Set<Entity>[][]) new CopyOnWriteArraySet[NUM_CELLS][NUM_CELLS];
@@ -64,6 +64,8 @@ public class Environment extends Canvas {
     private boolean simPaused = false;
 
     private Mode mode = Mode.EDIT;
+    private TerrainType currentBrush = TerrainType.STANDARD;
+    private int brushSize = 5;
 
     private final int worldWidth;
     private final int worldHeight;
@@ -116,13 +118,22 @@ public class Environment extends Canvas {
         setOnMousePressed(e -> {
             lastMouseX = e.getX();
             lastMouseY = e.getY();
+
+            if (mode == Mode.EDIT && e.isPrimaryButtonDown()) {
+                handleTerrainPaint(e.getX(), e.getY(), currentBrush);
+            }
         });
 
         setOnMouseDragged(e -> {
-            translateX += e.getX() - lastMouseX;
-            translateY += e.getY() - lastMouseY;
-            lastMouseX = e.getX();
-            lastMouseY = e.getY();
+            if (mode == Mode.EDIT && e.isPrimaryButtonDown()) {
+                handleTerrainPaint(e.getX(), e.getY(), currentBrush);
+            } else {
+                // Normal panning
+                translateX += e.getX() - lastMouseX;
+                translateY += e.getY() - lastMouseY;
+                lastMouseX = e.getX();
+                lastMouseY = e.getY();
+            }
         });
 
         // Zooming controls
@@ -207,7 +218,6 @@ public class Environment extends Canvas {
     }
 
     private void pauseStateless() {
-        graphicsTimer.stop();
         simRunning = false;
     }
 
@@ -302,6 +312,9 @@ public class Environment extends Canvas {
         }
     }
 
+    /**
+     * TODO: Add a way to reduce precision for speed
+     */
     private void simulationStep() {
         // Flush newly created entities into main list before iterating
         if (!pendingEntities.isEmpty()) {
@@ -342,10 +355,20 @@ public class Environment extends Canvas {
         double worldX = (screenX - translateX) / scale;
         double worldY = (screenY - translateY) / scale;
 
-        int terrainX = (int) (worldX / TERRAIN_RESOLUTION_RATIO);
-        int terrainY = (int) (worldY / TERRAIN_RESOLUTION_RATIO);
+        int centerTerrainX = (int) (worldX / TERRAIN_RESOLUTION_RATIO);
+        int centerTerrainY = (int) (worldY / TERRAIN_RESOLUTION_RATIO);
 
-        setTerrainTile(terrainX, terrainY, brushType);
+        for (int x = centerTerrainX - brushSize; x <= centerTerrainX + brushSize; x++) {
+            for (int y = centerTerrainY - brushSize; y <= centerTerrainY + brushSize; y++) {
+
+                // OPTIONAL: Uncomment the line below if you want a circular brush instead of a square one
+                // if (Math.hypot(x - centerTerrainX, y - centerTerrainY) <= brushRadius) {
+                setTerrainTile(x, y, brushType);
+                // }
+
+            }
+        }
+        resetCanvas();
     }
 
 
@@ -515,5 +538,13 @@ public class Environment extends Canvas {
 
     public void setDebugMode(boolean debugMode) {
         this.debugMode = debugMode;
+    }
+
+    public void setBrushSize(int brushRadius) {
+        this.brushSize = Math.max(0, brushRadius); // Prevent negative radius
+    }
+
+    public void setBrush(TerrainType newBrush) {
+        this.currentBrush = newBrush;
     }
 }
