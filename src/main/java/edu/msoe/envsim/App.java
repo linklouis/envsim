@@ -13,6 +13,7 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TitledPane;
 import javafx.scene.input.KeyCode;
@@ -25,9 +26,9 @@ import javafx.stage.Stage;
 import org.jetbrains.annotations.NotNull;
 
 public class App extends Application {
-
     private Environment environment;
     private boolean debugMode = true;
+    private Slider simSpeed;
 
     private HBox debugBox;
 
@@ -35,15 +36,16 @@ public class App extends Application {
     public void start(@NotNull Stage stage) {
         int viewWidth = 1080;
         int viewHeight = 720;
-        TitledPane collapsibleMenu = createMenu();
+        TitledPane collapsibleMenu = new TitledPane();
 
         setupEnvironment(stage,  viewWidth, viewHeight, collapsibleMenu);
+        setupMenu(collapsibleMenu);
 
         // Populate Entities
         for (int i = 0; i < 500; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
 
-            new Agent(Math.random() * 30 + 3, randomColor, environment);
+            new Agent(Math.random() * 20 + 3, randomColor, environment);
         }
 
         for (int i = 0; i < 2000; i++) {
@@ -51,11 +53,17 @@ public class App extends Application {
             new Food(position, Math.pow(Math.random(), 3) * 40 + 5, environment);
         }
 
+        environment.startSimulation();
+
         // Layer Controls over Canvas using StackPane
         StackPane gamePane = new StackPane();
         gamePane.getChildren().addAll(environment, collapsibleMenu);
 
         debugBox = new HBox();
+        DebugMessage framesPerSecond = new DebugMessage(
+                () -> environment.getFrameRate() + " FpS",
+                environment
+        );
         DebugMessage ticksPerSecond = new DebugMessage(
                 () -> environment.getSimUpdateRate() + " TpS",
                 environment
@@ -64,7 +72,7 @@ public class App extends Application {
                 () -> environment.getNumAgents() + " Agents",
                 environment
         );
-        debugBox.getChildren().addAll(ticksPerSecond, numAgents);
+        debugBox.getChildren().addAll(framesPerSecond, ticksPerSecond, numAgents);
 
         toggleDebugMode(debugMode);
 
@@ -90,6 +98,13 @@ public class App extends Application {
                 case KeyCode.HOME -> toggleDebugMode();
                 case KeyCode.SPACE -> environment.toggleSimulation();
                 case KeyCode.E -> environment.toggleEditMode();
+                case KeyCode.R -> {
+                    if (simSpeed.getValue() == 60) {
+                        simSpeed.setValue(Double.MAX_VALUE);
+                    } else {
+                        simSpeed.setValue(60);
+                    }
+                }
             }
         });
     }
@@ -108,14 +123,13 @@ public class App extends Application {
 
         environment.widthProperty().bind(stage.widthProperty());
         environment.heightProperty().bind(stage.heightProperty());
-        environment.startSimulation();
     }
 
     /**
      * Creats a temp menu
      * @return
      */
-    private @NotNull TitledPane createMenu() {
+    private void setupMenu(@NotNull TitledPane collapsibleMenu) {
         VBox menuContent = new VBox(10);
         menuContent.setPadding(new Insets(10));
         menuContent.setStyle("-fx-background-color: rgba(255, 255, 255, 0.9);");
@@ -137,10 +151,33 @@ public class App extends Application {
             environment.setBrushSize(newValue.intValue());
         });
 
+        Label brushSizeLabel = new Label("Brush size");
 
-        menuContent.getChildren().addAll(terrainOptions,  brushSize);
 
-        TitledPane collapsibleMenu = new TitledPane("Menu", menuContent);
+        Label simSpeedLabel = new Label();
+
+        simSpeed = new Slider(0, 5000, 0);
+        simSpeed.setMajorTickUnit(1000);
+        simSpeed.setMinorTickCount(2);
+        simSpeed.setSnapToTicks(false);
+        simSpeed.setShowTickLabels(true);
+        simSpeed.setShowTickMarks(true);
+        simSpeed.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if (Math.abs(newValue.doubleValue() - simSpeed.getMax()) < 0.1) {
+                environment.setMaxSimUpdateRate(Double.POSITIVE_INFINITY);
+                simSpeedLabel.setText("Max update rate: UNLIMITED");
+            } else {
+                environment.setMaxSimUpdateRate(newValue.doubleValue());
+                simSpeedLabel.setText("Max update rate: " + newValue.intValue());
+            }
+        });
+        simSpeed.setValue(60);//simSpeed.getMax());
+
+
+        menuContent.getChildren().addAll(terrainOptions,  brushSizeLabel, brushSize, simSpeedLabel, simSpeed);
+
+        collapsibleMenu.setText("Menu");
+        collapsibleMenu.setContent(menuContent);
         collapsibleMenu.setAnimated(true);
         collapsibleMenu.setCollapsible(true);
         collapsibleMenu.setMaxWidth(200);
@@ -149,8 +186,6 @@ public class App extends Application {
         // Align the floating menu to the top-left corner
         StackPane.setAlignment(collapsibleMenu, Pos.TOP_LEFT);
         StackPane.setMargin(collapsibleMenu, new Insets(15));
-
-        return collapsibleMenu;
     }
 
     private void drawRandomShapes(@NotNull GraphicsContext gc) {

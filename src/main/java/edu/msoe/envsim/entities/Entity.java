@@ -13,6 +13,7 @@ public abstract class Entity {
     private Color color;
     private double radius;
     private Vector cellIndex;
+    private volatile boolean registered;
     private final Function<Entity, Vector> updateCell;
 
     public Entity(@NotNull Vector position, double radius, Color color, @NotNull Environment env) {
@@ -20,7 +21,7 @@ public abstract class Entity {
         this.color = color;
         this.updateCell = env::updateCell;
         env.addEntity(this);
-        setPosition(position);
+        this.position = position;
     }
 
     public void getAction() {
@@ -36,6 +37,13 @@ public abstract class Entity {
     public boolean isColliding(@NotNull Entity other) {
         return getPosition().distance(other.getPosition()) <= radius + other.getRadius();
     }
+
+    /** Called by the Environment when this entity is flushed into the active simulation. */
+    public void onRegistered() {
+        cellIndex = updateCell.apply(this);
+        registered = true;
+    }
+    public boolean isRegistered() { return registered; }
 
 
 

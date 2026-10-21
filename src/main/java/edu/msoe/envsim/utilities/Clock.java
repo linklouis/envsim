@@ -66,7 +66,7 @@ public class Clock {
      * The minimum number of nanoseconds any given frame is permitted to be.
      * Calculated as {@code 1_000_000_000.0 /} {@link #maxRate}.
      */
-    private final long minNanosPerUpdate;
+    private long minNanosPerUpdate;
 
     /**
      * The total nanoseconds represented by one full cycle of the {@link #updateTimes} array.
@@ -256,6 +256,7 @@ public class Clock {
     public void setMaxRate(double maxRate) {
         // TODO: Does this break anything?
         this.maxRate = maxRate;
+        this.minNanosPerUpdate = (long) (1_000_000_000.0 / maxRate);
     }
 
 

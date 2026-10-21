@@ -40,7 +40,8 @@ public class Environment extends Canvas {
     private boolean debugMode;
 
     private final GraphicsContext gc;
-    private final Clock clock;
+    private final Clock simClock;
+    private final Clock graphicsClock;
     private final AnimationTimer graphicsTimer = new AnimationTimer() {
         @Override
         public void handle(long now) {
@@ -105,7 +106,8 @@ public class Environment extends Canvas {
 
         this.debugMode = debugMode;
 
-        clock = new Clock();
+        simClock = new Clock();
+        graphicsClock = new Clock();
 
         setupCells();
         setupCameraControls();
@@ -215,6 +217,7 @@ public class Environment extends Canvas {
             simRunning = true;
             pauseLock.notifyAll();
         }
+        simClock.start();
     }
 
     private void pauseStateless() {
@@ -310,6 +313,8 @@ public class Environment extends Canvas {
                 message.update();
             }
         }
+
+        graphicsClock.update();
     }
 
     /**
@@ -319,17 +324,17 @@ public class Environment extends Canvas {
         // Flush newly created entities into main list before iterating
         if (!pendingEntities.isEmpty()) {
             for (Entity entity : pendingEntities) {
-                entities.add(entity);
-                updateCell(entity);
+                entity.onRegistered();
             }
+            entities.addAll(pendingEntities);
             pendingEntities.clear();
         }
 
         if (!toRemove.isEmpty()) {
             for (Entity entity : toRemove) {
-                entities.remove(entity);
                 getCell(entity.getCellIndex()).remove(entity);
             }
+            entities.removeAll(toRemove);
             toRemove.clear();
         }
 
@@ -339,7 +344,7 @@ public class Environment extends Canvas {
             entity.step();
         }
 
-        clock.update();
+        simClock.update();
     }
 
 
@@ -420,8 +425,8 @@ public class Environment extends Canvas {
         return entitiesInRange;
     }
 
-    public List<Entity> getCollisions(Entity entity, CollisionRequirement collisionRequirement) {
-        if (!entities.contains(entity)) {
+    public List<Entity> getCollisions(@NotNull Entity entity, CollisionRequirement collisionRequirement) {
+        if (!entity.isRegistered()) {
             return Collections.emptyList();
         }
 
@@ -518,8 +523,12 @@ public class Environment extends Canvas {
         return getHeight();
     }
 
+    public double getFrameRate() {
+        return graphicsClock.getFormattedUpdateRate(2);
+    }
+
     public double getSimUpdateRate() {
-        return clock.getFormattedUpdateRate(2);
+        return simClock.getFormattedUpdateRate(2);
     }
 
     public int getNumAgents() {
@@ -546,5 +555,9 @@ public class Environment extends Canvas {
 
     public void setBrush(TerrainType newBrush) {
         this.currentBrush = newBrush;
+    }
+
+    public void setMaxSimUpdateRate(double maxSimUpdateRate) {
+        simClock.setMaxRate(maxSimUpdateRate);
     }
 }

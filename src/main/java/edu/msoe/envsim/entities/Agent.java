@@ -55,8 +55,8 @@ public class Agent  extends Entity {
      * The amount of energy cost per time step per pixel of vision radius
      */
     private static final double VISION_QUALITY_COST = 0.0006;
-    public static final double SPEED_COST = 0.01;
-    public static final double SIZE_COST = 0.0004;
+    public static final double SPEED_COST = 0.002;
+    public static final double SIZE_COST = 0.0008;
     public static final int NUM_INPUTS = 6;
     public static final double MUTATION_CHANCE = 0.1;
     public static final double NEURON_MUTATION_SIZE = 0.02;
@@ -65,7 +65,7 @@ public class Agent  extends Entity {
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.35;
-    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.13;
+    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.1;
 
     private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
 
@@ -114,12 +114,11 @@ public class Agent  extends Entity {
      * TODO: Actually maybe don't so carnivores don't keep eating their kids?
      */
     private double timeSinceReproduction = 100000;
-    private Food justAte;
+    private Food lastEatenFood;
     private boolean alive = true;
     /*
      * radius is the health of the Agent. If it hits 0, it dies.
      * This value is **not** inherited by children.
-     * TODO: Maybe the agent can decide to spend energy to regain health?
      */
 
 
@@ -151,10 +150,10 @@ public class Agent  extends Entity {
                 position,
                 color,
                 CLONE_THRESHOLD * radius - 1,
-                Math.random() * 1.7 + 0.2,
+                Math.random() * 3 + 0.4,
                 Math.random() * 180 + 50,
                 radius,
-                Math.random() * 200 + 80,
+                Math.random() * 500 + 150,
                 Math.random(),
                 Math.pow(Math.random(), 0.2),
                 newBrain(),
@@ -268,19 +267,20 @@ public class Agent  extends Entity {
     }
 
     private void eat(@NotNull Food food) {
-        if (food == justAte) return;
+        if (food == lastEatenFood) return;
         double consumptionSize = Math.min(1, getRadius() * MAX_RAD_RATIO_FOR_PREDATION / food.getRadius());    // TODO: Does this make any sense? The idea is for agents to not be able to eat an entire food if they are smaller than it. They should only be able to eat MAX_DIF... % of their  // TODO: Maybe switch to max energy once it relies on radius?
         energy += consumptionSize * food.getValue();
         food.getEaten(consumptionSize);
-        justAte = food;
+        lastEatenFood = food;
     }
 
     private void interact(Agent agent, boolean attemptPredation) {
         if (!this.alive || !agent.alive) return;
 
-        if (desiresReproduction && agent.desiresReproduction && isSameSpecies(this, agent)) {
+//        if (desiresReproduction && agent.desiresReproduction && isSameSpecies(this, agent)) {
 //            reproduce(this, agent);
-        } else if (attemptPredation) {
+//        } else
+        if (attemptPredation) {
             attemptPredation(agent);
         }
     }
@@ -315,7 +315,6 @@ public class Agent  extends Entity {
         if (prey.getRadius() / getRadius() <= MAX_RAD_RATIO_FOR_PREDATION) {
             energy += prey.energy * PREDATION_EFFICIENCY;
             prey.die();
-//            System.out.println("Predation!");
             timeSinceReproduction = 0; // TODO: Remove once decisions aren't made randomly every frame.
         } else {
             // TODO: If we fail, but the other dies, we should still gain the energy.
@@ -323,7 +322,6 @@ public class Agent  extends Entity {
             setRadius(Math.max(0.001, getRadius() - FAILED_PREDATION_COST * prey.getRadius() / getRadius()));
             prey.setRadius(Math.max(0.001, prey.getRadius() - FAILED_PREDATION_COST * getRadius() / prey.getRadius()));
             // TODO: Also lose energy?
-//            System.out.println("Failed Predation!");
         }
     }
 
@@ -395,7 +393,7 @@ public class Agent  extends Entity {
         Entity mostValuableFood = null;
 
         for  (Entity entity : entitiesInRange) {
-            if (entity == justAte) continue;
+            if (entity == lastEatenFood) continue;
             float value = (float) (entity.getRadius() / this.distance(entity));
 //                    foodEvaluator.predict(new float[] {
 //                    (float) this.distance(entity),
