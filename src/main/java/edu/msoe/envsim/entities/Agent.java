@@ -24,8 +24,7 @@ public class Agent  extends Entity {
      * TODO: Can get rid of this if we stick with only cloning
      */
     private static final double MAX_EXPECTED_ENERGY = 120;
-    private static final double REPRODUCTON_ENERGY_THRESHOLD = 50;
-    private static final double REPRODUCTION_COST = 0.3;
+    public static final double MIN_HEALTH_FOR_REPRODUCTION = 0.8;
     /**
      * The energy at which an entity will clone.
      * TODO: Have this depend on max size?
@@ -211,11 +210,10 @@ public class Agent  extends Entity {
 
         timeSinceReproduction++;
         //if (reproductionDesire > 0.6 && energy > 80) {
-        if (energy > calculateCloneThreshold() && getRadius() / size > 0.8) {
-            reproduce(this);
+        if (energy > calculateCloneThreshold() && getRadius() / size > MIN_HEALTH_FOR_REPRODUCTION) {
+            reproduce();
         }
 
-//        direction = agentDecision.direction();
         move(decision.turn(), decision.speed() * maxSpeed);
 
         for (Entity entity : environment.getCollisions(this, (_, entity2) -> entity2.getRadius() > 0)) {
@@ -295,15 +293,6 @@ public class Agent  extends Entity {
         setColor(Color.hsb(baseSpeciesColor.getHue(), baseSpeciesColor.getSaturation(), brightness));
     }
 
-    private boolean prepareForReproduction(boolean isClone) {
-        if (isClone) {
-            energy /= 2;
-        } else {
-            energy -= energy * REPRODUCTION_COST;
-        }
-        return desiresReproduction && energy * 2 >= REPRODUCTON_ENERGY_THRESHOLD;
-    }
-
     private void attemptPredation(@NotNull Agent prey) {
         if (this.parent == prey || prey.parent == this) return;
         if (!this.alive || !prey.alive) return;
@@ -320,7 +309,6 @@ public class Agent  extends Entity {
         if (prey.getRadius() / getRadius() <= MAX_RAD_RATIO_FOR_PREDATION) {
             energy += prey.energy * PREDATION_EFFICIENCY;
             prey.die();
-            timeSinceReproduction = 0; // TODO: Remove once decisions aren't made randomly every frame.
         } else {
             // TODO: If we fail, but the other dies, we should still gain the energy.
             // TODO: Maybe that wouldn't happen cuz the decision of whether we succeed or not is based on health?
@@ -330,12 +318,10 @@ public class Agent  extends Entity {
         }
     }
 
-    private static void reproduce(@NotNull Agent parent) {
-        if (parent.prepareForReproduction(true)) {
-            new Agent(parent.getAgentData(), parent.environment, parent);
-            parent.timeSinceReproduction = 0;
-//            System.out.println("Cloning!");
-        }
+    private void reproduce() {
+        energy /= 2;
+        new Agent(getAgentData(), environment, parent);
+        timeSinceReproduction = 0;
     }
 
     private static boolean isSameSpecies(Agent agent1, Agent agent2) {
