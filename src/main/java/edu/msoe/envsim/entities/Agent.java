@@ -248,14 +248,18 @@ public class Agent  extends Entity {
 
     private void move(double turn, double speed) {
         direction = direction.turn(turn);
+        double speedModifier = Math.pow(getRadius() / getTerrainType().getSpeedSizeCostFactor(), 2) + 1;
+        double effort = speed / speedModifier;
+        double cost = getMovementCost(effort); // TODO: Have moving in your non-preferred terrain cost more energy?
 
-        double functionalSpeed = speed / (Math.pow(getRadius() / 35, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
-        double cost = getMovementCost(functionalSpeed); // TODO: Have moving in your non-preferred terrain cost more energy?
-        // TODO: Have size matter less in the water?
-        functionalSpeed = functionalSpeed * Math.abs(isOnLand() - swimSkill);
-        Vector next = energy >= cost ? getPosition().add(direction.atMagnitude(functionalSpeed)) : getPosition();
-
-        if (energy >= cost) changeEnergy(-cost);
+        Vector next;
+        if (energy >= cost) {
+            double functionalSpeed = effort * Math.abs(isOnLand() - swimSkill);
+            next = getPosition().add(direction.atMagnitude(functionalSpeed));
+            changeEnergy(-cost);
+        } else {
+            next = getPosition();
+        }
 
         setPosition(next.clamp(Vector.zero, getBounds()));
     }
@@ -264,7 +268,7 @@ public class Agent  extends Entity {
      * @return 1 if the {@link Agent} is on a land tile, otherwise 0.
      */
     private int isOnLand() {
-        return environment.getStandingTerrainType(this) == TerrainType.STANDARD ? 1 : 0; // TODO
+        return getTerrainType() == TerrainType.STANDARD ? 1 : 0; // TODO
     }
 
     private void eat(@NotNull Food food) {
@@ -383,7 +387,7 @@ public class Agent  extends Entity {
                 evaluateFood(entitiesInRange),
                 evaluatePrey(entitiesInRange),
                 evaluateThreats(entitiesInRange),
-                environment.getStandingTerrainType(this).ordinal()
+                getTerrainType().ordinal()
         };
     }
 
@@ -592,5 +596,9 @@ public class Agent  extends Entity {
 
     private double calculateCloneThreshold() {
         return CLONE_THRESHOLD * getRadius();
+    }
+
+    private TerrainType getTerrainType() {
+        return environment.getStandingTerrainType(this);
     }
 }
