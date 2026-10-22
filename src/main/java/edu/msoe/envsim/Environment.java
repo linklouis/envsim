@@ -3,6 +3,7 @@ package edu.msoe.envsim;
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Entity;
 import edu.msoe.envsim.utilities.*;
+import edu.msoe.envsim.utilities.Vector;
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -12,15 +13,14 @@ import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Predicate;
 
 public class Environment extends Canvas {
-    public static final int NUM_CELLS = 50;
+    public static final int NUM_CELLS = 40;
     /**
      * The number of screen pixels per terrain pixel on each axis.
      */
@@ -32,9 +32,9 @@ public class Environment extends Canvas {
     private final WritableImage terrainCacheImage;
     private final PixelWriter terrainPixelWriter;
 
-    private final List<Entity> entities = new java.util.concurrent.CopyOnWriteArrayList<>();
-    private final List<Entity> pendingEntities = new java.util.concurrent.CopyOnWriteArrayList<>(); // TODO
-    private final List<Entity> toRemove = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<Entity> entities = new CopyOnWriteArrayList<>();
+    private final Queue<Entity> pendingEntities = new ConcurrentLinkedQueue<>();
+    private final Queue<Entity> toRemove = new ConcurrentLinkedQueue<>();
 
     private final List<DebugMessage> debugMessages = new ArrayList<>();
     private boolean debugMode;

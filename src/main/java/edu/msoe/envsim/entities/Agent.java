@@ -15,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Agent  extends Entity {
     /**
@@ -55,8 +56,8 @@ public class Agent  extends Entity {
      * The amount of energy cost per time step per pixel of vision radius
      */
     private static final double VISION_QUALITY_COST = 0.0006;
-    public static final double SPEED_COST = 0.002;
-    public static final double SIZE_COST = 0.0008;
+    public static final double SPEED_COST = 0.006;
+    public static final double SIZE_COST = 0.0003;
     public static final int NUM_INPUTS = 6;
     public static final double MUTATION_CHANCE = 0.1;
     public static final double NEURON_MUTATION_SIZE = 0.02;
@@ -66,6 +67,7 @@ public class Agent  extends Entity {
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.35;
     public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.1;
+    private static final double WANDER_JITTER_DEGREES = 4;
 
     private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
 
@@ -247,7 +249,7 @@ public class Agent  extends Entity {
     private void move(double turn, double speed) {
         direction = direction.turn(turn);
 
-        double functionalSpeed = speed / (Math.pow(getRadius() / 25, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
+        double functionalSpeed = speed / (Math.pow(getRadius() / 35, 2) + 1); // TODO: DOES THIS MAKE SENSE AND WHAT SHOULD I CALL THE CONSTANT?
         double cost = getMovementCost(functionalSpeed); // TODO: Have moving in your non-preferred terrain cost more energy?
         // TODO: Have size matter less in the water?
         functionalSpeed = functionalSpeed * Math.abs(isOnLand() - swimSkill);
@@ -490,7 +492,9 @@ public class Agent  extends Entity {
             desiresPredation = false;
         } else {
             target = direction;
-            turn = ((output[6] * 2) - 1) * turnSpeed;
+            double brainTurn = ((output[6] * 2) - 1) * turnSpeed;
+            double jitter = ThreadLocalRandom.current().nextDouble(-1, 1) * WANDER_JITTER_DEGREES;
+            turn = brainTurn * 0.25 + jitter;
             desiresPredation = false;
         }
 
@@ -502,11 +506,15 @@ public class Agent  extends Entity {
         );
     }
 
+    /** Max turn per tick, in degrees. */
+    private double maxTurnPerTick() {
+        return turnSpeed / getRadius();
+    }
+
     private double getTurnToTarget(@NotNull Vector target) {
-        double rawChange = target.angle() - direction.angle();
-        double neededChange = Math.atan2(Math.sin(rawChange), Math.cos(rawChange));
-        double maxTurn = Math.signum(neededChange) * (turnSpeed / getRadius());
-        return Math.abs(maxTurn) > Math.abs(neededChange) ? neededChange : maxTurn;
+        double rawChange = target.angle() - direction.angle(); // radians
+        double neededDegrees = Math.toDegrees(Math.atan2(Math.sin(rawChange), Math.cos(rawChange)));
+        return Math.clamp(neededDegrees, -maxTurnPerTick(), maxTurnPerTick());
     }
 
 
@@ -556,18 +564,18 @@ public class Agent  extends Entity {
     }
 
     private double mutateAttribute(double attribute) {
-        return attribute + (attribute * Math.random() * ATTRIBUTE_MUTATION_SIZE);
+        return attribute + (attribute * (Math.random() - 0.5) * ATTRIBUTE_MUTATION_SIZE);
     }
 
     @Contract(" -> new")
     private @NotNull AgentData getAgentData() {
         return new AgentData(
-                getPosition(),
+                getPosition().add(Vector.random(100 + getRadius() * 2)),
                 getColor(),
                 this.energy, // TODO: Children should actually get the cost subtracted from each parent's health (What did I mean by this?)
                 mutateAttribute(this.maxSpeed),
-                mutateAttribute(this.turnSpeed + Math.random()),
-                mutateAttribute(this.size + Math.random()),
+                mutateAttribute(this.turnSpeed),
+                mutateAttribute(this.size),
                 mutateAttribute(this.visionRadius),
                 mutateAttribute(this.healthRegenSpeed),
                 Math.clamp(mutateAttribute(this.swimSkill), 0, 1),
