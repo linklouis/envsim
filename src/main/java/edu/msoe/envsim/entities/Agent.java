@@ -246,7 +246,7 @@ public class Agent  extends Entity {
 
     private void move(double turn, double speed) {
         direction = direction.turn(turn);
-        double speedModifier = Math.pow(getRadius() / getTerrainType().getSpeedSizeCostFactor(), 2) + 1;
+        double speedModifier = Math.pow(getRadius() * getTerrainType().getSpeedSizeCostFactor(), 2) + 1;
         double effort = speed / speedModifier;
         double cost = getMovementCost(effort); // TODO: Have moving in your non-preferred terrain cost more energy?
 
