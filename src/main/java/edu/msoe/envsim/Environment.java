@@ -83,6 +83,8 @@ public class Environment extends Canvas {
 
     private final Runnable onSimModeStart;
     private final Runnable onEditModeStart;
+    private double decideMs;
+    private double stepMs;
 
     private enum Mode {
         SIMULATION,
@@ -362,11 +364,13 @@ public class Environment extends Canvas {
             toRemove.clear();
         }
 
+        long t0 = System.nanoTime();
         entities.parallelStream().forEach(Entity::getDecision);
-
-        for (Entity entity : entities) {
-            entity.step();
-        }
+        long t1 = System.nanoTime();
+        for (Entity e : entities) e.step();
+        long t2 = System.nanoTime();
+        decideMs = decideMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
+        stepMs   = stepMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
 
         simClock.update();
     }
@@ -588,5 +592,13 @@ public class Environment extends Canvas {
 
     public void setMaxSimUpdateRate(double maxSimUpdateRate) {
         simClock.setMaxRate(maxSimUpdateRate);
+    }
+
+    public double getStepMs() {
+        return stepMs;
+    }
+
+    public double getDecideMs() {
+        return decideMs;
     }
 }

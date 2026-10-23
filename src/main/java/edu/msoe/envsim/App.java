@@ -65,19 +65,33 @@ public class App extends Application {
         gamePane.getChildren().addAll(environment, collapsibleMenu, inspectorPane);
 
         debugBox = new HBox();
+
         DebugMessage framesPerSecond = new DebugMessage(
-                () -> environment.getFrameRate() + " FpS",
-                environment
+                () -> environment.getFrameRate(), "FpS", 2, environment
         );
+
         DebugMessage ticksPerSecond = new DebugMessage(
-                () -> environment.getSimUpdateRate() + " TpS",
-                environment
+                () -> environment.getSimUpdateRate(), "TpS", 2, environment
         );
+
         DebugMessage numAgents = new DebugMessage(
-                () -> environment.getNumAgents() + " Agents",
-                environment
+                () -> environment.getNumAgents(), "Agents", 0, environment
         );
-        debugBox.getChildren().addAll(framesPerSecond, ticksPerSecond, numAgents);
+
+        DebugMessage decideMs = new DebugMessage(
+                () -> environment.getDecideMs(), "decideMs", 3, environment
+        );
+        DebugMessage stepMs = new DebugMessage(
+                () -> environment.getStepMs(), "stepMs", 3, environment
+        );
+
+        DebugMessage TpSpA = new DebugMessage(
+                () -> 1 / (environment.getSimUpdateRate() * (double) environment.getNumAgents()), "SpAT", 10, environment
+        );
+
+        debugBox.getChildren().addAll(framesPerSecond, ticksPerSecond, numAgents, decideMs, stepMs, TpSpA);
+
+
 
         toggleDebugMode(debugMode);
 
