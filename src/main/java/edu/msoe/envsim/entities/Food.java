@@ -20,7 +20,7 @@ public class Food extends Entity {
     }
 
     @Override
-    public void paint(@NotNull GraphicsContext gc) {
+    public void paint(@NotNull GraphicsContext gc, boolean isDebugMode) {
         gc.setFill(getColor());
         gc.fillOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
     }

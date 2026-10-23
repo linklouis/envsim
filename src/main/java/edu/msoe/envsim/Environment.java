@@ -17,6 +17,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class Environment extends Canvas {
@@ -77,6 +78,9 @@ public class Environment extends Canvas {
     private double lastMouseX;
     private double lastMouseY;
 
+    private final Consumer<Agent> onAgentSelected;
+    private Agent selectedAgent;
+
     private final Runnable onSimModeStart;
     private final Runnable onEditModeStart;
 
@@ -86,7 +90,8 @@ public class Environment extends Canvas {
     }
 
 
-    public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom, boolean debugMode, Runnable onSimModeStart, Runnable onEditModeStart) {
+    public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom, boolean debugMode,
+                       Runnable onSimModeStart, Runnable onEditModeStart, Consumer<Agent> onAgentSelected) {
         super(viewWidth, viewHeight);
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
@@ -109,23 +114,40 @@ public class Environment extends Canvas {
         simClock = new Clock();
         graphicsClock = new Clock();
 
+        this.onAgentSelected = onAgentSelected;
+
         setupCells();
-        setupCameraControls();
+        setupMouseEvents();
         resetCanvas();
         setupSimulationThread();
     }
 
-    private void setupCameraControls() {
-        // Panning controls
+    /**
+     *  Source: Google Gemini
+     */
+    private void setupMouseEvents() {
         setOnMousePressed(e -> {
             lastMouseX = e.getX();
             lastMouseY = e.getY();
 
             if (mode == Mode.EDIT && e.isPrimaryButtonDown()) {
                 handleTerrainPaint(e.getX(), e.getY(), currentBrush);
+            } else if (mode == Mode.SIMULATION && e.isPrimaryButtonDown()) {
+                double worldX = (e.getX() - translateX) / scale;
+                double worldY = (e.getY() - translateY) / scale;
+                Vector clickPosition = new Vector(worldX, worldY);
+
+                for (Entity entity : entities) {
+                    if (entity instanceof Agent agent) {
+                        if (agent.getPosition().distanceSquared(clickPosition) <= agent.getRadius() * agent.getRadius()) {
+                            selectedAgent = agent;
+                        }
+                    }
+                }
             }
         });
 
+        // Panning controls
         setOnMouseDragged(e -> {
             if (mode == Mode.EDIT && e.isPrimaryButtonDown()) {
                 handleTerrainPaint(e.getX(), e.getY(), currentBrush);
@@ -305,7 +327,7 @@ public class Environment extends Canvas {
         resetCanvas();
 
         for (Entity entity : entities) {
-            entity.paint(gc);
+            entity.paint(gc, entity == selectedAgent || debugMode);
         }
 
         if (debugMode) {
@@ -313,6 +335,8 @@ public class Environment extends Canvas {
                 message.update();
             }
         }
+
+        onAgentSelected.accept(selectedAgent);
 
         graphicsClock.update();
     }
@@ -338,7 +362,7 @@ public class Environment extends Canvas {
             toRemove.clear();
         }
 
-        entities.parallelStream().forEach(Entity::getAction);
+        entities.parallelStream().forEach(Entity::getDecision);
 
         for (Entity entity : entities) {
             entity.step();
@@ -376,6 +400,10 @@ public class Environment extends Canvas {
         resetCanvas();
     }
 
+
+    public void clearSelectedAgent() {
+        selectedAgent = null;
+    }
 
     public void addEntity(Entity entity) {
         pendingEntities.add(entity);

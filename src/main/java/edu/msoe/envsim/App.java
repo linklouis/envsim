@@ -2,6 +2,7 @@ package edu.msoe.envsim;
 
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Food;
+import edu.msoe.envsim.utilities.AgentInspectorPane;
 import edu.msoe.envsim.utilities.DebugMessage;
 import edu.msoe.envsim.utilities.TerrainType;
 import edu.msoe.envsim.utilities.Vector;
@@ -38,7 +39,11 @@ public class App extends Application {
         int viewHeight = 720;
         TitledPane collapsibleMenu = new TitledPane();
 
-        setupEnvironment(stage,  viewWidth, viewHeight, collapsibleMenu);
+        AgentInspectorPane inspectorPane = new AgentInspectorPane(() -> environment.clearSelectedAgent());
+        StackPane.setAlignment(inspectorPane, Pos.TOP_RIGHT);
+        StackPane.setMargin(inspectorPane, new Insets(15));
+
+        setupEnvironment(stage,  viewWidth, viewHeight, collapsibleMenu, inspectorPane);
         setupMenu(collapsibleMenu);
 
         // Populate Entities
@@ -57,7 +62,7 @@ public class App extends Application {
 
         // Layer Controls over Canvas using StackPane
         StackPane gamePane = new StackPane();
-        gamePane.getChildren().addAll(environment, collapsibleMenu);
+        gamePane.getChildren().addAll(environment, collapsibleMenu, inspectorPane);
 
         debugBox = new HBox();
         DebugMessage framesPerSecond = new DebugMessage(
@@ -109,7 +114,7 @@ public class App extends Application {
         });
     }
 
-    private void setupEnvironment(@NotNull Stage stage, int viewWidth, int viewHeight, TitledPane editorMenu) {
+    private void setupEnvironment(@NotNull Stage stage, int viewWidth, int viewHeight, TitledPane editorMenu, AgentInspectorPane inspectorPane) {
         Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
         double aspectRatio = screenBounds.getHeight() / screenBounds.getWidth();
         int worldWidth = (int) (7000 * 3.0);
@@ -119,7 +124,16 @@ public class App extends Application {
         Runnable onSimModeStart = () -> editorMenu.visibleProperty().set(false);
         Runnable onEditModeStart = () -> editorMenu.visibleProperty().set(true);
 
-        environment = new Environment(viewWidth, viewHeight, worldWidth, worldHeight, zoom, debugMode, onSimModeStart, onEditModeStart);
+        environment = new Environment(viewWidth, viewHeight, worldWidth, worldHeight, zoom, debugMode,
+            onSimModeStart, onEditModeStart,
+            agent -> {
+                if (agent != null) {
+                    inspectorPane.showAgent(agent);
+                } else {
+                    inspectorPane.hide(); // Clicked empty space
+                }
+            }
+        );
 
         environment.widthProperty().bind(stage.widthProperty());
         environment.heightProperty().bind(stage.heightProperty());

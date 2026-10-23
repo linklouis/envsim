@@ -24,7 +24,7 @@ public abstract class Entity {
         this.position = position;
     }
 
-    public void getAction() {
+    public void getDecision() {
 
     }
 
@@ -32,7 +32,7 @@ public abstract class Entity {
         // Default: stationary entities do nothing on step
     }
 
-    public abstract void paint(GraphicsContext gc);
+    public abstract void paint(GraphicsContext gc, boolean isDebugMode);
 
     public boolean isColliding(@NotNull Entity other) {
         double r = radius + other.getRadius();

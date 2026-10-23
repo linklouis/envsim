@@ -1,13 +1,10 @@
 package edu.msoe.envsim.entities;
 
-import edu.msoe.envsim.utilities.AgentData;
+import edu.msoe.envsim.utilities.*;
 import edu.msoe.envsim.Environment;
 import edu.msoe.envsim.nn.ActivationFunction;
 import edu.msoe.envsim.nn.AgentDecision;
 import edu.msoe.envsim.nn.NeuralNetwork;
-import edu.msoe.envsim.utilities.SpeciesColorMapper;
-import edu.msoe.envsim.utilities.TerrainType;
-import edu.msoe.envsim.utilities.Vector;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
@@ -45,7 +42,7 @@ public class Agent  extends Entity {
      * The amount of health lost from attacking an Agent larger than yourself.
      */
     private static final double FAILED_PREDATION_COST = 3;
-    private static final double PREDATION_EFFICIENCY = 0.7;
+    private static final double PREDATION_EFFICIENCY = 0.9;
     /**
      * The amount of energy an agent needs to start regenerating health.
      */
@@ -58,9 +55,7 @@ public class Agent  extends Entity {
     public static final double SPEED_COST = 0.006;
     public static final double SIZE_COST = 0.0003;
     public static final int NUM_INPUTS = 6;
-    public static final double MUTATION_CHANCE = 0.1;
-    public static final double NEURON_MUTATION_SIZE = 0.02;
-    public static final double ATTRIBUTE_MUTATION_SIZE = 0.2;
+
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
@@ -142,6 +137,7 @@ public class Agent  extends Entity {
 
     private final Agent parent;
     private AgentDecision decision;
+    private String action = "WANDER";
 
 
 
@@ -320,7 +316,7 @@ public class Agent  extends Entity {
 
     private void reproduce() {
         energy /= 2;
-        new Agent(getAgentData(), environment, parent);
+        new Agent(getAgentData().mutate(), environment, parent);
         timeSinceReproduction = 0;
     }
 
@@ -456,7 +452,7 @@ public class Agent  extends Entity {
      * TODO: Pass in how related the current agent is to the one it's seeing
      */
     @Override
-    public void getAction() {
+    public void getDecision() {
         float[] inputs = getInput();
         float[] output = brain.predict(inputs);
 
@@ -472,20 +468,24 @@ public class Agent  extends Entity {
             target = directionTo(bestFood);
             turn = getTurnToTarget(target);
             desiresPredation = false;
+            action = "FORAGE";
         } else if (targetPrey > targetFood && targetPrey > runFromThreat && targetPrey > BOOLEAN_DECISION_THRESHOLD) {
             target = directionTo(bestPrey);
             turn = getTurnToTarget(target);
             desiresPredation = true;
+            action = "HUNT";
         } else if (runFromThreat > targetFood && runFromThreat > targetPrey && runFromThreat > BOOLEAN_DECISION_THRESHOLD) {
             target = directionTo(worstThreat).scale(-1);
             turn = getTurnToTarget(target);
             desiresPredation = false;
+            action = "ESCAPE";
         } else {
             target = direction;
             double brainTurn = ((output[6] * 2) - 1) * turnSpeed;
             double jitter = ThreadLocalRandom.current().nextDouble(-1, 1) * WANDER_JITTER_DEGREES;
             turn = brainTurn * 0.25 + jitter;
             desiresPredation = false;
+            action = "WANDER";
         }
 
         this.decision =  new AgentDecision(
@@ -509,14 +509,14 @@ public class Agent  extends Entity {
 
 
     @Override
-    public void paint(@NotNull GraphicsContext gc) {
+    public void paint(@NotNull GraphicsContext gc, boolean drawVisionRadius) {
         gc.setFill(getColor());
         gc.fillOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
         gc.setStroke(Color.WHITE);
         gc.setLineWidth(3);
         gc.strokeOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
 
-        if (environment.isDebugMode()) {
+        if (drawVisionRadius) {
             gc.setLineWidth(1);
             gc.strokeOval(x() - visionRadius, y() - visionRadius, visionRadius * 2, visionRadius * 2);
         }
@@ -537,10 +537,6 @@ public class Agent  extends Entity {
         return super.getPosition();
     }
 
-    public Vector getDirection() {
-        return direction;
-    }
-
     private Vector getBounds() {
         return environment.getSize();
     }
@@ -553,26 +549,22 @@ public class Agent  extends Entity {
         return visionRadius * VISION_QUALITY_COST + Math.pow(getRadius(), 2) * SIZE_COST;
     }
 
-    private double mutateAttribute(double attribute) {
-        return attribute + (attribute * (Math.random() - 0.5) * ATTRIBUTE_MUTATION_SIZE);
-    }
-
     @Contract(" -> new")
-    private @NotNull AgentData getAgentData() {
+    public @NotNull AgentData getAgentData() {
         return new AgentData(
-                getPosition().add(Vector.random(100 + getRadius() * 2)),
+                getPosition(),
                 getColor(),
-                this.energy, // TODO: Children should actually get the cost subtracted from each parent's health (What did I mean by this?)
-                mutateAttribute(this.maxSpeed),
-                mutateAttribute(this.turnSpeed),
-                mutateAttribute(this.size),
-                mutateAttribute(this.visionRadius),
-                mutateAttribute(this.healthRegenSpeed),
-                Math.clamp(mutateAttribute(this.swimSkill), 0, 1),
-                this.brain.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
-                this.foodEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
-                this.preyEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
-                this.predatorEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE)
+                this.energy,
+                this.maxSpeed,
+                this.turnSpeed,
+                this.size,
+                this.visionRadius,
+                this.healthRegenSpeed,
+                this.swimSkill,
+                this.brain,
+                this.foodEvaluator,
+                this.preyEvaluator,
+                this.predatorEvaluator
         );
     }
 
@@ -580,11 +572,19 @@ public class Agent  extends Entity {
         energy += change * GLOBAL_ENERGY_LOSS_FACTOR;
     }
 
-    private double calculateCloneThreshold() {
-        return CLONE_THRESHOLD * getRadius();
+    public double calculateCloneThreshold() {
+        return CLONE_THRESHOLD * Math.pow(getRadius(), 0.8);
     }
 
-    private TerrainType getTerrainType() {
+    public TerrainType getTerrainType() {
         return environment.getStandingTerrainType(this);
+    }
+
+    public boolean desiresPredation() {
+        return decision.desiresPredation();
+    }
+
+    public String getAction() {
+        return action;
     }
 }
