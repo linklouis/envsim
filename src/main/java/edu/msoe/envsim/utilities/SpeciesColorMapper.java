@@ -1,12 +1,10 @@
 package edu.msoe.envsim.utilities;
 
-import edu.msoe.envsim.nn.NeuralNetwork;
+import edu.msoe.envsim.entities.Agent;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 public class SpeciesColorMapper {
@@ -21,10 +19,7 @@ public class SpeciesColorMapper {
     /**
      * Calculates base species color (Hue & Saturation at constant lightness) from explicit genetic parameters.
      */
-    public Color getBaseSpeciesColor(double maxSpeed, double size, double visionRadius, double healthRegenSpeed,
-                                     @NotNull NeuralNetwork brain, @NotNull NeuralNetwork foodEvaluator,
-                                     @NotNull NeuralNetwork preyEvaluator, @NotNull NeuralNetwork predatorEvaluator) {
-        float[] genome = extractGenome(maxSpeed, size, visionRadius, healthRegenSpeed, brain, foodEvaluator, preyEvaluator, predatorEvaluator);
+    public Color getBaseSpeciesColor(float[] genome) {
 
         if (projectionMatrix == null || projectionMatrix[0].length != genome.length) {
             initializeMatrix(genome.length);
@@ -41,28 +36,6 @@ public class SpeciesColorMapper {
             projectionMatrix[0][i] = (float) (random.nextGaussian() * 0.35);
             projectionMatrix[1][i] = (float) (random.nextGaussian() * 0.35);
         }
-    }
-
-    private float @NotNull [] extractGenome(double maxSpeed, double size, double visionRadius, double healthRegenSpeed,
-                                            @NotNull NeuralNetwork brain, @NotNull NeuralNetwork foodEvaluator,
-                                            @NotNull NeuralNetwork preyEvaluator, @NotNull NeuralNetwork predatorEvaluator) {
-        List<Float> traits = new ArrayList<>();
-
-        traits.add((float) maxSpeed);
-        traits.add((float) size);
-        traits.add((float) visionRadius);
-        traits.add((float) healthRegenSpeed);
-
-        traits.addAll(brain.getWeights());
-        traits.addAll(foodEvaluator.getWeights());
-        traits.addAll(preyEvaluator.getWeights());
-        traits.addAll(predatorEvaluator.getWeights());
-
-        float[] genome = new float[traits.size()];
-        for (int i = 0; i < traits.size(); i++) {
-            genome[i] = traits.get(i);
-        }
-        return genome;
     }
 
     private float @NotNull [] getSpeciesRGB(float @NotNull [] genome) {

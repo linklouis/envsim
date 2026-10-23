@@ -1,9 +1,13 @@
 package edu.msoe.envsim.utilities;
 
+import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.nn.NeuralNetwork;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 public record AgentData(Vector position, Color color, double energy, double speed, double turnSpeed, double size,

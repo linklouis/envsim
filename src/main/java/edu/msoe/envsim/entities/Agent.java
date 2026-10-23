@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -42,7 +43,7 @@ public class Agent  extends Entity {
      * The amount of health lost from attacking an Agent larger than yourself.
      */
     private static final double FAILED_PREDATION_COST = 3;
-    private static final double PREDATION_EFFICIENCY = 0.9;
+    private static final double PREDATION_EFFICIENCY = 1.0;
     /**
      * The amount of energy an agent needs to start regenerating health.
      */
@@ -86,12 +87,16 @@ public class Agent  extends Entity {
     /**
      * How close an entity must be for the Agent to see it.
      * Higher values consume more {@link energy} each time step.
-     * TODO: Should the agent be able to see obstacles? (Probably not) [Why did I say probably not?]
+     * TODO: Should the agent be able to see obstacles? (Probably not) [Why did I say probably not? (Cuz it's slow?)]
      */
     private final double visionRadius;
     private final double healthRegenSpeed;
     private final double turnSpeed;
     private double swimSkill;
+
+    private float[] genome;
+    private float genomeNormSq;
+    private final float[] evalInputBuffer = new float[3];
 
 
     // State:
@@ -104,7 +109,6 @@ public class Agent  extends Entity {
      * Can be replenished by eating.
      */
     private double energy;
-    private boolean desiresReproduction = true;
     /**
      * TODO: Can get rid of if we keep only cloning
      * TODO: Actually maybe don't so carnivores don't keep eating their kids?
@@ -183,10 +187,12 @@ public class Agent  extends Entity {
 
         direction = Vector.random(1);
 
-        this.baseSpeciesColor = COLOR_MAPPER.getBaseSpeciesColor(
-                maxSpeed, size, visionRadius, healthRegenSpeed,
-                brain, foodEvaluator, preyEvaluator, predatorEvaluator
-        );
+        genome = extractGenome();
+        float norm = 0;
+        for (float val : genome) { norm += val * val; }
+        this.genomeNormSq = norm;
+
+        this.baseSpeciesColor = COLOR_MAPPER.getBaseSpeciesColor(genome);
         updateColor();
     }
 
@@ -198,6 +204,50 @@ public class Agent  extends Entity {
      */
     public Agent(@NotNull AgentData parent1Data, @NotNull AgentData parent2Data, @NotNull Environment env) {
         this(parent1Data.energy() > parent2Data.energy() ? parent1Data : parent2Data, env, null); // TODO
+    }
+
+    private float @NotNull [] extractGenome() {
+        List<Float> traits = new ArrayList<>();
+
+        traits.add((float) maxSpeed);
+        traits.add((float) turnSpeed);
+        traits.add((float) size);
+        traits.add((float) visionRadius);
+        traits.add((float) healthRegenSpeed);
+        traits.add((float) swimSkill);
+
+        traits.addAll(brain.getWeights());
+        traits.addAll(foodEvaluator.getWeights());
+        traits.addAll(preyEvaluator.getWeights());
+        traits.addAll(predatorEvaluator.getWeights());
+
+        float[] genome = new float[traits.size()];
+        for (int i = 0; i < traits.size(); i++) {
+            genome[i] = traits.get(i);
+        }
+        return genome;
+    }
+
+    @Contract(pure = true)
+    public double compareGenomeSlow(@NotNull Agent other) {
+        double diff = 0;
+        for (int i = 0; i < this.genome.length; i++) {
+            double delta = this.genome[i] - other.genome[i];
+            diff += delta * delta;
+        }
+        return diff;
+    }
+
+    public double compareGenome(@NotNull Agent other) {
+        double dotProduct = 0;
+        float[] g1 = this.genome;
+        float[] g2 = other.genome;
+
+        for (int i = 0; i < g1.length; i++) {
+            dotProduct += g1[i] * g2[i];
+        }
+
+        return this.genomeNormSq + other.genomeNormSq - (2 * dotProduct);
     }
 
     @Override
@@ -334,7 +384,7 @@ public class Agent  extends Entity {
     }
 
     private static @NotNull NeuralNetwork newFoodEvaluator() {
-        NeuralNetwork neuralNetwork = new NeuralNetwork(2);
+        NeuralNetwork neuralNetwork = new NeuralNetwork(3);
         neuralNetwork.newLayer(3);
         neuralNetwork.newLayer(1,ActivationFunction.sigmoid());
 
@@ -345,7 +395,7 @@ public class Agent  extends Entity {
      * TODO: consider velocity?
       */
     private static @NotNull NeuralNetwork newAgentEvaluator() {
-        NeuralNetwork neuralNetwork = new NeuralNetwork(2);
+        NeuralNetwork neuralNetwork = new NeuralNetwork(3);
         neuralNetwork.newLayer(3);
         neuralNetwork.newLayer(1,ActivationFunction.sigmoid());
 
@@ -374,8 +424,6 @@ public class Agent  extends Entity {
     }
 
     private float evaluateFood(@NotNull List<Entity> entitiesInRange) {
-//        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
-//                entity -> entity instanceof Food && entity.getRadius() > 0, visionRadius);
 
         float maxValue = 0;
         Entity mostValuableFood = null;
@@ -400,18 +448,17 @@ public class Agent  extends Entity {
     }
 
     private float evaluatePrey(@NotNull List<Entity> entitiesInRange) {
-//        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
-//                entity -> entity instanceof Agent, visionRadius);
-
         float maxValue = 0;
         Entity mostValuablePrey = null;
 
         for  (Entity entity : entitiesInRange) {
             if (!(entity instanceof Agent)) continue;
-            float value = preyEvaluator.predict(new float[] {
-                    (float) (entity.getRadius() / this.getRadius()),
-                    (float) this.distance(entity)
-            })[0];
+
+            evalInputBuffer[0] = (float) (entity.getRadius() / this.getRadius());
+            evalInputBuffer[1] = (float) this.distance(entity);
+            evalInputBuffer[2] = (float) compareGenome((Agent) entity);
+
+            float value = preyEvaluator.predict(evalInputBuffer)[0];
 
             if (value > maxValue) {
                 maxValue = value;
@@ -424,18 +471,16 @@ public class Agent  extends Entity {
     }
 
     private float evaluateThreats(@NotNull List<Entity> entitiesInRange) {
-//        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(),
-//                entity -> entity instanceof Agent, visionRadius);
-
         float maxValue = 0;
         Entity mostThreateningPredator = null;
 
         for  (Entity entity : entitiesInRange) {
             if (!(entity instanceof Agent)) continue;
-            float value = predatorEvaluator.predict(new float[] {
-                    (float) (entity.getRadius() / this.getRadius()),
-                    (float) this.distance(entity)
-            })[0];
+            evalInputBuffer[0] = (float) (entity.getRadius() / this.getRadius());
+            evalInputBuffer[1] = (float) this.distance(entity);
+            evalInputBuffer[2] = (float) compareGenome((Agent) entity);
+
+            float value = predatorEvaluator.predict(evalInputBuffer)[0];
 
             if (value > maxValue) {
                 maxValue = value;
