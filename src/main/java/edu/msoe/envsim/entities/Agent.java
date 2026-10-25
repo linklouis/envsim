@@ -288,8 +288,6 @@ public class Agent  extends MobileEntity {
             die();
             return;
         }
-
-        updateColor();
     }
 
     private void move(double turn, double speed) {
@@ -536,6 +534,7 @@ public class Agent  extends MobileEntity {
 
     @Override
     public void paint(@NotNull GraphicsContext gc, boolean drawVisionRadius) {
+        updateColor();
         gc.setFill(getColor());
         gc.fillOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
         gc.setStroke(Color.WHITE);
