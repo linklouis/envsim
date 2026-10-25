@@ -13,6 +13,7 @@ import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -165,7 +166,7 @@ public class Environment extends Canvas {
         // Zooming controls
         setOnScroll(e -> {
             double rawZoomFactor = e.getDeltaY() > 0 ? 1.05 : 1 / 1.05;
-            double newScale = Math.clamp(scale * rawZoomFactor, 0.1, 10.0);
+            double newScale = Math.clamp(scale * rawZoomFactor, 0.07, 10.0);
             double actualZoomFactor = newScale / scale;
 
             double mouseX = e.getX();
@@ -402,6 +403,57 @@ public class Environment extends Canvas {
             }
         }
         resetCanvas();
+    }
+
+    /**
+     * Saves the current terrain grid data to a file.
+     * Source: Google Gemini
+     */
+    public void saveTerrain(File file) throws IOException {
+        int width = terrainData.length;
+        int height = terrainData[0].length;
+
+        try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)))) {
+            out.writeInt(width);
+            out.writeInt(height);
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    out.writeInt(terrainData[x][y].ordinal());
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads terrain grid data from a file, updates the cache image, and refreshes the canvas.
+     * Source: Google Gemini
+     */
+    public void loadTerrain(File file) throws IOException {
+        TerrainType[] values = TerrainType.values();
+
+        try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
+            int width = in.readInt();
+            int height = in.readInt();
+
+            if (width != terrainData.length || height != terrainData[0].length) {
+                throw new IllegalArgumentException("Terrain dimensions do not match the current world configuration!");
+            }
+
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    int ordinal = in.readInt();
+                    TerrainType type = values[ordinal];
+                    setTerrainTile(x, y, type);
+                }
+            }
+        }
+        resetCanvas();
+    }
+
+    public void resetCamera(double windowWidth) {
+        scale = windowWidth / worldWidth;
+        translateX = 0;
+        translateY = 0;
     }
 
 

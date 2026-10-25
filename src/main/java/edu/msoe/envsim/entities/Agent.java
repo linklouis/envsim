@@ -27,7 +27,7 @@ public class Agent  extends Entity {
      * The energy at which an entity will clone.
      * TODO: Have this depend on max size?
      */
-    public static final int CLONE_THRESHOLD = 10;
+    public static final int CLONE_THRESHOLD = 50;
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
      */
@@ -38,11 +38,11 @@ public class Agent  extends Entity {
      * Scales with the size ratio (so it's easier to eat something smaller.)
      * </p>
      */
-    private static final double PREDATION_COST = 7;
+    private static final double PREDATION_COST = 5;
     /**
      * The amount of health lost from attacking an Agent larger than yourself.
      */
-    private static final double FAILED_PREDATION_COST = 3;
+    private static final double FAILED_PREDATION_COST = 2.5;
     private static final double PREDATION_EFFICIENCY = 1.0;
     /**
      * The amount of energy an agent needs to start regenerating health.
@@ -54,14 +54,14 @@ public class Agent  extends Entity {
      */
     private static final double VISION_QUALITY_COST = 0.0006;
     public static final double SPEED_COST = 0.006;
-    public static final double SIZE_COST = 0.0003;
+    public static final double SIZE_COST = 0.00025;
     public static final int NUM_INPUTS = 6;
 
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.35;
-    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.1;
+    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.07;
     private static final double WANDER_JITTER_DEGREES = 4;
 
     private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
@@ -150,8 +150,8 @@ public class Agent  extends Entity {
         AgentData agentData = new AgentData(
                 position,
                 color,
-                CLONE_THRESHOLD * radius - 1,
-                Math.random() * 3 + 0.4,
+                calculateCloneThreshold(radius) - 1,
+                Math.random() * 2.5 + 0.4,
                 Math.random() * 180 + 50,
                 radius,
                 Math.random() * 500 + 150,
@@ -596,8 +596,12 @@ public class Agent  extends Entity {
         energy += change * GLOBAL_ENERGY_LOSS_FACTOR;
     }
 
+    public static double calculateCloneThreshold(double radius) {
+        return CLONE_THRESHOLD;// * Math.pow(radius, 0.5);
+    }
+
     public double calculateCloneThreshold() {
-        return CLONE_THRESHOLD * Math.pow(getRadius(), 0.8);
+        return calculateCloneThreshold(getRadius());
     }
 
     public TerrainType getTerrainType() {
