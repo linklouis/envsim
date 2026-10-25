@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class Agent  extends Entity {
+public class Agent  extends MobileEntity {
     /**
      * TODO: Should maybe scale with radius?
      * TODO: Should definitely scale with radius.
@@ -54,14 +54,14 @@ public class Agent  extends Entity {
      */
     private static final double VISION_QUALITY_COST = 0.0006;
     public static final double SPEED_COST = 0.006;
-    public static final double SIZE_COST = 0.00025;
+    public static final double SIZE_COST = 0.00028;
     public static final int NUM_INPUTS = 6;
 
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.35;
-    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.07;
+    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.09;
     private static final double WANDER_JITTER_DEGREES = 4;
 
     private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
@@ -146,7 +146,8 @@ public class Agent  extends Entity {
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
-        Vector position = Vector.random(new Vector(env.getSize().x() / 2, 0), env.getSize());
+//        Vector position = Vector.random(new Vector(env.getSize().x() / 2, 0), env.getSize());
+        Vector position = Vector.random(new Vector(0, 0), env.getSize());
         AgentData agentData = new AgentData(
                 position,
                 color,
@@ -156,7 +157,8 @@ public class Agent  extends Entity {
                 radius,
                 Math.random() * 500 + 150,
                 Math.random(),
-                Math.pow(Math.random(), 0.2),
+//                Math.pow(Math.random(), 0.2),
+                Math.random(),
                 newBrain(),
                 newFoodEvaluator(),
                 newAgentEvaluator(),
@@ -597,7 +599,7 @@ public class Agent  extends Entity {
     }
 
     public static double calculateCloneThreshold(double radius) {
-        return CLONE_THRESHOLD;// * Math.pow(radius, 0.5);
+        return CLONE_THRESHOLD * Math.pow(radius, 0.5);
     }
 
     public double calculateCloneThreshold() {

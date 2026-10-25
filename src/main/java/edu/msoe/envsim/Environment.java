@@ -2,6 +2,7 @@ package edu.msoe.envsim;
 
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Entity;
+import edu.msoe.envsim.entities.MobileEntity;
 import edu.msoe.envsim.utilities.*;
 import edu.msoe.envsim.utilities.Vector;
 import javafx.animation.AnimationTimer;
@@ -34,9 +35,11 @@ public class Environment extends Canvas {
     private final WritableImage terrainCacheImage;
     private final PixelWriter terrainPixelWriter;
 
-    private final List<Entity> entities = new CopyOnWriteArrayList<>();
-    private final Queue<Entity> pendingEntities = new ConcurrentLinkedQueue<>();
-    private final Queue<Entity> toRemove = new ConcurrentLinkedQueue<>();
+    private final List<MobileEntity> mobileEntities = new CopyOnWriteArrayList<>();
+    private final Queue<MobileEntity> pendingMobileEntities = new ConcurrentLinkedQueue<>();
+    private final Queue<MobileEntity> mobileEntitiesToRemove = new ConcurrentLinkedQueue<>();
+
+    private final List<Entity> stationaryEntities = new ArrayList<>();
 
     private final List<DebugMessage> debugMessages = new ArrayList<>();
     private boolean debugMode;
@@ -140,7 +143,7 @@ public class Environment extends Canvas {
                 double worldY = (e.getY() - translateY) / scale;
                 Vector clickPosition = new Vector(worldX, worldY);
 
-                for (Entity entity : entities) {
+                for (Entity entity : mobileEntities) {
                     if (entity instanceof Agent agent) {
                         if (agent.getPosition().distanceSquared(clickPosition) <= agent.getRadius() * agent.getRadius()) {
                             selectedAgent = agent;
@@ -329,7 +332,11 @@ public class Environment extends Canvas {
     private void visualStep() {
         resetCanvas();
 
-        for (Entity entity : entities) {
+        for (Entity entity : stationaryEntities) {
+            entity.paint(gc, entity == selectedAgent || debugMode);
+        }
+
+        for (MobileEntity entity : mobileEntities) {
             entity.paint(gc, entity == selectedAgent || debugMode);
         }
 
@@ -344,31 +351,29 @@ public class Environment extends Canvas {
         graphicsClock.update();
     }
 
-    /**
-     * TODO: Add a way to reduce precision for speed
-     */
     private void simulationStep() {
         // Flush newly created entities into main list before iterating
-        if (!pendingEntities.isEmpty()) {
-            for (Entity entity : pendingEntities) {
-                entity.onRegistered();
+        if (!pendingMobileEntities.isEmpty()) {
+            for (Entity entity : pendingMobileEntities) {
+                entity.onRegistered(); // TODO: Can I modify the add function of the collection to do the registration?
             }
-            entities.addAll(pendingEntities);
-            pendingEntities.clear();
+            mobileEntities.addAll(pendingMobileEntities);
+            pendingMobileEntities.clear();
         }
 
-        if (!toRemove.isEmpty()) {
-            for (Entity entity : toRemove) {
-                getCell(entity.getCellIndex()).remove(entity);
+        if (!mobileEntitiesToRemove.isEmpty()) {
+            for (Entity entity : mobileEntitiesToRemove) {
+                getCell(entity.getCellIndex()).remove(entity); // TODO: Can I modify the remove function of the collection to do the removal?
             }
-            entities.removeAll(toRemove);
-            toRemove.clear();
+            mobileEntities.removeAll(mobileEntitiesToRemove);
+            mobileEntitiesToRemove.clear();
         }
 
         long t0 = System.nanoTime();
-        entities.parallelStream().forEach(Entity::getDecision);
+        mobileEntities.parallelStream().forEach(MobileEntity::getDecision);
         long t1 = System.nanoTime();
-        for (Entity e : entities) e.step();
+        for (MobileEntity e : mobileEntities) e.step();
+        for (Entity e : stationaryEntities) e.step();
         long t2 = System.nanoTime();
         decideMs = decideMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
         stepMs   = stepMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
@@ -462,11 +467,20 @@ public class Environment extends Canvas {
     }
 
     public void addEntity(Entity entity) {
-        pendingEntities.add(entity);
+        if (entity instanceof MobileEntity) {
+            pendingMobileEntities.add((MobileEntity) entity);
+        } else {
+            stationaryEntities.add(entity);
+            entity.onRegistered();
+        }
     }
 
     public void removeEntity(Entity entity) {
-        toRemove.add(entity);
+        if (entity instanceof MobileEntity) {
+            mobileEntitiesToRemove.add((MobileEntity) entity);
+        } else {
+            throw new RuntimeException("Cannot remove entity of type " + entity.getClass().getName() + ". Must inherit from MobileEntity.");
+        }
     }
 
     public void addDebugMessage(DebugMessage debugMessage) {
@@ -618,7 +632,7 @@ public class Environment extends Canvas {
 
     public int getNumAgents() {
         int num = 0;
-        for (Entity entity : entities) {
+        for (Entity entity : mobileEntities) {
             if (entity instanceof Agent) {
                 num++;
             }

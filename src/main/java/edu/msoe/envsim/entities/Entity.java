@@ -20,16 +20,11 @@ public abstract class Entity {
         this.radius = radius;
         this.color = color;
         this.updateCell = env::updateCell;
-        env.addEntity(this);
         this.position = position;
-    }
-
-    public void getDecision() {
-
+        env.addEntity(this);
     }
 
     public void step() {
-        // Default: stationary entities do nothing on step
     }
 
     public abstract void paint(GraphicsContext gc, boolean isDebugMode);
@@ -44,9 +39,10 @@ public abstract class Entity {
         cellIndex = updateCell.apply(this);
         registered = true;
     }
-    public boolean isRegistered() { return registered; }
 
-
+    public boolean isRegistered() {
+        return registered;
+    }
 
     public double distance(@NotNull Entity other) {
         return other.getPosition().distance(getPosition());

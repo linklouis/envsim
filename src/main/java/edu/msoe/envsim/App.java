@@ -69,7 +69,7 @@ public class App extends Application {
         VBox menuLayer = setupMenu(stage);
 
         // Populate Entities
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 500; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
 
             new Agent(Math.random() * 30 + 3, randomColor, environment);
@@ -265,6 +265,7 @@ public class App extends Application {
             b.setFocusTraversable(false);
         }
 
+        // TODO: If saving over an already existing file, do confirmation popup
         saveButton.setOnAction(_ -> {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Save Terrain Background");
