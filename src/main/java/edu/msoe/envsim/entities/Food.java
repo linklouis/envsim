@@ -26,7 +26,7 @@ public class Food extends Entity {
     }
 
     @Override
-    public void step() {
+    public void parallelStep() {
         if (regrowthTimer == 0) {
             setRadius(getRadius() + GROWTH_SPEED * (maxSize - getRadius()));
         } else {

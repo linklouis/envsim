@@ -24,6 +24,8 @@ public abstract class Entity {
         env.addEntity(this);
     }
 
+    public abstract void parallelStep();
+
     public void step() {
     }
 

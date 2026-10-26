@@ -86,6 +86,25 @@ public class App extends Application {
         StackPane gamePane = new StackPane();
         gamePane.getChildren().addAll(environment, menuLayer, inspectorPane);
 
+        setupDebugPane();
+
+        VBox root  = new VBox();
+        root.getChildren().addAll(debugBox, gamePane);
+
+        Scene scene = new Scene(root, viewWidth, viewHeight);
+        stage.setScene(scene);
+        stage.setTitle("EnvSim");
+        stage.setOnCloseRequest(_ -> {
+            Platform.exit();
+            System.exit(0);
+        });
+        stage.show();
+
+        setupKeyboardInputs(scene, environment);
+        setupClickAwayClose(scene, menuLayer, inspectorPane);
+    }
+
+    private void setupDebugPane() {
         debugBox = new HBox();
 
         DebugMessage framesPerSecond = new DebugMessage(
@@ -111,26 +130,7 @@ public class App extends Application {
         );
 
         debugBox.getChildren().addAll(framesPerSecond, ticksPerSecond, numAgents, listMs, decideMs, stepMs, TpSpA);
-
-
-
         toggleDebugMode(debugMode);
-
-
-        VBox root  = new VBox();
-        root.getChildren().addAll(debugBox, gamePane);
-
-        Scene scene = new Scene(root, viewWidth, viewHeight);
-        stage.setScene(scene);
-        stage.setTitle("EnvSim");
-        stage.setOnCloseRequest(_ -> {
-            Platform.exit();
-            System.exit(0);
-        });
-        stage.show();
-
-        setupKeyboardInputs(scene, environment);
-        setupClickAwayClose(scene, menuLayer, inspectorPane);
     }
 
     /**
@@ -218,7 +218,7 @@ public class App extends Application {
         Label title = new Label("Menu");
         title.setStyle(TITLE_STYLE);
 
-        Label simSpeedLabel = new Label();
+        Label simSpeedLabel = new Label();  // TODO: Allow the user to type in a selected tick speed
         simSpeedLabel.setStyle(VALUE_STYLE);
 
         simSpeed = new Slider(0, 5000, 0);
@@ -238,7 +238,7 @@ public class App extends Application {
                 simSpeedLabel.setText("Max update rate: " + newValue.intValue());
             }
         });
-        simSpeed.setValue(60);//simSpeed.getMax());
+        simSpeed.setValue(simSpeed.getMax());
 
         Button resetCamera =  new Button("Reset Cam");
         resetCamera.setStyle(BUTTON_STYLE);
@@ -269,6 +269,9 @@ public class App extends Application {
         }
 
         // TODO: If saving over an already existing file, do confirmation popup
+        // TODO: Allow user to set default terrain file, or just load the most recently selected one
+        // TODO: Have some base terrain that you can reset to with just one button click (Or like a few templates you can select through a menu)
+        // TODO: Have all saved terrains be accessable through a menu rather than making the user manage the files
         saveButton.setOnAction(_ -> {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Save Terrain Background");

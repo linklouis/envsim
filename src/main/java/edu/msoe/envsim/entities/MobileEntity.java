@@ -12,6 +12,5 @@ public abstract class MobileEntity extends Entity {
     }
 
     public abstract void getDecision();
-    public abstract void parallelStep();
     public abstract void findCollisions();
 }

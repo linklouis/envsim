@@ -378,7 +378,8 @@ public class Environment extends Canvas {
         mobileEntities.parallelStream().forEach(MobileEntity::parallelStep);
         mobileEntities.parallelStream().forEach(MobileEntity::findCollisions);
         for (MobileEntity e : mobileEntities) e.step();
-        for (Entity e : stationaryEntities) e.step();
+//        for (Entity e : stationaryEntities) e.step();
+        stationaryEntities.parallelStream().forEach(Entity::parallelStep);
         long t3 = System.nanoTime();
         listMs = listMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
         decideMs   = decideMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
@@ -473,8 +474,8 @@ public class Environment extends Canvas {
     }
 
     public void addEntity(Entity entity) {
-        if (entity instanceof MobileEntity) {
-            pendingMobileEntities.add((MobileEntity) entity);
+        if (entity instanceof MobileEntity mEntity) {
+            pendingMobileEntities.add(mEntity);
         } else {
             stationaryEntities.add(entity);
             entity.onRegistered();
@@ -482,8 +483,8 @@ public class Environment extends Canvas {
     }
 
     public void removeEntity(Entity entity) {
-        if (entity instanceof MobileEntity) {
-            mobileEntitiesToRemove.add((MobileEntity) entity);
+        if (entity instanceof MobileEntity mEntity) {
+            mobileEntitiesToRemove.add(mEntity);
         } else {
             throw new RuntimeException("Cannot remove entity of type " + entity.getClass().getName() + ". Must inherit from MobileEntity.");
         }

@@ -307,7 +307,7 @@ public class Agent  extends MobileEntity {
         Vector next;
         if (energy >= cost) {
             double functionalSpeed = effort * Math.abs(isOnLand() - swimSkill);
-            next = getPosition().add(direction.atMagnitude(functionalSpeed));
+            next = getPosition().add(direction.scale(functionalSpeed));
             changeEnergy(-cost);
         } else {
             next = getPosition();
@@ -334,9 +334,6 @@ public class Agent  extends MobileEntity {
     private void interact(Agent agent, boolean attemptPredation) {
         if (!this.alive || !agent.alive) return;
 
-//        if (desiresReproduction && agent.desiresReproduction && isSameSpecies(this, agent)) {
-//            reproduce(this, agent);
-//        } else
         if (attemptPredation) {
             attemptPredation(agent);
         }
@@ -435,48 +432,48 @@ public class Agent  extends MobileEntity {
     @Contract("_ -> new")
     private float @NotNull [] evaluateEntities(@NotNull List<Entity> entitiesInRange) {
         float maxFoodValue = 0;
-        Entity mostValuableFood = null;
+        Food mostValuableFood = null;
         float maxPreyValue = 0;
-        Entity mostValuablePrey = null;
+        Agent mostValuablePrey = null;
         float maxThreatValue = 0;
-        Entity mostThreateningPredator = null;
+        Agent mostThreateningPredator = null;
 
         for  (Entity entity : entitiesInRange) {
-            if (entity instanceof Food) {
-                if (entity.getRadius() < 0 || entity == lastEatenFood) continue;
-                float value = evaluateFood(entity);
+            if (entity instanceof Food food) {
+                if (food.getRadius() <= 0 || food == lastEatenFood) continue;
 
+                float value = evaluateFood(food);
                 if (value > maxFoodValue) {
                     maxFoodValue = value;
-                    mostValuableFood = entity;
+                    mostValuableFood = food;
                 }
-            } else if (entity instanceof Agent) {
-                evalInputBuffer[0] = (float) (entity.getRadius() / this.getRadius());
-                evalInputBuffer[1] = (float) this.distance(entity);
-                evalInputBuffer[2] = (float) compareGenome((Agent) entity); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
+            } else if (entity instanceof Agent agent) {
+                evalInputBuffer[0] = (float) (agent.getRadius() / this.getRadius());
+                evalInputBuffer[1] = (float) this.distance(agent);
+                evalInputBuffer[2] = (float) compareGenome(agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
 
                 float preyValue = preyEvaluator.predict(evalInputBuffer)[0];
                 if (preyValue > maxPreyValue) {
                     maxPreyValue = preyValue;
-                    mostValuablePrey = entity;
+                    mostValuablePrey = agent;
                 }
 
                 float threatValue = predatorEvaluator.predict(evalInputBuffer)[0];
                 if (threatValue > maxThreatValue) {
                     maxThreatValue = threatValue;
-                    mostThreateningPredator = entity;
+                    mostThreateningPredator = agent;
                 }
             }
         }
 
-        this.bestFood = (Food) mostValuableFood;
-        this.bestPrey = (Agent) mostValuablePrey;
-        this.worstThreat = (Agent) mostThreateningPredator;
+        this.bestFood = mostValuableFood;
+        this.bestPrey = mostValuablePrey;
+        this.worstThreat = mostThreateningPredator;
         return new float[] {maxFoodValue, maxPreyValue, maxThreatValue};
     }
 
-    private float evaluateFood(@NotNull Entity entity) {
-        return (float) (entity.getRadius() / this.distance(entity));
+    private float evaluateFood(@NotNull Food food) {
+        return (float) (food.getRadius() / this.distance(food));
     }
 
     /**
