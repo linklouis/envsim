@@ -144,6 +144,9 @@ public class Agent  extends MobileEntity {
     private String action = "WANDER";
 
 
+    private List<Entity> collisions;
+
+
 
     public Agent(double radius, Color color, @NotNull Environment env) {
 //        Vector position = Vector.random(new Vector(env.getSize().x() / 2, 0), env.getSize());
@@ -252,8 +255,7 @@ public class Agent  extends MobileEntity {
         return this.genomeNormSq + other.genomeNormSq - (2 * dotProduct);
     }
 
-    @Override
-    public void step() {
+    public void parallelStep() {
         if (!alive) return;
 
         timeSinceReproduction++;
@@ -263,8 +265,29 @@ public class Agent  extends MobileEntity {
         }
 
         move(decision.turn(), decision.speed() * maxSpeed);
+        changeEnergy(-getPassiveEnergyCost());
 
-        for (Entity entity : environment.getCollisions(this, (_, entity2) -> entity2.getRadius() > 0)) {
+        // TODO: Health regen could instead be something the NN can decide to consume energy to do.
+        if (energy > HEALTH_REGENERATION_THRESHOLD && getRadius() < size) {
+            // TODO: Have passive health regen speed be partially based on how low health is?
+            setRadius(getRadius() + (ThreadLocalRandom.current().nextDouble() * healthRegenSpeed));
+            changeEnergy(-(HEALTH_REGEN_COST * healthRegenSpeed)); // TODO: Have the cost be based on how successful the regen was?
+            if (getRadius() > size) {
+                setRadius(size);
+            }
+        }
+    }
+
+    public void findCollisions() {
+        collisions = environment.getCollisions(this, (_, entity2) -> entity2.getRadius() > 0);
+    }
+
+    @Override
+    public void step() {
+        if (!alive) return;
+
+        for (Entity entity : collisions) {
+            if (entity.getRadius() <= 0) continue;
             if (entity instanceof Food food) {
                 eat(food);
             } else if (entity instanceof Agent agent) {
@@ -272,22 +295,7 @@ public class Agent  extends MobileEntity {
             }
         }
 
-        // TODO: Health regen could instead be something the NN can decide to consume energy to do.
-        if (energy > HEALTH_REGENERATION_THRESHOLD && getRadius() < size) {
-            // TODO: Have passive health regen speed be partially based on how low health is?
-            setRadius(getRadius() + (Math.random() * healthRegenSpeed));
-            changeEnergy(-(HEALTH_REGEN_COST * healthRegenSpeed)); // TODO: Have the cost be based on how successful the regen was?
-            if (getRadius() > size) {
-                setRadius(size);
-            }
-        }
-
-        changeEnergy(-getPassiveEnergyCost());
-
-        if (energy <= 0 || getRadius() <= 0) {
-            die();
-            return;
-        }
+        if (energy <= 0 || getRadius() <= 0) die();
     }
 
     private void move(double turn, double speed) {
@@ -445,7 +453,7 @@ public class Agent  extends MobileEntity {
             } else if (entity instanceof Agent) {
                 evalInputBuffer[0] = (float) (entity.getRadius() / this.getRadius());
                 evalInputBuffer[1] = (float) this.distance(entity);
-                evalInputBuffer[2] = (float) compareGenome((Agent) entity);
+                evalInputBuffer[2] = (float) compareGenome((Agent) entity); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
 
                 float preyValue = preyEvaluator.predict(evalInputBuffer)[0];
                 if (preyValue > maxPreyValue) {

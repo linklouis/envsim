@@ -87,6 +87,7 @@ public class Environment extends Canvas {
 
     private final Runnable onSimModeStart;
     private final Runnable onEditModeStart;
+    private double listMs;
     private double decideMs;
     private double stepMs;
 
@@ -352,6 +353,8 @@ public class Environment extends Canvas {
     }
 
     private void simulationStep() {
+        long t0 = System.nanoTime();
+
         // Flush newly created entities into main list before iterating
         if (!pendingMobileEntities.isEmpty()) {
             for (Entity entity : pendingMobileEntities) {
@@ -368,15 +371,18 @@ public class Environment extends Canvas {
             mobileEntities.removeAll(mobileEntitiesToRemove);
             mobileEntitiesToRemove.clear();
         }
-
-        long t0 = System.nanoTime();
-        mobileEntities.parallelStream().forEach(MobileEntity::getDecision);
         long t1 = System.nanoTime();
+
+        mobileEntities.parallelStream().forEach(MobileEntity::getDecision);
+        long t2 = System.nanoTime();
+        mobileEntities.parallelStream().forEach(MobileEntity::parallelStep);
+        mobileEntities.parallelStream().forEach(MobileEntity::findCollisions);
         for (MobileEntity e : mobileEntities) e.step();
         for (Entity e : stationaryEntities) e.step();
-        long t2 = System.nanoTime();
-        decideMs = decideMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
-        stepMs   = stepMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
+        long t3 = System.nanoTime();
+        listMs = listMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
+        decideMs   = decideMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
+        stepMs = stepMs * 0.99 + (t3 - t2) / 1e6 * 0.01;
 
         simClock.update();
     }
@@ -658,6 +664,10 @@ public class Environment extends Canvas {
 
     public void setMaxSimUpdateRate(double maxSimUpdateRate) {
         simClock.setMaxRate(maxSimUpdateRate);
+    }
+
+    public double getListMs() {
+        return listMs;
     }
 
     public double getStepMs() {

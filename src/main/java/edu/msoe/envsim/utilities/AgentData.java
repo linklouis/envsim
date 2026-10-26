@@ -1,13 +1,11 @@
 package edu.msoe.envsim.utilities;
 
-import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.nn.NeuralNetwork;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 
 public record AgentData(Vector position, Color color, double energy, double speed, double turnSpeed, double size,
@@ -18,7 +16,7 @@ public record AgentData(Vector position, Color color, double energy, double spee
     public static final double ATTRIBUTE_MUTATION_SIZE = 0.2;
 
     private double mutateAttribute(double attribute) {
-        return attribute + (attribute * (Math.random() - 0.5) * ATTRIBUTE_MUTATION_SIZE);
+        return attribute + (attribute * (ThreadLocalRandom.current().nextDouble() - 0.5) * ATTRIBUTE_MUTATION_SIZE);
     }
 
     @Contract(" -> new")

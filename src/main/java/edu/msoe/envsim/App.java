@@ -97,6 +97,9 @@ public class App extends Application {
         DebugMessage numAgents = new DebugMessage(
                 () -> environment.getNumAgents(), "Agents", 0, environment
         );
+        DebugMessage listMs = new DebugMessage(
+                () -> environment.getListMs(), "listMs", 3, environment
+        );
         DebugMessage decideMs = new DebugMessage(
                 () -> environment.getDecideMs(), "decideMs", 3, environment
         );
@@ -107,7 +110,7 @@ public class App extends Application {
                 () -> 1 / (environment.getSimUpdateRate() * (double) environment.getNumAgents()), "SpAT", 10, environment
         );
 
-        debugBox.getChildren().addAll(framesPerSecond, ticksPerSecond, numAgents, decideMs, stepMs, TpSpA);
+        debugBox.getChildren().addAll(framesPerSecond, ticksPerSecond, numAgents, listMs, decideMs, stepMs, TpSpA);
 
 
 
