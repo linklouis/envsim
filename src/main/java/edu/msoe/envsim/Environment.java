@@ -92,6 +92,14 @@ public class Environment extends Canvas {
     private double decideMs;
     private double stepMs;
 
+    private double currentMouseX;
+    private double currentMouseY;
+    private boolean mouseInside = false;
+
+    private int lastTerrainX = -1;
+    private int lastTerrainY = -1;
+    private boolean isPainting = false;
+
     private enum Mode {
         SIMULATION,
         EDIT
@@ -134,11 +142,25 @@ public class Environment extends Canvas {
      *  Source: Google Gemini
      */
     private void setupMouseEvents() {
+        setOnMouseEntered(e -> mouseInside = true);
+        setOnMouseExited(e -> mouseInside = false);
+
+        setOnMouseMoved(e -> {
+            currentMouseX = e.getX();
+            currentMouseY = e.getY();
+            mouseInside = true;
+        });
+
         setOnMousePressed(e -> {
             lastMouseX = e.getX();
             lastMouseY = e.getY();
+            currentMouseX = e.getX();
+            currentMouseY = e.getY();
+            mouseInside = true;
 
             if (mode == Mode.EDIT && e.isPrimaryButtonDown()) {
+                isPainting = true;
+                lastTerrainX = -1; // Reset so the first click starts fresh
                 handleTerrainPaint(e.getX(), e.getY(), currentBrush);
             } else if (mode == Mode.SIMULATION && e.isPrimaryButtonDown()) {
                 double worldX = (e.getX() - translateX) / scale;
@@ -155,9 +177,14 @@ public class Environment extends Canvas {
             }
         });
 
-        // Panning controls
         setOnMouseDragged(e -> {
+            currentMouseX = e.getX();
+            currentMouseY = e.getY();
             if (mode == Mode.EDIT && e.isPrimaryButtonDown()) {
+                if (!isPainting) {
+                    isPainting = true;
+                    lastTerrainX = -1;
+                }
                 handleTerrainPaint(e.getX(), e.getY(), currentBrush);
             } else {
                 // Normal panning
@@ -166,6 +193,12 @@ public class Environment extends Canvas {
                 lastMouseX = e.getX();
                 lastMouseY = e.getY();
             }
+        });
+
+        setOnMouseReleased(e -> {
+            isPainting = false;
+            lastTerrainX = -1;
+            lastTerrainY = -1;
         });
 
         // Zooming controls
@@ -177,7 +210,6 @@ public class Environment extends Canvas {
             double mouseX = e.getX();
             double mouseY = e.getY();
 
-            // Adjust translation to keep the zoom focused on the cursor
             translateX = mouseX - (mouseX - translateX) * actualZoomFactor;
             translateY = mouseY - (mouseY - translateY) * actualZoomFactor;
             scale = newScale;
@@ -327,6 +359,39 @@ public class Environment extends Canvas {
         gc.setStroke(Color.web("#555555"));
         gc.strokeRect(0, 0, worldWidth, worldHeight);
 
+        // --- DRAW BRUSH OUTLINE IN EDIT MODE ---
+        if (mode == Mode.EDIT && mouseInside) {
+            double worldX = (currentMouseX - translateX) / scale;
+            double worldY = (currentMouseY - translateY) / scale;
+
+            int centerTerrainX = (int) (worldX / TERRAIN_RESOLUTION_RATIO);
+            int centerTerrainY = (int) (worldY / TERRAIN_RESOLUTION_RATIO);
+
+            // Calculate world coordinates for a square brush
+            double brushWorldX = (centerTerrainX - brushSize) * TERRAIN_RESOLUTION_RATIO;
+            double brushWorldY = (centerTerrainY - brushSize) * TERRAIN_RESOLUTION_RATIO;
+            double brushWorldSize = (2 * brushSize + 1) * TERRAIN_RESOLUTION_RATIO;
+
+            gc.setStroke(Color.WHITE);
+            // Divide by scale so the outline stays 1 pixel wide regardless of zoom level
+            gc.setLineWidth(1.0 / scale);
+
+            // Option A: Square brush outline (matches your current square painting loop)
+            gc.strokeRect(brushWorldX, brushWorldY, brushWorldSize, brushWorldSize);
+
+            /*
+             * Option B: If you decide to switch to a circular brush later,
+             * use this instead of strokeRect:
+             *
+             * double radiusWorld = (brushSize + 0.5) * TERRAIN_RESOLUTION_RATIO;
+             * gc.strokeOval(
+             *     (centerTerrainX + 0.5) * TERRAIN_RESOLUTION_RATIO - radiusWorld,
+             *     (centerTerrainY + 0.5) * TERRAIN_RESOLUTION_RATIO - radiusWorld,
+             *     radiusWorld * 2, radiusWorld * 2
+             * );
+             */
+        }
+
         // Reset stroke width for entities
         gc.setLineWidth(1.0);
     }
@@ -402,20 +467,67 @@ public class Environment extends Canvas {
         double worldX = (screenX - translateX) / scale;
         double worldY = (screenY - translateY) / scale;
 
-        int centerTerrainX = (int) (worldX / TERRAIN_RESOLUTION_RATIO);
-        int centerTerrainY = (int) (worldY / TERRAIN_RESOLUTION_RATIO);
+        int currentTerrainX = (int) (worldX / TERRAIN_RESOLUTION_RATIO);
+        int currentTerrainY = (int) (worldY / TERRAIN_RESOLUTION_RATIO);
 
-        for (int x = centerTerrainX - brushSize; x <= centerTerrainX + brushSize; x++) {
-            for (int y = centerTerrainY - brushSize; y <= centerTerrainY + brushSize; y++) {
+        // If this is the start of a stroke, initialize last position to current position
+        if (lastTerrainX == -1 || lastTerrainY == -1) {
+            lastTerrainX = currentTerrainX;
+            lastTerrainY = currentTerrainY;
+        }
 
-                // OPTIONAL: Uncomment the line below if you want a circular brush instead of a square one
-                // if (Math.hypot(x - centerTerrainX, y - centerTerrainY) <= brushRadius) {
-                setTerrainTile(x, y, brushType);
-                // }
+        // Paint an unbroken line of brush shapes from the last position to the current position
+        paintLine(lastTerrainX, lastTerrainY, currentTerrainX, currentTerrainY, brushType);
 
+        // Update last position
+        lastTerrainX = currentTerrainX;
+        lastTerrainY = currentTerrainY;
+
+        resetCanvas();
+    }
+
+    /**
+     * Bresenham's line algorithm adapted for grid-based terrain painting.
+     * Ensures zero gaps no matter how fast the mouse moves.
+     * Source: Google Gemini
+     */
+    private void paintLine(int x0, int y0, int x1, int y1, TerrainType brushType) {
+        int dx = Math.abs(x1 - x0);
+        int dy = Math.abs(y1 - y0);
+        int sx = x0 < x1 ? 1 : -1;
+        int sy = y0 < y1 ? 1 : -1;
+        int err = dx - dy;
+
+        while (true) {
+            paintBrushAt(x0, y0, brushType);
+            if (x0 == x1 && y0 == y1) break;
+            int e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x0 += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y0 += sy;
             }
         }
-        resetCanvas();
+    }
+
+    /**
+     * Source: Google Gemini
+     * @param centerTerrainX
+     * @param centerTerrainY
+     * @param brushType
+     */
+    private void paintBrushAt(int centerTerrainX, int centerTerrainY, TerrainType brushType) {
+        for (int x = centerTerrainX - brushSize; x <= centerTerrainX + brushSize; x++) {
+            for (int y = centerTerrainY - brushSize; y <= centerTerrainY + brushSize; y++) {
+                // OPTIONAL: If you want a circular brush instead of square, change this to:
+                // if (Math.hypot(x - centerTerrainX, y - centerTerrainY) <= brushSize) {
+                setTerrainTile(x, y, brushType);
+                // }
+            }
+        }
     }
 
     /**
