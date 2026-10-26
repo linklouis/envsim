@@ -12,7 +12,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Agent  extends MobileEntity {
@@ -150,7 +152,6 @@ public class Agent  extends MobileEntity {
     private List<Entity> collisions;
 
     private TerrainType cachedTerrain;
-
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -483,7 +484,7 @@ public class Agent  extends MobileEntity {
         } else if (entity instanceof Agent agent) {
             evalInputBuffer[0] = (float) (agent.getRadius() / this.getRadius());
             evalInputBuffer[1] = (float) distance;
-            evalInputBuffer[2] = (float) compareGenome(agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
+            evalInputBuffer[2] = (float) environment.getGenomeComparison(this, agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
 
             float preyValue = preyEvaluator.predict(evalInputBuffer)[0];
             if (preyValue > maxPreyValue) {

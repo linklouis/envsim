@@ -13,9 +13,11 @@ import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -41,6 +43,8 @@ public class Environment extends Canvas {
     private final Queue<MobileEntity> mobileEntitiesToRemove = new ConcurrentLinkedQueue<>();
 
     private final List<Entity> stationaryEntities = new ArrayList<>();
+
+    private final Map<AgentPair, Double> genomeComparisonCache = new ConcurrentHashMap<>();
 
     private final List<DebugMessage> debugMessages = new ArrayList<>();
     private boolean debugMode;
@@ -433,6 +437,7 @@ public class Environment extends Canvas {
         if (!mobileEntitiesToRemove.isEmpty()) {
             for (Entity entity : mobileEntitiesToRemove) {
                 getCell(entity.getCellIndex()).remove(entity); // TODO: Can I modify the remove function of the collection to do the removal?
+                genomeComparisonCache.keySet().removeIf(pair -> pair.agent1() == entity || pair.agent2() == entity);
             }
             mobileEntities.removeAll(mobileEntitiesToRemove);
             mobileEntitiesToRemove.clear();
@@ -779,5 +784,17 @@ public class Environment extends Canvas {
 
     public double getDecideMs() {
         return decideMs;
+    }
+
+    public double getGenomeComparison(Agent a1, Agent a2) {
+        AgentPair pair = new AgentPair(a1, a2);
+        Double comparison = genomeComparisonCache.get(pair);
+
+        if (comparison == null) {
+            comparison = a1.compareGenome(a2);
+            genomeComparisonCache.put(pair, comparison);
+        }
+
+        return comparison;
     }
 }
