@@ -471,7 +471,7 @@ public class Agent  extends MobileEntity {
         worstThreat = null;
     }
 
-    public void evaluateEntity(Entity entity) {
+    public void evaluateEntity(Entity entity, double distance) {
         if (entity instanceof Food food) {
             if (food.getRadius() <= 0 || food == lastEatenFood) return;
 
@@ -482,7 +482,7 @@ public class Agent  extends MobileEntity {
             }
         } else if (entity instanceof Agent agent) {
             evalInputBuffer[0] = (float) (agent.getRadius() / this.getRadius());
-            evalInputBuffer[1] = (float) this.distance(agent);
+            evalInputBuffer[1] = (float) distance;
             evalInputBuffer[2] = (float) compareGenome(agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
 
             float preyValue = preyEvaluator.predict(evalInputBuffer)[0];

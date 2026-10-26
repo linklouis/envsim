@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -498,41 +499,7 @@ public class Environment extends Canvas {
         return new Vector(worldWidth, worldHeight);
     }
 
-    public List<Entity> getCollisions(Entity entity) {
-        return getCollisions(entity, (_, _) -> true);
-    }
-
-    public List<Entity> getEntitiesInRange(@NotNull Vector position, Predicate<Entity> predicate, double maxDistance) {
-        List<Entity> entitiesInRange = new ArrayList<>();
-        double maxDistSq = maxDistance * maxDistance;
-
-        // Calculate the min and max cell indices that overlap with the vision bounding box
-        int minCellX = (int) Math.max(0, (position.x() - maxDistance) / cellSize.x());
-        int maxCellX = (int) Math.min(NUM_CELLS - 1, (position.x() + maxDistance) / cellSize.x());
-        int minCellY = (int) Math.max(0, (position.y() - maxDistance) / cellSize.y());
-        int maxCellY = (int) Math.min(NUM_CELLS - 1, (position.y() + maxDistance) / cellSize.y());
-
-        // Iterate through only the cells within that bounding box
-        for (int x = minCellX; x <= maxCellX; x++) {
-            for (int y = minCellY; y <= maxCellY; y++) {
-                for (Entity entity : cells[x][y]) {
-                    if (!predicate.test(entity)) {
-                        continue;
-                    }
-
-                    double dist = entity.getPosition().distanceSquared(position);
-                    if (dist <= maxDistSq) {
-                        entitiesInRange.add(entity);
-                    }
-                }
-            }
-        }
-
-        return entitiesInRange;
-    }
-
-    public void evaluateEntitiesInRange(@NotNull Vector position, Predicate<Entity> immediateRejection, Consumer<Entity> evaluate, double maxDistance) {
-        double maxDistSq = maxDistance * maxDistance;
+    public void evaluateEntitiesInRange(@NotNull Vector position, Predicate<Entity> immediateRejection, BiConsumer<Entity, Double> evaluate, double maxDistance) {
 
         // Calculate the min and max cell indices that overlap with the vision bounding box
         int minCellX = (int) Math.max(0, (position.x() - maxDistance) / cellSize.x());
@@ -546,9 +513,9 @@ public class Environment extends Canvas {
                 for (Entity entity : cells[x][y]) {
                     if (!immediateRejection.test(entity)) continue;
 
-                    double dist = entity.getPosition().distanceSquared(position);
+                    double dist = entity.getPosition().distance(position);
 
-                    if (dist <= maxDistSq) evaluate.accept(entity);
+                    if (dist <= maxDistance) evaluate.accept(entity, dist);
                 }
             }
         }
