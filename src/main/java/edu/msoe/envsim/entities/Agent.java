@@ -294,13 +294,13 @@ public class Agent  extends MobileEntity {
     }
 
     private double getGenomeComparison(@NotNull Agent other) {
-        if (!genomeComparisonCache.containsKey(other.hashCode())) {
-            double comparison = compareGenome(other);
-            this.genomeComparisonCache.put(other.hashCode(), comparison);
-            other.genomeComparisonCache.put(this.hashCode(), comparison);
-        }
-
-        return genomeComparisonCache.get(other.hashCode());
+        return genomeComparisonCache.computeIfAbsent(other.hashCode(), _ -> {
+            if (other.genomeComparisonCache.containsKey(this.hashCode())) {
+               return other.genomeComparisonCache.get(this.hashCode());
+            } else {
+                return compareGenome(other);
+            }
+        });
     }
 
     public void parallelStep() {
