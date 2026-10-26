@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Agent  extends MobileEntity {
@@ -152,6 +153,7 @@ public class Agent  extends MobileEntity {
     private List<Entity> collisions;
 
     private TerrainType cachedTerrain;
+    private Map<Integer, Double> genomeComparisonCache = new ConcurrentHashMap<>();
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -242,7 +244,7 @@ public class Agent  extends MobileEntity {
     }
 
     @Contract(pure = true)
-    public double compareGenomeSlow(@NotNull Agent other) {
+    private double compareGenomeSlow(@NotNull Agent other) {
         double diff = 0;
         for (int i = 0; i < this.genome.length; i++) {
             double delta = this.genome[i] - other.genome[i];
@@ -256,7 +258,7 @@ public class Agent  extends MobileEntity {
      * @param other
      * @return
      */
-    public double compareGenomeLessSlow(@NotNull Agent other) {
+    private double compareGenomeLessSlow(@NotNull Agent other) {
         double dotProduct = 0;
         float[] g1 = this.genome;
         float[] g2 = other.genome;
@@ -273,20 +275,32 @@ public class Agent  extends MobileEntity {
      * @param other
      * @return
      */
-    public double compareGenome(@NotNull Agent other) {
+    private double compareGenome(@NotNull Agent other) {
         float[] g1 = this.genome;
         float[] g2 = other.genome;
 
         double d0 = 0, d1 = 0, d2 = 0, d3 = 0;
         int i = 0;
         for (; i <= g1.length - 4; i += 4) {
-            d0 += g1[i] * g2[i];       d1 += g1[i+1] * g2[i+1];
-            d2 += g1[i+2] * g2[i+2];   d3 += g1[i+3] * g2[i+3];
+            d0 += g1[i] * g2[i];
+            d1 += g1[i + 1] * g2[i + 1];
+            d2 += g1[i + 2] * g2[i + 2];
+            d3 += g1[i + 3] * g2[i + 3];
         }
         for (; i < g1.length; i++) d0 += g1[i] * g2[i];
         double dot = d0 + d1 + d2 + d3;
 
         return this.genomeNormSq + other.genomeNormSq - (2 * dot);
+    }
+
+    private double getGenomeComparison(@NotNull Agent other) {
+        if (!genomeComparisonCache.containsKey(other.hashCode())) {
+            double comparison = compareGenome(other);
+            this.genomeComparisonCache.put(other.hashCode(), comparison);
+            other.genomeComparisonCache.put(this.hashCode(), comparison);
+        }
+
+        return genomeComparisonCache.get(other.hashCode());
     }
 
     public void parallelStep() {
@@ -484,7 +498,7 @@ public class Agent  extends MobileEntity {
         } else if (entity instanceof Agent agent) {
             evalInputBuffer[0] = (float) (agent.getRadius() / this.getRadius());
             evalInputBuffer[1] = (float) distance;
-            evalInputBuffer[2] = (float) environment.getGenomeComparison(this, agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
+            evalInputBuffer[2] = (float) getGenomeComparison(agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
 
             float preyValue = preyEvaluator.predict(evalInputBuffer)[0];
             if (preyValue > maxPreyValue) {
