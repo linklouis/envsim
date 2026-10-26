@@ -99,6 +99,20 @@ public class Agent  extends MobileEntity {
     private final float[] evalInputBuffer = new float[3];
 
 
+    public final @NotNull NeuralNetwork brain;
+    /**
+     * Inputs: food size, distance
+     * Output: value
+     */
+    private final @NotNull NeuralNetwork foodEvaluator;
+    /**
+     * Inputs: self size, agent size, distance // TODO: In the future, maybe add whether the other wants to mate, if it's the same species, and what direction it's moving in?
+     * Outputs: Value (1 = invaluable, 0 = useless, -1 = deadly threat)
+     */
+    private final @NotNull NeuralNetwork preyEvaluator;
+    private final @NotNull NeuralNetwork predatorEvaluator;
+
+
     // State:
     private Vector direction;
     /**
@@ -121,20 +135,6 @@ public class Agent  extends MobileEntity {
      * This value is **not** inherited by children.
      */
 
-
-    public final @NotNull NeuralNetwork brain;
-    /**
-     * Inputs: food size, distance
-     * Output: value
-     */
-    private final @NotNull NeuralNetwork foodEvaluator;
-    /**
-     * Inputs: self size, agent size, distance // TODO: In the future, maybe add whether the other wants to mate, if it's the same species, and what direction it's moving in?
-     * Outputs: Value (1 = invaluable, 0 = useless, -1 = deadly threat)
-     */
-    private final @NotNull NeuralNetwork preyEvaluator;
-    private final @NotNull NeuralNetwork predatorEvaluator;
-
     private Food bestFood;
     private Agent bestPrey;
     private Agent worstThreat;
@@ -147,8 +147,9 @@ public class Agent  extends MobileEntity {
     private AgentDecision decision;
     private String action = "WANDER";
 
-
     private List<Entity> collisions;
+
+    private TerrainType cachedTerrain;
 
 
 
@@ -178,6 +179,8 @@ public class Agent  extends MobileEntity {
 
     public Agent(@NotNull AgentData agentData, @NotNull Environment env, @Nullable Agent parent) {
         super(agentData.position().add(Vector.random(20)), agentData.size(), agentData.color(), env);
+
+        cachedTerrain = env.getStandingTerrainType(this);
 
         environment = env;
         energy = agentData.energy();
@@ -247,7 +250,12 @@ public class Agent  extends MobileEntity {
         return diff;
     }
 
-    public double compareGenome(@NotNull Agent other) {
+    /**
+     * Source: Gemini
+     * @param other
+     * @return
+     */
+    public double compareGenomeLessSlow(@NotNull Agent other) {
         double dotProduct = 0;
         float[] g1 = this.genome;
         float[] g2 = other.genome;
@@ -257,6 +265,27 @@ public class Agent  extends MobileEntity {
         }
 
         return this.genomeNormSq + other.genomeNormSq - (2 * dotProduct);
+    }
+
+    /**
+     * Source: Claude
+     * @param other
+     * @return
+     */
+    public double compareGenome(@NotNull Agent other) {
+        float[] g1 = this.genome;
+        float[] g2 = other.genome;
+
+        double d0 = 0, d1 = 0, d2 = 0, d3 = 0;
+        int i = 0;
+        for (; i <= g1.length - 4; i += 4) {
+            d0 += g1[i] * g2[i];       d1 += g1[i+1] * g2[i+1];
+            d2 += g1[i+2] * g2[i+2];   d3 += g1[i+3] * g2[i+3];
+        }
+        for (; i < g1.length; i++) d0 += g1[i] * g2[i];
+        double dot = d0 + d1 + d2 + d3;
+
+        return this.genomeNormSq + other.genomeNormSq - (2 * dot);
     }
 
     public void parallelStep() {
@@ -304,7 +333,7 @@ public class Agent  extends MobileEntity {
 
     private void move(double turn, double speed) {
         direction = direction.turn(turn);
-        double speedModifier = Math.pow(getRadius() * getTerrainType().getSpeedSizeCostFactor(), 2) + 1;
+        double speedModifier = Math.pow(getRadius() * cachedTerrain.getSpeedSizeCostFactor(), 2) + 1;
         double effort = speed / speedModifier;
         double cost = getMovementCost(effort); // TODO: Have moving in your non-preferred terrain cost more energy?
 
@@ -324,7 +353,7 @@ public class Agent  extends MobileEntity {
      * @return 1 if the {@link Agent} is on a land tile, otherwise 0.
      */
     private int isOnLand() {
-        return getTerrainType() == TerrainType.STANDARD ? 1 : 0; // TODO
+        return cachedTerrain == TerrainType.STANDARD ? 1 : 0; // TODO
     }
 
     private void eat(@NotNull Food food) {
@@ -429,7 +458,7 @@ public class Agent  extends MobileEntity {
                 maxFoodValue,
                 maxPreyValue,
                 maxThreatValue,
-                getTerrainType().ordinal()
+                cachedTerrain.ordinal()
         };
     }
 
@@ -608,15 +637,20 @@ public class Agent  extends MobileEntity {
         return calculateCloneThreshold(getRadius());
     }
 
-    public TerrainType getTerrainType() {
-        return environment.getStandingTerrainType(this);
-    }
-
     public boolean desiresPredation() {
         return decision.desiresPredation();
     }
 
     public String getAction() {
         return action;
+    }
+
+    public TerrainType getTerrainType() {
+        return cachedTerrain;
+    }
+
+    protected void setPosition(Vector position) {
+        super.setPosition(position);
+        cachedTerrain = environment.getStandingTerrainType(this);
     }
 }
