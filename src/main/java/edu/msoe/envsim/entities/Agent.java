@@ -139,6 +139,10 @@ public class Agent  extends MobileEntity {
     private Agent bestPrey;
     private Agent worstThreat;
 
+    private float maxFoodValue;
+    private float maxPreyValue;
+    private float maxThreatValue;
+
     private final Agent parent;
     private AgentDecision decision;
     private String action = "WANDER";
@@ -417,59 +421,53 @@ public class Agent  extends MobileEntity {
         // TODO: Add current terrain
         // TODO: Add way to see what terrain is around it.
         //  Maybe if I add raycasts, have each one also say what the closest new terrain is in that direction?
-        List<Entity> entitiesInRange = environment.getEntitiesInRange(getPosition(), entity -> entity != this, visionRadius);
-        float[] entityEvaluation = evaluateEntities(entitiesInRange);
+        resetEntityEvaluation();
+        environment.evaluateEntitiesInRange(getPosition(), e -> e != this, this::evaluateEntity, visionRadius);
         return new float[] {
                 (float) (energy / MAX_EXPECTED_ENERGY),
                 (float) (getRadius() / size),
-                entityEvaluation[0],
-                entityEvaluation[1],
-                entityEvaluation[2],
+                maxFoodValue,
+                maxPreyValue,
+                maxThreatValue,
                 getTerrainType().ordinal()
         };
     }
 
-    @Contract("_ -> new")
-    private float @NotNull [] evaluateEntities(@NotNull List<Entity> entitiesInRange) {
-        float maxFoodValue = 0;
-        Food mostValuableFood = null;
-        float maxPreyValue = 0;
-        Agent mostValuablePrey = null;
-        float maxThreatValue = 0;
-        Agent mostThreateningPredator = null;
+    public void resetEntityEvaluation() {
+        maxFoodValue = 0;
+        bestFood = null;
+        maxPreyValue = 0;
+        bestPrey = null;
+        maxThreatValue = 0;
+        worstThreat = null;
+    }
 
-        for  (Entity entity : entitiesInRange) {
-            if (entity instanceof Food food) {
-                if (food.getRadius() <= 0 || food == lastEatenFood) continue;
+    public void evaluateEntity(Entity entity) {
+        if (entity instanceof Food food) {
+            if (food.getRadius() <= 0 || food == lastEatenFood) return;
 
-                float value = evaluateFood(food);
-                if (value > maxFoodValue) {
-                    maxFoodValue = value;
-                    mostValuableFood = food;
-                }
-            } else if (entity instanceof Agent agent) {
-                evalInputBuffer[0] = (float) (agent.getRadius() / this.getRadius());
-                evalInputBuffer[1] = (float) this.distance(agent);
-                evalInputBuffer[2] = (float) compareGenome(agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
+            float value = evaluateFood(food);
+            if (value > maxFoodValue) {
+                maxFoodValue = value;
+                bestFood = food;
+            }
+        } else if (entity instanceof Agent agent) {
+            evalInputBuffer[0] = (float) (agent.getRadius() / this.getRadius());
+            evalInputBuffer[1] = (float) this.distance(agent);
+            evalInputBuffer[2] = (float) compareGenome(agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
 
-                float preyValue = preyEvaluator.predict(evalInputBuffer)[0];
-                if (preyValue > maxPreyValue) {
-                    maxPreyValue = preyValue;
-                    mostValuablePrey = agent;
-                }
+            float preyValue = preyEvaluator.predict(evalInputBuffer)[0];
+            if (preyValue > maxPreyValue) {
+                maxPreyValue = preyValue;
+                bestPrey = agent;
+            }
 
-                float threatValue = predatorEvaluator.predict(evalInputBuffer)[0];
-                if (threatValue > maxThreatValue) {
-                    maxThreatValue = threatValue;
-                    mostThreateningPredator = agent;
-                }
+            float threatValue = predatorEvaluator.predict(evalInputBuffer)[0];
+            if (threatValue > maxThreatValue) {
+                maxThreatValue = threatValue;
+                worstThreat = agent;
             }
         }
-
-        this.bestFood = mostValuableFood;
-        this.bestPrey = mostValuablePrey;
-        this.worstThreat = mostThreateningPredator;
-        return new float[] {maxFoodValue, maxPreyValue, maxThreatValue};
     }
 
     private float evaluateFood(@NotNull Food food) {

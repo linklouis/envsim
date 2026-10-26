@@ -531,6 +531,29 @@ public class Environment extends Canvas {
         return entitiesInRange;
     }
 
+    public void evaluateEntitiesInRange(@NotNull Vector position, Predicate<Entity> immediateRejection, Consumer<Entity> evaluate, double maxDistance) {
+        double maxDistSq = maxDistance * maxDistance;
+
+        // Calculate the min and max cell indices that overlap with the vision bounding box
+        int minCellX = (int) Math.max(0, (position.x() - maxDistance) / cellSize.x());
+        int maxCellX = (int) Math.min(NUM_CELLS - 1, (position.x() + maxDistance) / cellSize.x());
+        int minCellY = (int) Math.max(0, (position.y() - maxDistance) / cellSize.y());
+        int maxCellY = (int) Math.min(NUM_CELLS - 1, (position.y() + maxDistance) / cellSize.y());
+
+        // Iterate through only the cells within that bounding box
+        for (int x = minCellX; x <= maxCellX; x++) {
+            for (int y = minCellY; y <= maxCellY; y++) {
+                for (Entity entity : cells[x][y]) {
+                    if (!immediateRejection.test(entity)) continue;
+
+                    double dist = entity.getPosition().distanceSquared(position);
+
+                    if (dist <= maxDistSq) evaluate.accept(entity);
+                }
+            }
+        }
+    }
+
     public List<Entity> getCollisions(@NotNull Entity entity, CollisionRequirement collisionRequirement) {
         if (!entity.isRegistered()) {
             return Collections.emptyList();
