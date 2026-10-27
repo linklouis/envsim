@@ -634,6 +634,13 @@ public class Environment extends Canvas {
         }
     }
 
+    /**
+     * TODO: Could add way to do something or store list of non-MobileEntities, since we can handle all the food eating in parallel.
+     * Only the Agent-Agent interactions need to happen in series.
+     * @param entity
+     * @param collisionRequirement
+     * @return
+     */
     public List<Entity> getCollisions(@NotNull Entity entity, CollisionRequirement collisionRequirement) {
         if (!entity.isRegistered()) {
             return Collections.emptyList();
