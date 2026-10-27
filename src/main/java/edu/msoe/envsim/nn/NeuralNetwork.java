@@ -29,7 +29,7 @@ public class NeuralNetwork implements Serializable {
         float[] weights = new float[totalWeights];
 
         for (int i = 0; i < weights.length; i++) {
-            weights[1] = (float) (Math.random() * 2 - 1);
+            weights[i] = (float) (Math.random() * 2 - 1);
         }
 
         this(layerSizes, weights);
