@@ -20,12 +20,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
 public class Agent  extends MobileEntity {
-    /**
-     * TODO: Should maybe scale with radius?
-     * TODO: Should definitely scale with radius.
-     * TODO: Can get rid of this if we stick with only cloning
-     */
-    private static final double MAX_EXPECTED_ENERGY = 120;
     public static final double MIN_HEALTH_FOR_REPRODUCTION = 0.8;
     /**
      * The energy at which an entity will clone.
@@ -101,10 +95,10 @@ public class Agent  extends MobileEntity {
     private final double visionRadiusSquared;
     private final double healthRegenSpeed;
     private final double turnSpeed;
-    private double swimSkill;
+    private final double swimSkill;
 
-    private float[] genome;
-    private float genomeNormSq;
+    private final float[] genome;
+    private final float genomeNormSq;
 
 
     public final @NotNull NeuralNetwork brain;
