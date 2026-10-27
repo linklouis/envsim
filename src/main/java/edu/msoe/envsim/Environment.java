@@ -580,6 +580,103 @@ public class Environment extends Canvas {
         resetCanvas();
     }
 
+    public static void createDefaultEnvironments(int worldWidth, int worldHeight) {
+        File dir = new File("environments");
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        int terrainWidth = worldWidth / TERRAIN_RESOLUTION_RATIO;
+        int terrainHeight = worldHeight / TERRAIN_RESOLUTION_RATIO;
+
+        File standardFile = new File(dir, "Standard.terrain");
+        if (!standardFile.exists()) {
+            try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(standardFile)))) {
+                out.writeInt(terrainWidth);
+                out.writeInt(terrainHeight);
+                for (int x = 0; x < terrainWidth; x++) {
+                    for (int y = 0; y < terrainHeight; y++) {
+                        TerrainType type = (x < terrainWidth / 2) ? TerrainType.STANDARD : TerrainType.WATER;
+                        out.writeInt(type.ordinal());
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        File islandFile = new File(dir, "Island.terrain");
+        if (!islandFile.exists()) {
+            try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(islandFile)))) {
+                out.writeInt(terrainWidth);
+                out.writeInt(terrainHeight);
+                double centerX = terrainWidth / 2.0;
+                double centerY = terrainHeight / 2.0;
+                double radius = Math.min(terrainWidth, terrainHeight) * 0.35;
+                for (int x = 0; x < terrainWidth; x++) {
+                    for (int y = 0; y < terrainHeight; y++) {
+                        double dist = Math.hypot(x - centerX, y - centerY);
+                        TerrainType type = (dist <= radius) ? TerrainType.STANDARD : TerrainType.WATER;
+                        out.writeInt(type.ordinal());
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        File grasslandFile = new File(dir, "Grassland.terrain");
+        if (!grasslandFile.exists()) {
+            try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(grasslandFile)))) {
+                out.writeInt(terrainWidth);
+                out.writeInt(terrainHeight);
+                for (int x = 0; x < terrainWidth; x++) {
+                    for (int y = 0; y < terrainHeight; y++) {
+                        out.writeInt(TerrainType.STANDARD.ordinal());
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static WritableImage loadTerrainThumbnail(File file, int thumbW, int thumbH) {
+        TerrainType[] values = TerrainType.values();
+        try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
+            int width = in.readInt();
+            int height = in.readInt();
+            WritableImage img = new WritableImage(thumbW, thumbH);
+            PixelWriter writer = img.getPixelWriter();
+
+            TerrainType[][] data = new TerrainType[width][height];
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    int ordinal = in.readInt();
+                    data[x][y] = values[ordinal];
+                }
+            }
+
+            for (int tx = 0; tx < thumbW; tx++) {
+                for (int ty = 0; ty < thumbH; ty++) {
+                    int srcX = (int) ((double) tx / thumbW * width);
+                    int srcY = (int) ((double) ty / thumbH * height);
+                    TerrainType t = data[Math.min(srcX, width - 1)][Math.min(srcY, height - 1)];
+                    writer.setColor(tx, ty, t.getColor());
+                }
+            }
+            return img;
+        } catch (IOException e) {
+            WritableImage fallback = new WritableImage(thumbW, thumbH);
+            PixelWriter writer = fallback.getPixelWriter();
+            for (int x = 0; x < thumbW; x++) {
+                for (int y = 0; y < thumbH; y++) {
+                    writer.setColor(x, y, Color.DARKGRAY);
+                }
+            }
+            return fallback;
+        }
+    }
+
     public void resetCamera(double windowWidth) {
         scale = windowWidth / worldWidth;
         translateX = 0;

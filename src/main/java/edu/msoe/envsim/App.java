@@ -14,15 +14,23 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
@@ -31,6 +39,8 @@ import javafx.stage.Stage;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.Optional;
 
 import static javafx.scene.control.PopupControl.USE_PREF_SIZE;
 
@@ -42,6 +52,7 @@ public class App extends Application {
     private static final String CAPTION_STYLE = "-fx-text-fill: #aaa; -fx-font-weight: bold;";
     private static final String VALUE_STYLE = "-fx-text-fill: white;";
     private static final String BUTTON_STYLE = "-fx-background-color: #444; -fx-text-fill: white; -fx-cursor: hand;";
+    private static final String SELECTED_BUTTON_STYLE = "-fx-background-color: #3b5998; -fx-text-fill: white; -fx-cursor: hand; -fx-border-color: #88c0d0; -fx-border-width: 2; -fx-border-radius: 4;";
     // Slider tick labels pull their color from this looked-up color
     private static final String SLIDER_STYLE = "-fx-text-background-color: white;";
 
@@ -66,7 +77,10 @@ public class App extends Application {
 
         // Environment must exist before the menu is built, since the sim speed slider pushes its value into it
         setupEnvironment(stage, viewWidth, viewHeight, inspectorPane);
-        VBox menuLayer = setupMenu(stage);
+
+        // Layer Controls over Canvas using StackPane
+        StackPane gamePane = new StackPane();
+        VBox menuLayer = setupMenu(stage, gamePane);
 
         // Populate Entities
         for (int i = 0; i < 500; i++) {
@@ -82,8 +96,6 @@ public class App extends Application {
 
         environment.startSimulation();
 
-        // Layer Controls over Canvas using StackPane
-        StackPane gamePane = new StackPane();
         gamePane.getChildren().addAll(environment, menuLayer, inspectorPane);
 
         setupDebugPane();
@@ -185,6 +197,8 @@ public class App extends Application {
         int worldHeight = (int) (worldWidth * aspectRatio);
         double zoom = screenBounds.getWidth() / worldWidth;
 
+        Environment.createDefaultEnvironments(worldWidth, worldHeight);
+
         // Leaving edit mode hides the editor controls; entering it shows them and pops the menu open
         Runnable onSimModeStart = () -> setEditorSectionVisible(false);
         Runnable onEditModeStart = () -> {
@@ -213,7 +227,7 @@ public class App extends Application {
      *
      * @return the layer to add on top of the environment
      */
-    private @NotNull VBox setupMenu(Stage stage) {
+    private @NotNull VBox setupMenu(Stage stage, StackPane gamePane) {
         // ---- Simulation controls (always in the menu) ----
         Label title = new Label("Menu");
         title.setStyle(TITLE_STYLE);
@@ -247,25 +261,64 @@ public class App extends Application {
 
 
         // ---- Editor controls (only shown in edit mode) ----
-        Label editorTitle = new Label("Editor");
+        Label editorTitle = new Label("Terrain Editor");
         editorTitle.setStyle(TITLE_STYLE);
+
+        Label brushTypeLabel = new Label("Brush Type");
+        brushTypeLabel.setStyle(CAPTION_STYLE);
 
         Button grass = new Button("Grass");
         Button water = new Button("Water");
         for (Button b : new Button[]{grass, water}) {
-            b.setStyle(BUTTON_STYLE);
             b.setFocusTraversable(false);
+            b.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(b, Priority.ALWAYS);
         }
-        grass.setOnAction(_ -> environment.setBrush(TerrainType.STANDARD));
-        water.setOnAction(_ -> environment.setBrush(TerrainType.WATER));
+
+        // Initial state: Grass is selected by default
+        grass.setStyle(SELECTED_BUTTON_STYLE);
+        water.setStyle(BUTTON_STYLE);
+
+        grass.setOnAction(_ -> {
+            environment.setBrush(TerrainType.STANDARD);
+            grass.setStyle(SELECTED_BUTTON_STYLE);
+            water.setStyle(BUTTON_STYLE);
+        });
+        water.setOnAction(_ -> {
+            environment.setBrush(TerrainType.WATER);
+            water.setStyle(SELECTED_BUTTON_STYLE);
+            grass.setStyle(BUTTON_STYLE);
+        });
         HBox terrainOptions = new HBox(8, grass, water);
 
-        // --- New Save/Load Buttons ---
-        Button saveButton = new Button("Save Terrain");
-        Button loadButton = new Button("Load Terrain");
+        // --- Refactored Save/Load Controls ---
+        Label brushSizeLabel = new Label("Brush Size: 5");
+        brushSizeLabel.setStyle(CAPTION_STYLE);
+
+        Slider brushSize = new Slider(1, 10, 5);
+        brushSize.setMajorTickUnit(1);
+        brushSize.setMinorTickCount(0);
+        brushSize.setSnapToTicks(true);
+        brushSize.setShowTickLabels(true);
+        brushSize.setShowTickMarks(true);
+        brushSize.setStyle(SLIDER_STYLE);
+        brushSize.setFocusTraversable(false);
+        brushSize.valueProperty().addListener((observable, oldValue, newValue) -> {
+            int val = newValue.intValue();
+            environment.setBrushSize(val);
+            brushSizeLabel.setText("Brush Size: " + val);
+        });
+
+        Label envManagementLabel = new Label("Environments");
+        envManagementLabel.setStyle(CAPTION_STYLE);
+
+        Button saveButton = new Button("Save As...");
+        Button loadButton = new Button("Environment Manager");
         for (Button b : new Button[]{saveButton, loadButton}) {
             b.setStyle(BUTTON_STYLE);
             b.setFocusTraversable(false);
+            b.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(b, Priority.ALWAYS);
         }
 
         // TODO: If saving over an already existing file, do confirmation popup
@@ -286,44 +339,27 @@ public class App extends Application {
             }
         });
 
-        loadButton.setOnAction(_ -> {
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Load Terrain Background");
-            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Terrain Files (*.terrain)", "*.terrain"));
-            File file = fileChooser.showOpenDialog(environment.getScene().getWindow());
-            if (file != null) {
-                try {
-                    environment.loadTerrain(file);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        });
+        loadButton.setOnAction(_ -> showEnvironmentManager(gamePane, environment));
 
         HBox fileIoOptions = new HBox(8, saveButton, loadButton);
 
-        Label brushSizeLabel = new Label("Brush size");
-        brushSizeLabel.setStyle(CAPTION_STYLE);
-
-        Slider brushSize = new Slider(1, 10, 5);
-        brushSize.setMajorTickUnit(1);
-        brushSize.setMinorTickCount(0);
-        brushSize.setSnapToTicks(true);
-        brushSize.setShowTickLabels(true);
-        brushSize.setShowTickMarks(true);
-        brushSize.setStyle(SLIDER_STYLE);
-        brushSize.setFocusTraversable(false);
-        brushSize.valueProperty().addListener((observable, oldValue, newValue) -> {
-            environment.setBrushSize(newValue.intValue());
-        });
-
-        editorSection = new VBox(10, new Separator(), editorTitle, terrainOptions, fileIoOptions, brushSizeLabel, brushSize);
+        editorSection = new VBox(10,
+                new Separator(),
+                editorTitle,
+                brushTypeLabel,
+                terrainOptions,
+                brushSizeLabel,
+                brushSize,
+                new Separator(),
+                envManagementLabel,
+                fileIoOptions
+        );
         setEditorSectionVisible(false);
 
         // ---- Panel ----
         menuPanel = new VBox(10, title, simSpeedLabel, simSpeed, resetCamera, editorSection);
         menuPanel.setPadding(new Insets(15));
-        menuPanel.setPrefWidth(220);
+        menuPanel.setPrefWidth(240);
         menuPanel.setMaxWidth(USE_PREF_SIZE);
         menuPanel.setMaxHeight(USE_PREF_SIZE);
         menuPanel.setStyle(PANEL_STYLE);
@@ -346,6 +382,168 @@ public class App extends Application {
         StackPane.setMargin(menuLayer, new Insets(15));
 
         return menuLayer;
+    }
+
+    private void showEnvironmentManager(@NotNull StackPane gamePane, @NotNull Environment environment) {
+        VBox backdrop = new VBox();
+        backdrop.setStyle("-fx-background-color: rgba(0, 0, 0, 0.75);");
+        backdrop.setAlignment(Pos.CENTER);
+        backdrop.setMaxWidth(Double.MAX_VALUE);
+        backdrop.setMaxHeight(Double.MAX_VALUE);
+
+        VBox dialog = new VBox(20);
+        dialog.setPadding(new Insets(25));
+        dialog.setStyle(PANEL_STYLE + "-fx-background-color: rgba(25, 25, 25, 0.95);");
+        // Scalable with screen size but bounded to avoid over-stretching on 4K monitors
+        dialog.prefWidthProperty().bind(gamePane.widthProperty().multiply(0.65));
+        dialog.prefHeightProperty().bind(gamePane.heightProperty().multiply(0.70));
+        dialog.setMaxWidth(950);
+        dialog.setMaxHeight(700);
+        dialog.setAlignment(Pos.TOP_CENTER);
+
+        Label title = new Label("Environment Manager");
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 18px; -fx-text-fill: white;");
+
+        TilePane tilePane = new TilePane();
+        tilePane.setHgap(20);
+        tilePane.setVgap(20);
+        tilePane.setPrefColumns(3);
+        tilePane.setAlignment(Pos.TOP_CENTER);
+
+        TextField nameField = new TextField();
+        nameField.setPromptText("Enter or select environment name...");
+        nameField.setStyle("-fx-control-inner-background: #333; -fx-text-fill: white; -fx-prompt-text-fill: #aaa; -fx-font-size: 14px; -fx-padding: 8;");
+        nameField.setFocusTraversable(false);
+
+        // Helper method for confirming and saving over an environment file with proper text wrapping
+        java.util.function.BiConsumer<File, String> confirmAndSave = (targetFile, textName) -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Overwrite Environment");
+            alert.setHeaderText("Environment Already Exists");
+
+            // Explicitly set a wrapped content label and dialog width to prevent text truncation
+            Label contentLabel = new Label("An environment named '" + textName + "' already exists. Do you want to overwrite it?");
+            contentLabel.setWrapText(true);
+            contentLabel.setMaxWidth(380);
+            alert.getDialogPane().setContent(contentLabel);
+            alert.getDialogPane().setPrefWidth(450);
+
+            Optional<ButtonType> result = alert.showAndWait();
+            if (result.isPresent() && result.get() == ButtonType.OK) {
+                try {
+                    environment.saveTerrain(targetFile);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        };
+
+        Runnable refreshThumbnails = () -> {
+            tilePane.getChildren().clear();
+            File dir = new File("environments");
+            if (dir.exists() && dir.isDirectory()) {
+                File[] files = dir.listFiles((_, name) -> name.endsWith(".terrain"));
+                if (files != null) {
+                    Arrays.sort(files);
+                    for (File file : files) {
+                        String name = file.getName().replace(".terrain", "");
+                        // Larger thumbnail dimensions for high-res/4K screens
+                        WritableImage thumb = Environment.loadTerrainThumbnail(file, 200, 120);
+                        ImageView imageView = new ImageView(thumb);
+                        imageView.setFitWidth(200);
+                        imageView.setFitHeight(120);
+                        imageView.setPreserveRatio(true);
+
+                        Label nameLabel = new Label(name);
+                        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
+
+                        Button loadCardBtn = new Button("Load");
+                        loadCardBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 12px;");
+                        loadCardBtn.setFocusTraversable(false);
+                        loadCardBtn.setOnAction(_ -> {
+                            try {
+                                environment.loadTerrain(file);
+                                gamePane.getChildren().remove(backdrop);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                        });
+
+                        Button overrideCardBtn = new Button("Override");
+                        overrideCardBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 12px; -fx-background-color: #5a2e2e;");
+                        overrideCardBtn.setFocusTraversable(false);
+                        overrideCardBtn.setOnAction(_ -> {
+                            nameField.setText(name);
+                            confirmAndSave.accept(file, name);
+                        });
+
+                        HBox cardActions = new HBox(8, loadCardBtn, overrideCardBtn);
+                        cardActions.setAlignment(Pos.CENTER);
+
+                        VBox card = new VBox(8, imageView, nameLabel, cardActions);
+                        card.setAlignment(Pos.CENTER);
+                        card.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 8;");
+
+                        // Selecting a card populates the name field and highlights it
+                        card.setOnMouseClicked(_ -> {
+                            nameField.setText(name);
+                            tilePane.getChildren().forEach(n -> n.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 8;"));
+                            card.setStyle("-fx-background-color: rgba(60, 100, 140, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #88c0d0; -fx-border-radius: 8; -fx-border-width: 2;");
+                        });
+
+                        tilePane.getChildren().add(card);
+                    }
+                }
+            }
+        };
+
+        refreshThumbnails.run();
+
+        ScrollPane scrollPane = new ScrollPane(tilePane);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        scrollPane.vbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        Button saveCurrentBtn = new Button("Save / Overwrite");
+        saveCurrentBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 13px; -fx-padding: 8 15;");
+        saveCurrentBtn.setFocusTraversable(false);
+        saveCurrentBtn.setOnAction(_ -> {
+            String text = nameField.getText().trim();
+            if (!text.isEmpty()) {
+                File targetFile = new File("environments", text + ".terrain");
+                if (targetFile.exists()) {
+                    confirmAndSave.accept(targetFile, text);
+                } else {
+                    try {
+                        environment.saveTerrain(targetFile);
+                        refreshThumbnails.run();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        HBox saveBox = new HBox(12, nameField, saveCurrentBtn);
+        saveBox.setAlignment(Pos.CENTER);
+        HBox.setHgrow(nameField, Priority.ALWAYS);
+
+        Button closeBtn = new Button("Close Manager");
+        closeBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 13px; -fx-padding: 8 20;");
+        closeBtn.setFocusTraversable(false);
+        closeBtn.setOnAction(_ -> gamePane.getChildren().remove(backdrop));
+
+        dialog.getChildren().addAll(title, scrollPane, new Separator(), saveBox, closeBtn);
+        backdrop.getChildren().add(dialog);
+
+        backdrop.setOnMouseClicked(e -> {
+            if (e.getTarget() == backdrop) {
+                gamePane.getChildren().remove(backdrop);
+            }
+        });
+
+        gamePane.getChildren().add(backdrop);
     }
 
     /**
