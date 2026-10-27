@@ -49,7 +49,7 @@ public class Agent  extends MobileEntity {
      * The amount of health lost from attacking an Agent larger than yourself.
      */
     private static final double FAILED_PREDATION_COST = 2.5;
-    private static final double PREDATION_EFFICIENCY = 1.0;
+    private static final double PREDATION_EFFICIENCY = 1.1; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
     /**
      * The amount of energy an agent needs to start regenerating health.
      */
@@ -60,18 +60,19 @@ public class Agent  extends MobileEntity {
      */
     private static final double VISION_QUALITY_COST = 0.0006;
     public static final double SPEED_COST = 0.006;
-    public static final double SIZE_COST = 0.00028;
+    public static final double SIZE_COST = 0.00029;
     public static final int NUM_INPUTS = 6;
 
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.35;
-    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.09;
+    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.1;
     private static final double WANDER_JITTER_DEGREES = 4;
 
     private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
-
+    public static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 3;
+    public static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
 
     private final Color baseSpeciesColor;
 
@@ -106,7 +107,6 @@ public class Agent  extends MobileEntity {
 
     private float[] genome;
     private float genomeNormSq;
-    private final float[] evalInputBuffer = new float[3];
 
 
     public final @NotNull NeuralNetwork brain;
@@ -251,31 +251,22 @@ public class Agent  extends MobileEntity {
         return genome;
     }
 
-    @Contract(pure = true)
-    private double compareGenomeSlow(@NotNull Agent other) {
-        double diff = 0;
-        for (int i = 0; i < this.genome.length; i++) {
-            double delta = this.genome[i] - other.genome[i];
-            diff += delta * delta;
-        }
-        return diff;
-    }
-
-    /**
-     * Source: Gemini
-     * @param other
-     * @return
-     */
-    private double compareGenomeLessSlow(@NotNull Agent other) {
-        double dotProduct = 0;
+    private double compareGenome(@NotNull Agent other) {
         float[] g1 = this.genome;
         float[] g2 = other.genome;
 
+        double totalRelativeDiff = 0;
         for (int i = 0; i < g1.length; i++) {
-            dotProduct += g1[i] * g2[i];
+            float val1 = g1[i];
+            float val2 = g2[i];
+
+            // Proportional difference formula that handles any magnitude gracefully
+            double diff = (val1 - val2) / (Math.abs(val1) + Math.abs(val2) + 1e-5);
+            totalRelativeDiff += diff * diff;
         }
 
-        return this.genomeNormSq + other.genomeNormSq - (2 * dotProduct);
+        // Return RMS of the relative differences
+        return Math.sqrt(totalRelativeDiff / g1.length);
     }
 
     /**
@@ -283,7 +274,7 @@ public class Agent  extends MobileEntity {
      * @param other
      * @return
      */
-    private double compareGenome(@NotNull Agent other) {
+    private double compareGenomeOld(@NotNull Agent other) {
         float[] g1 = this.genome;
         float[] g2 = other.genome;
 
@@ -298,7 +289,10 @@ public class Agent  extends MobileEntity {
         for (; i < g1.length; i++) d0 += g1[i] * g2[i];
         double dot = d0 + d1 + d2 + d3;
 
-        return this.genomeNormSq + other.genomeNormSq - (2 * dot);
+        double squaredDistance = this.genomeNormSq + other.genomeNormSq - (2 * dot);
+
+        // Normalize by dividing by the number of genes to get RMS distance
+        return Math.sqrt(Math.max(0.0, squaredDistance) / g1.length);
     }
 
     private double getGenomeComparison(@NotNull Agent other) {
@@ -401,6 +395,11 @@ public class Agent  extends MobileEntity {
         setColor(Color.hsb(baseSpeciesColor.getHue(), baseSpeciesColor.getSaturation(), brightness));
     }
 
+    /**
+     * TODO: ADD ATTACK AND DEFENSE STATS. DEFENSE COSTS MORE TO LIVE EACH STEP, ATTACK COSTS MORE EACH ATTACK (SO ATTACKING IS MORE RISKY IF YOU LOSE, BUT YOU'RE LESS LIKELY TO)
+     *  INCORPORATE THESE INTO WHETHER AN ATTACK IS SUCCESSFUL OR NOT, JUST AS MUCH AS SIZE.
+     * @param prey
+     */
     private void attemptPredation(@NotNull Agent prey) {
         if (this.parent == prey || prey.parent == this) return;
         if (!this.alive || !prey.alive) return;
@@ -432,8 +431,15 @@ public class Agent  extends MobileEntity {
         timeSinceReproduction = 0;
     }
 
-    private static boolean isSameSpecies(Agent agent1, Agent agent2) {
-        return true; // TODO
+    private static boolean isSameSpecies(@NotNull Agent agent1, @NotNull Agent agent2) {
+        double comparison;
+        if (agent1.genomeComparisonCache.containsKey(agent2.hashCode())) {
+            comparison = agent1.genomeComparisonCache.get(agent2.hashCode());
+        } else {
+            comparison = agent2.getGenomeComparison(agent1);
+        }
+
+        return Math.exp(-SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR * Math.pow(comparison, 2)) > SPECIES_SIMILARITY_THRESHOLD;
     }
 
     private static @NotNull NeuralNetwork newBrain() {
@@ -499,10 +505,12 @@ public class Agent  extends MobileEntity {
             float input2 = (float) distance;
             float input3 = (float) getGenomeComparison(agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
 
-            float preyValue = preyEvaluator.predict3x3x1(input1, input2, input3);
-            if (preyValue > maxPreyValue) {
-                maxPreyValue = preyValue;
-                bestPrey = agent;
+            if (!isSameSpecies(this, agent)) {
+                float preyValue = preyEvaluator.predict3x3x1(input1, input2, input3);
+                if (preyValue > maxPreyValue) {
+                    maxPreyValue = preyValue;
+                    bestPrey = agent;
+                }
             }
 
             float threatValue = predatorEvaluator.predict3x3x1(input1, input2, input3);
