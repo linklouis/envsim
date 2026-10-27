@@ -96,7 +96,7 @@ public class Agent  extends MobileEntity {
      */
     private final double visionRadius;
     /**
-     * Caching the squared radius so it doesn't have to be recalculated in {@link Environment#evaluateEntitiesInRange(Vector, Predicate, BiConsumer, double)} every tick}.
+     * Caching the squared radius so it doesn't have to be recalculated in {@link Environment#evaluateEntitiesInRange(Vector, Predicate, BiConsumer, double, double)} every tick}.
      */
     private final double visionRadiusSquared;
     private final double healthRegenSpeed;

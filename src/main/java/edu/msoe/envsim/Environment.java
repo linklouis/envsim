@@ -24,7 +24,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class Environment extends Canvas {
-    public static final int NUM_CELLS = 60;
+    public static final int NUM_CELLS = 80;
     /**
      * The number of screen pixels per terrain pixel on each axis.
      */
@@ -346,14 +346,16 @@ public class Environment extends Canvas {
         gc.drawImage(terrainCacheImage, 0, 0, worldWidth, worldHeight);
 
         // 5. Draw grid lines overlay
-//        gc.setStroke(Color.web("#333333"));
-//        gc.setLineWidth(1.0 / scale);
-//        for (int x = 0; x <= worldWidth; x += worldWidth / NUM_CELLS) {
-//            gc.strokeLine(x, 0, x, worldHeight);
-//        }
-//        for (int y = 0; y <= worldHeight; y += worldHeight / NUM_CELLS) {
-//            gc.strokeLine(0, y, worldWidth, y);
-//        }
+        if (debugMode) {
+            gc.setStroke(Color.web("#333333"));
+            gc.setLineWidth(1.0 / scale);
+            for (int x = 0; x <= worldWidth; x += worldWidth / NUM_CELLS) {
+                gc.strokeLine(x, 0, x, worldHeight);
+            }
+            for (int y = 0; y <= worldHeight; y += worldHeight / NUM_CELLS) {
+                gc.strokeLine(0, y, worldWidth, y);
+            }
+        }
 
         // Draw world border
         gc.setStroke(Color.web("#555555"));
