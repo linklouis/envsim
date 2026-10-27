@@ -86,6 +86,22 @@ public class NeuralNetwork implements Serializable {
         return layerBuffers[layerSizes.length - 1];
     }
 
+    /**
+     * Source: Claude
+     * @param a
+     * @param b
+     * @param c
+     * @return
+     */
+    public float predict3x3x1(float a, float b, float c) {
+        float[] w = weights;
+        float h0 = Math.max(w[0]  + w[1]*a  + w[2]*b  + w[3]*c, 0f);
+        float h1 = Math.max(w[4]  + w[5]*a  + w[6]*b  + w[7]*c, 0f);
+        float h2 = Math.max(w[8]  + w[9]*a  + w[10]*b + w[11]*c, 0f);
+        float s  = w[12] + w[13]*h0 + w[14]*h1 + w[15]*h2;
+        return (float) (1.0 / (1.0 + Math.exp(-s)));
+    }
+
     public NeuralNetwork child(double mutationChance, double mutationSize) {
         float[] childWeights = new float[weights.length];
 
