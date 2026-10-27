@@ -2,8 +2,11 @@ package edu.msoe.envsim.entities;
 
 import edu.msoe.envsim.utilities.*;
 import edu.msoe.envsim.Environment;
-import edu.msoe.envsim.nn.AgentDecision;
-import edu.msoe.envsim.nn.NeuralNetwork;
+import edu.msoe.envsim.utilities.simutils.AgentData;
+import edu.msoe.envsim.utilities.simutils.AgentDecision;
+import edu.msoe.envsim.utilities.NeuralNetwork;
+import edu.msoe.envsim.utilities.simutils.SpeciesColorMapper;
+import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
@@ -359,11 +362,11 @@ public class Agent  extends MobileEntity {
         direction = direction.turn(turn);
         double speedModifier = Math.pow(getRadius() * cachedTerrain.getSpeedSizeCostFactor(), 2) + 1;
         double effort = speed / speedModifier;
-        double cost = getMovementCost(effort); // TODO: Have moving in your non-preferred terrain cost more energy?
+        double cost = SPEED_COST * Math.pow(effort, 2); // TODO: Have moving in your non-preferred terrain cost more energy?
 
         if (energy >= cost) {
             double functionalSpeed = effort * Math.abs(isOnLand() - swimSkill);
-            Vector next = getPosition().addScaledInBounds(direction, Vector.zero, getBounds(), functionalSpeed);
+            Vector next = getPosition().addScaledInBounds(direction, Vector.ZERO, getBounds(), functionalSpeed);
             setPosition(next);
             changeEnergy(-cost);
         }
@@ -606,10 +609,6 @@ public class Agent  extends MobileEntity {
 
     private Vector getBounds() {
         return environment.getSize();
-    }
-
-    private double getMovementCost(double actualSpeed) {
-        return SPEED_COST * Math.pow(actualSpeed, 2);
     }
 
     private double getPassiveEnergyCost() {

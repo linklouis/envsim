@@ -3,8 +3,10 @@ package edu.msoe.envsim;
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Entity;
 import edu.msoe.envsim.entities.MobileEntity;
-import edu.msoe.envsim.utilities.*;
 import edu.msoe.envsim.utilities.Vector;
+import edu.msoe.envsim.utilities.apputils.Clock;
+import edu.msoe.envsim.utilities.apputils.DebugMessage;
+import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -20,6 +22,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -641,7 +644,7 @@ public class Environment extends Canvas {
      * @param collisionRequirement
      * @return
      */
-    public List<Entity> getCollisions(@NotNull Entity entity, CollisionRequirement collisionRequirement) {
+    public List<Entity> getCollisions(@NotNull Entity entity, BiPredicate<Entity, Entity> collisionRequirement) {
         if (!entity.isRegistered()) {
             return Collections.emptyList();
         }
@@ -661,7 +664,7 @@ public class Environment extends Canvas {
             for (int y = minCellY; y <= maxCellY; y++) {
                 for (Entity entity2 : cells[x][y]) {
                     // Check strict collision math for entities in adjacent cells
-                    if (entity != entity2 && entity.isColliding(entity2) && collisionRequirement.checkCollision(entity, entity2)) {
+                    if (entity != entity2 && entity.isColliding(entity2) && collisionRequirement.test(entity, entity2)) {
                         collisions.add(entity2);
                     }
                 }

@@ -1,6 +1,5 @@
-package edu.msoe.envsim.utilities;
+package edu.msoe.envsim.utilities.simutils;
 
-import edu.msoe.envsim.entities.Agent;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;

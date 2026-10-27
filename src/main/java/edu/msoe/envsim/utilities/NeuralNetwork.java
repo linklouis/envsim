@@ -1,10 +1,9 @@
-package edu.msoe.envsim.nn;
+package edu.msoe.envsim.utilities;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 /**

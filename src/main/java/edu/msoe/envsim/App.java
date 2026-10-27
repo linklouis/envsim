@@ -2,9 +2,9 @@ package edu.msoe.envsim;
 
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Food;
-import edu.msoe.envsim.utilities.AgentInspectorPane;
-import edu.msoe.envsim.utilities.DebugMessage;
-import edu.msoe.envsim.utilities.TerrainType;
+import edu.msoe.envsim.utilities.apputils.AgentInspectorPane;
+import edu.msoe.envsim.utilities.apputils.DebugMessage;
+import edu.msoe.envsim.utilities.simutils.TerrainType;
 import edu.msoe.envsim.utilities.Vector;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -76,7 +76,7 @@ public class App extends Application {
         }
 
         for (int i = 0; i < 2000; i++) {
-            Vector position = Vector.random(Vector.zero, environment.getSize());
+            Vector position = Vector.random(Vector.ZERO, environment.getSize());
             new Food(position, Math.pow(Math.random(), 3) * 40 + 5, environment);
         }
 

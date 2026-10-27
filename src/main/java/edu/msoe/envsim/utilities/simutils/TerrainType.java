@@ -1,4 +1,4 @@
-package edu.msoe.envsim.utilities;
+package edu.msoe.envsim.utilities.simutils;
 
 import javafx.scene.paint.Color;
 

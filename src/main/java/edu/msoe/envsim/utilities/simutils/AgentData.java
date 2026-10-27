@@ -1,6 +1,7 @@
-package edu.msoe.envsim.utilities;
+package edu.msoe.envsim.utilities.simutils;
 
-import edu.msoe.envsim.nn.NeuralNetwork;
+import edu.msoe.envsim.utilities.NeuralNetwork;
+import edu.msoe.envsim.utilities.Vector;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;

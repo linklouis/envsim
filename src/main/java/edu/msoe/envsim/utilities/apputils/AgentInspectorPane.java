@@ -1,6 +1,7 @@
-package edu.msoe.envsim.utilities;
+package edu.msoe.envsim.utilities.apputils;
 
 import edu.msoe.envsim.entities.Agent;
+import edu.msoe.envsim.utilities.simutils.AgentData;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;

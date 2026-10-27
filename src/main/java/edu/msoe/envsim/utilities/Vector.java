@@ -23,10 +23,10 @@ import org.jetbrains.annotations.Nullable;
  */
 @SuppressWarnings("unused")
 public record Vector(double x, double y) {
-    public static final @NotNull Vector zero = new Vector(0, 0);
+    public static final @NotNull Vector ZERO = new Vector(0, 0);
     public static final @NotNull Vector I = new Vector(1, 0);
     public static final @NotNull Vector J = new Vector(0, 1);
-    public static final @NotNull Vector one = new Vector(1, 1);
+    public static final @NotNull Vector ONE = new Vector(1, 1);
 
     /**
      * @return A new {@link Vector} whose components are both random values between 0 and 1.
@@ -45,7 +45,7 @@ public record Vector(double x, double y) {
      * @return A new {@link Vector} with a magnitude between {@code min} and {@code max}.
      */
     public static @NotNull Vector random(double min, double max) {
-        return random().scale(2).subtract(one).atMagnitude(min + Math.random()*(max - min));
+        return random().scale(2).subtract(ONE).atMagnitude(min + Math.random()*(max - min));
     }
 
     @Contract("_, _ -> new")

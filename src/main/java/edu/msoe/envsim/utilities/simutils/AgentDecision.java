@@ -1,4 +1,4 @@
-package edu.msoe.envsim.nn;
+package edu.msoe.envsim.utilities.simutils;
 
 import edu.msoe.envsim.utilities.Vector;
 
