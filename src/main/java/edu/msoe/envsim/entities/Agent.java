@@ -294,7 +294,17 @@ public class Agent  extends MobileEntity {
     }
 
     private double getGenomeComparison(@NotNull Agent other) {
-        return genomeComparisonCache.computeIfAbsent(other.hashCode(), _ -> compareGenome(other));
+        int otherHash = other.hashCode();
+
+        Double cached = genomeComparisonCache.get(otherHash);
+        if (cached != null) {
+            return cached;
+        }
+
+        double comparison = compareGenome(other);
+        genomeComparisonCache.put(otherHash, comparison);
+
+        return comparison;
     }
 
     public void parallelStep() {
