@@ -4,6 +4,8 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 /**
  * Handles 2D vector math to simplify describing 2D objects.
  * <p>
@@ -21,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
  * @param x The X component of the vector
  * @param y The Y component of the vector
  */
-@SuppressWarnings("unused")
+//@SuppressWarnings("unused")
 public record Vector(double x, double y) {
     public static final @NotNull Vector ZERO = new Vector(0, 0);
     public static final @NotNull Vector I = new Vector(1, 0);
@@ -32,11 +34,12 @@ public record Vector(double x, double y) {
      * @return A new {@link Vector} whose components are both random values between 0 and 1.
      */
     public static @NotNull Vector random() {
-        return new Vector(Math.random(), Math.random());
+        return fromAngle(ThreadLocalRandom.current().nextDouble() * 2 * Math.PI);
     }
 
     public static @NotNull Vector random(double scale) {
-        return random().scale(scale);
+        double angle = ThreadLocalRandom.current().nextDouble() * 2 * Math.PI;
+        return new Vector(Math.cos(angle) * scale, Math.sin(angle) * scale);
     }
 
     /**
@@ -45,13 +48,13 @@ public record Vector(double x, double y) {
      * @return A new {@link Vector} with a magnitude between {@code min} and {@code max}.
      */
     public static @NotNull Vector random(double min, double max) {
-        return random().scale(2).subtract(ONE).atMagnitude(min + Math.random()*(max - min));
+        return random().scale(2).subtract(ONE).atMagnitude(min + ThreadLocalRandom.current().nextDouble()*(max - min));
     }
 
     @Contract("_, _ -> new")
     public static @NotNull Vector random(@NotNull Vector min, @NotNull Vector max) {
-        return new Vector(min.x + Math.random()*(max.x - min.x),
-                min.y + Math.random()*(max.y - min.y));
+        return new Vector(min.x + ThreadLocalRandom.current().nextDouble()*(max.x - min.x),
+                min.y + ThreadLocalRandom.current().nextDouble()*(max.y - min.y));
     }
 
     @Contract("_ -> new")
