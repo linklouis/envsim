@@ -66,7 +66,7 @@ public class Environment extends Canvas {
     private volatile boolean simRunning = false;
     /**
      * A flag for if the user has paused the simulation.
-     * {@link simRunning} may be `false` even if this is `false`, if the game is in edit mode.
+     * {@link #simRunning} may be `false` even if this is `false`, if the game is in edit mode.
      */
     private boolean simPaused = false;
 

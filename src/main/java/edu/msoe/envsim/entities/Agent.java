@@ -77,19 +77,19 @@ public class Agent  extends MobileEntity {
     // Genetic Attributes:
     /**
      * The maximum distance an Agent can move each time step in pixels.
-     * <p>Higher values consume more {@link energy} each time step.</p>
+     * <p>Higher values consume more {@link #energy} each time step.</p>
      * <p>The Agent can decide to move any speed from 0 to this value.</p>
      */
     private final double maxSpeed;
     /**
      * The "Max Health" of the Agent.
      * The actual size gene that gets passed to descendants.
-     * Higher values consume more {@link energy} each time step.
+     * Higher values consume more {@link #energy} each time step.
      */
     private final double size;
     /**
      * How close an entity must be for the Agent to see it.
-     * Higher values consume more {@link energy} each time step.
+     * Higher values consume more {@link #energy} each time step.
      * TODO: Should the agent be able to see obstacles? (Probably not) [Why did I say probably not? (Cuz it's slow?)]
      */
     private final double visionRadius;
@@ -120,7 +120,7 @@ public class Agent  extends MobileEntity {
     private Vector direction;
     /**
      * The amount of energy the Agent currently has.
-     * Energy is consumed passively each time step based on the {@link size} and {@link visionRadius} attributes,
+     * Energy is consumed passively each time step based on the {@link #size} and {@link #visionRadius} attributes,
      * and actively consumed by the moving and reproducing.
      * When reproducing, half of the Agent's current energy is passed to the child.
      * Can be replenished by eating.
