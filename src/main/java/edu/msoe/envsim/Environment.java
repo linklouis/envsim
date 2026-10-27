@@ -631,7 +631,7 @@ public class Environment extends Canvas {
 
                     double distSq = entity.getPosition().distanceSquared(position);
 
-                    if (distSq <= maxDistSquared) evaluate.accept(entity, Math.sqrt(distSq));
+                    if (distSq <= maxDistSquared) evaluate.accept(entity, distSq);
                 }
             }
         }

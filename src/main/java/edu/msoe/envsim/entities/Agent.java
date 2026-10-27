@@ -2,6 +2,7 @@ package edu.msoe.envsim.entities;
 
 import edu.msoe.envsim.utilities.*;
 import edu.msoe.envsim.Environment;
+import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.simutils.AgentDecision;
 import edu.msoe.envsim.utilities.NeuralNetwork;
@@ -13,10 +14,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -464,7 +462,6 @@ public class Agent  extends MobileEntity {
      */
     @Contract(" -> new")
     private float @NotNull [] getInput() {
-        // TODO: Add current terrain
         // TODO: Add way to see what terrain is around it.
         //  Maybe if I add raycasts, have each one also say what the closest new terrain is in that direction?
         resetEntityEvaluation();
@@ -473,7 +470,7 @@ public class Agent  extends MobileEntity {
                 e -> e != this, this::evaluateEntity,
                 visionRadius, visionRadiusSquared);
         return new float[] {
-                (float) (energy / MAX_EXPECTED_ENERGY),
+                (float) (energy / calculateCloneThreshold()),
                 (float) (getRadius() / size),
                 maxFoodValue,
                 maxPreyValue,
@@ -491,7 +488,7 @@ public class Agent  extends MobileEntity {
         worstThreat = null;
     }
 
-    public void evaluateEntity(Entity entity, double distance) {
+    public void evaluateEntity(Entity entity, double distanceSquared) {
         if (entity instanceof Food food) {
             if (food.getRadius() <= 0 || food == lastEatenFood) return;
 
@@ -502,8 +499,9 @@ public class Agent  extends MobileEntity {
             }
         } else if (entity instanceof Agent agent) {
             float input1 = (float) (agent.getRadius() / this.getRadius());
-            float input2 = (float) distance;
+            float input2 = (float) (distanceSquared / visionRadiusSquared);
             float input3 = (float) getGenomeComparison(agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
+//            System.out.println("input1: " + input1 + " input2: " + input2 + " input3: " + input3);
 
             if (!isSameSpecies(this, agent)) {
                 float preyValue = preyEvaluator.predict3x3x1(input1, input2, input3);
@@ -532,6 +530,7 @@ public class Agent  extends MobileEntity {
     @Override
     public void getDecision() {
         float[] inputs = getInput();
+//        System.out.println(Arrays.toString(inputs));
         float[] output = brain.predict6x10x7(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);
 
         double targetFood = bestFood == null ? 0 : output[2];
