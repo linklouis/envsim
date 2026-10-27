@@ -334,7 +334,7 @@ public class App extends Application {
                 try {
                     environment.saveTerrain(file);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    showErrorPopup("Save Failed", "Could not save terrain to file.", e.getMessage());
                 }
             }
         });
@@ -382,6 +382,20 @@ public class App extends Application {
         StackPane.setMargin(menuLayer, new Insets(15));
 
         return menuLayer;
+    }
+
+    private void showErrorPopup(String titleText, String headerText, String contentText) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(titleText);
+        alert.setHeaderText(headerText);
+
+        Label contentLabel = new Label(contentText != null ? contentText : "An unexpected error occurred.");
+        contentLabel.setWrapText(true);
+        contentLabel.setMaxWidth(380);
+        alert.getDialogPane().setContent(contentLabel);
+        alert.getDialogPane().setPrefWidth(450);
+
+        alert.showAndWait();
     }
 
     private void showEnvironmentManager(@NotNull StackPane gamePane, @NotNull Environment environment) {
@@ -433,7 +447,7 @@ public class App extends Application {
                 try {
                     environment.saveTerrain(targetFile);
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    showErrorPopup("Save Failed", "Could not overwrite environment file.", ex.getMessage());
                 }
             }
         };
@@ -465,7 +479,7 @@ public class App extends Application {
                                 environment.loadTerrain(file);
                                 gamePane.getChildren().remove(backdrop);
                             } catch (Exception ex) {
-                                ex.printStackTrace();
+                                showErrorPopup("Load Failed", "Could not load environment '" + name + "'.", ex.getMessage());
                             }
                         });
 
@@ -519,7 +533,7 @@ public class App extends Application {
                         environment.saveTerrain(targetFile);
                         refreshThumbnails.run();
                     } catch (Exception ex) {
-                        ex.printStackTrace();
+                        showErrorPopup("Save Failed", "Could not save environment file.", ex.getMessage());
                     }
                 }
             }

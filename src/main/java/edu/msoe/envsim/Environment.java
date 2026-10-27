@@ -8,8 +8,11 @@ import edu.msoe.envsim.utilities.apputils.Clock;
 import edu.msoe.envsim.utilities.apputils.DebugMessage;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.animation.AnimationTimer;
+import javafx.application.Platform;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Label;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
@@ -33,6 +36,7 @@ public class Environment extends Canvas {
      * The number of screen pixels per terrain pixel on each axis.
      */
     public static final int TERRAIN_RESOLUTION_RATIO = 20;
+    private static final String DEFAULT_ENVIRONMENT = "environments/Standard.terrain";
 
     @SuppressWarnings("unchecked")
     private final Set<Entity>[][] cells = (Set<Entity>[][]) new CopyOnWriteArraySet[NUM_CELLS][NUM_CELLS];
@@ -124,7 +128,22 @@ public class Environment extends Canvas {
         terrainData = new TerrainType[terrainWidth][terrainHeight];
         terrainCacheImage = new WritableImage(terrainWidth, terrainHeight);
         terrainPixelWriter = terrainCacheImage.getPixelWriter();
-        fillTerrain(TerrainType.STANDARD);
+        try {
+            loadTerrain(new File(DEFAULT_ENVIRONMENT));
+        } catch (Exception e) {
+            fillTerrain();
+            Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Startup Load Failed");
+                alert.setHeaderText("Could not load default environment");
+                Label contentLabel = new Label(e.getMessage() != null ? e.getMessage() : "An error occurred while loading " + DEFAULT_ENVIRONMENT);
+                contentLabel.setWrapText(true);
+                contentLabel.setMaxWidth(380);
+                alert.getDialogPane().setContent(contentLabel);
+                alert.getDialogPane().setPrefWidth(450);
+                alert.showAndWait();
+            });
+        }
 
         this.onSimModeStart = onSimModeStart;
         this.onEditModeStart = onEditModeStart;
@@ -241,11 +260,11 @@ public class Environment extends Canvas {
         }
     }
 
-    private void fillTerrain(TerrainType terrainType) {
+    private void fillTerrain() {
         for (int x = 0; x < terrainData.length; x++) {
             for (int y = 0; y < terrainData[0].length; y++) {
                 if (x < terrainData.length / 2) {
-                    setTerrainTile(x, y, terrainType);
+                    setTerrainTile(x, y, TerrainType.STANDARD);
                 } else {
                     setTerrainTile(x, y, TerrainType.WATER);
                 }
