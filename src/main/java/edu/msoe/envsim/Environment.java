@@ -688,11 +688,7 @@ public class Environment extends Canvas {
 
     @Contract("_ -> new")
     private @NotNull Vector getCellIndexFromPosition(@NotNull Vector position) {
-        Vector rawIndex = position.elementWiseDivision(cellSize);
-        return new Vector(
-                (int) Math.clamp(rawIndex.x(), 0, NUM_CELLS - 1),
-                (int) Math.clamp(rawIndex.y(), 0, NUM_CELLS - 1)
-        );
+        return position.clampedElementWiseDivision(cellSize, 0, NUM_CELLS - 1);
     }
 
     private Set<Entity> getCellFromPosition(@NotNull Vector position) {

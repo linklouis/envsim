@@ -173,6 +173,13 @@ public record Vector(double x, double y) {
         return new Vector(x() / other.x(), y() / other.y());
     }
 
+    public @NotNull Vector clampedElementWiseDivision(@NotNull Vector other, double min, double max) {
+        return new Vector(
+                (int) Math.clamp(x() / other.x(), min, max),
+                (int) Math.clamp(y() / other.y(), min, max)
+        );
+    }
+
     public boolean equals(@Nullable Vector other) {
         return (other != null) && (this.x == other.x && this.y == other.y);
     }
