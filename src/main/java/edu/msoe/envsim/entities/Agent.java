@@ -363,16 +363,12 @@ public class Agent  extends MobileEntity {
         double effort = speed / speedModifier;
         double cost = getMovementCost(effort); // TODO: Have moving in your non-preferred terrain cost more energy?
 
-        Vector next;
         if (energy >= cost) {
             double functionalSpeed = effort * Math.abs(isOnLand() - swimSkill);
-            next = getPosition().add(direction.scale(functionalSpeed));
+            Vector next = getPosition().addInBoundsWithScale(direction, Vector.zero, getBounds(), functionalSpeed);
+            setPosition(next);
             changeEnergy(-cost);
-        } else {
-            next = getPosition();
         }
-
-        setPosition(next.clamp(Vector.zero, getBounds()));
     }
 
     /**
