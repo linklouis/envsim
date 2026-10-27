@@ -22,6 +22,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 public class Environment extends Canvas {
     public static final int NUM_CELLS = 80;
@@ -443,11 +444,10 @@ public class Environment extends Canvas {
 
         mobileEntities.parallelStream().forEach(MobileEntity::getDecision);
         long t2 = System.nanoTime();
-        mobileEntities.parallelStream().forEach(MobileEntity::parallelStep);
+        Stream.concat(mobileEntities.stream(), stationaryEntities.stream())
+                .parallel().forEach(Entity::parallelStep);
         mobileEntities.parallelStream().forEach(MobileEntity::findCollisions);
         for (MobileEntity e : mobileEntities) e.step();
-//        for (Entity e : stationaryEntities) e.step();
-        stationaryEntities.parallelStream().forEach(Entity::parallelStep);
         long t3 = System.nanoTime();
         listMs = listMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
         decideMs   = decideMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
