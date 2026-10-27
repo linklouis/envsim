@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 
 public class Agent  extends MobileEntity {
     /**
@@ -93,6 +95,10 @@ public class Agent  extends MobileEntity {
      * TODO: Should the agent be able to see obstacles? (Probably not) [Why did I say probably not? (Cuz it's slow?)]
      */
     private final double visionRadius;
+    /**
+     * Caching the squared radius so it doesn't have to be recalculated in {@link Environment#evaluateEntitiesInRange(Vector, Predicate, BiConsumer, double)} every tick}.
+     */
+    private final double visionRadiusSquared;
     private final double healthRegenSpeed;
     private final double turnSpeed;
     private double swimSkill;
@@ -191,6 +197,7 @@ public class Agent  extends MobileEntity {
         turnSpeed = agentData.turnSpeed();
         size = agentData.size();
         visionRadius = agentData.visionRadius();
+        visionRadiusSquared = visionRadius * visionRadius;
         healthRegenSpeed = agentData.healthRegenSpeed();
         swimSkill = agentData.swimSkill();
         brain =  agentData.brain();
@@ -432,31 +439,18 @@ public class Agent  extends MobileEntity {
     }
 
     private static @NotNull NeuralNetwork newBrain() {
-        NeuralNetwork neuralNetwork = new NeuralNetwork(NUM_INPUTS);
-//        neuralNetwork.newLayer(16);
-        neuralNetwork.newLayer(10);
-        neuralNetwork.newLayer(7, ActivationFunction.sigmoid());
-
-        return neuralNetwork;
+        return new NeuralNetwork(new int[] {NUM_INPUTS, 10, 7});    // TODO: Probably make the hidden layer a little bigger
     }
 
     private static @NotNull NeuralNetwork newFoodEvaluator() {
-        NeuralNetwork neuralNetwork = new NeuralNetwork(3);
-        neuralNetwork.newLayer(3);
-        neuralNetwork.newLayer(1,ActivationFunction.sigmoid());
-
-        return neuralNetwork;
+        return new NeuralNetwork(new int[] {3, 3, 1});
     }
 
     /**
-     * TODO: consider velocity?
+     * TODO: consider velocity/direction?
       */
     private static @NotNull NeuralNetwork newAgentEvaluator() {
-        NeuralNetwork neuralNetwork = new NeuralNetwork(3);
-        neuralNetwork.newLayer(3);
-        neuralNetwork.newLayer(1,ActivationFunction.sigmoid());
-
-        return neuralNetwork;
+        return new NeuralNetwork(new int[] {3, 3, 1});
     }
 
 
@@ -470,7 +464,10 @@ public class Agent  extends MobileEntity {
         // TODO: Add way to see what terrain is around it.
         //  Maybe if I add raycasts, have each one also say what the closest new terrain is in that direction?
         resetEntityEvaluation();
-        environment.evaluateEntitiesInRange(getPosition(), e -> e != this, this::evaluateEntity, visionRadius);
+        environment.evaluateEntitiesInRange(
+                getPosition(),
+                e -> e != this, this::evaluateEntity,
+                visionRadius, visionRadiusSquared);
         return new float[] {
                 (float) (energy / MAX_EXPECTED_ENERGY),
                 (float) (getRadius() / size),

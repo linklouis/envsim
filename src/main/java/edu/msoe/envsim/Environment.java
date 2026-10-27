@@ -24,7 +24,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class Environment extends Canvas {
-    public static final int NUM_CELLS = 40;
+    public static final int NUM_CELLS = 60;
     /**
      * The number of screen pixels per terrain pixel on each axis.
      */
@@ -611,8 +611,7 @@ public class Environment extends Canvas {
         return new Vector(worldWidth, worldHeight);
     }
 
-    public void evaluateEntitiesInRange(@NotNull Vector position, Predicate<Entity> immediateRejection, BiConsumer<Entity, Double> evaluate, double maxDistance) {
-        double maxDistSquared = maxDistance * maxDistance;
+    public void evaluateEntitiesInRange(@NotNull Vector position, Predicate<Entity> immediateRejection, BiConsumer<Entity, Double> evaluate, double maxDistance, double maxDistSquared) {
         // Calculate the min and max cell indices that overlap with the vision bounding box
         int minCellX = (int) Math.max(0, (position.x() - maxDistance) / cellSize.x());
         int maxCellX = (int) Math.min(NUM_CELLS - 1, (position.x() + maxDistance) / cellSize.x());

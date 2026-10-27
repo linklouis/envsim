@@ -1,209 +1,125 @@
 package edu.msoe.envsim.nn;
 
-import edu.msoe.envsim.utilities.Vector;
-import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.*;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
+/**
+ * Source: Google Gemini
+ */
 public class NeuralNetwork implements Serializable {
     private final int numInputs;
-    private Layer inputLayer = null;
+    private final int[] layerSizes; // e.g., [numInputs, hiddenSize1, hiddenSize2, outputSize]
+    private final float[] weights;  // All biases and weights stored contiguously
 
-    public NeuralNetwork(int numInputs) {
-        this.numInputs = numInputs;
-    }
+    // Pre-allocated activation buffers to eliminate object allocations during inference
+    private final float[][] layerBuffers;
 
-    private NeuralNetwork(@NotNull Layer inputLayer) {
-        this.numInputs = inputLayer.numIns();
-        this.inputLayer = inputLayer;
-    }
-
-    public void newLayer(int size, ActivationFunction activationFunction) {
-        if (inputLayer == null) {
-            inputLayer = new Layer(size, numInputs, activationFunction);
-        } else {
-            inputLayer.newLayer(size, activationFunction);
+    public NeuralNetwork(int @NotNull [] layerSizes) {
+        // Calculate total weight/bias count and allocate once
+        int totalWeights = 0;
+        for (int i = 1; i < layerSizes.length; i++) {
+            int prevSize = layerSizes[i - 1];
+            int currSize = layerSizes[i];
+            totalWeights += currSize * (prevSize + 1); // +1 for bias
         }
+        float[] weights = new float[totalWeights];
+
+        for (int i = 0; i < weights.length; i++) {
+            weights[1] = (float) (Math.random() * 2 - 1);
+        }
+
+        this(layerSizes, weights);
     }
 
-    public void newLayer(int size) {
-        newLayer(size, ActivationFunction.ReLU());
+    public NeuralNetwork(int @NotNull [] layerSizes, float[] weights) {
+        this.layerSizes = layerSizes;
+        this.numInputs = layerSizes[0];
+        this.weights = weights;
+
+        // Allocate activation buffers for intermediate and output layers
+        this.layerBuffers = new float[layerSizes.length][];
+        for (int i = 0; i < layerSizes.length; i++) {
+            layerBuffers[i] = new float[layerSizes[i]];
+        }
     }
 
     public float[] predict(float @NotNull [] inputs) {
-//        if (inputs.length != numInputs) {
-//            throw new IllegalArgumentException("Network with " + numInputs
-//                    + " inputs cannot accept input array of size " + inputs.length + ".");
-//        }
-        return inputLayer.pass(inputs);
-    }
+        // Copy inputs into the first buffer
+        System.arraycopy(inputs, 0, layerBuffers[0], 0, numInputs);
 
-    public void display(javafx.scene.canvas.GraphicsContext gc, double width, double height) {
-        // 1. Flatten the linked list into a generic list
-        java.util.List<Layer> layers = new java.util.ArrayList<>();
-        Layer current = inputLayer;
-        while (current != null) {
-            layers.add(current);
-            current = current.getNext();
-        }
+        int weightIndex = 0;
 
-        // 2. Find Min/Max weights for color normalization
-        float minWeight = 0;
-        float maxWeight = 0;
+        // Feedforward pass with zero object allocations
+        for (int l = 1; l < layerSizes.length; l++) {
+            int prevSize = layerSizes[l - 1];
+            int currSize = layerSizes[l];
+            float[] prevLayer = layerBuffers[l - 1];
+            float[] currLayer = layerBuffers[l];
 
-        for (Layer layer : layers) {
-            float[] w = layer.getWeights(); // 1D Array
-            for (float val : w) {
-                if (val < minWeight) minWeight = val;
-                if (val > maxWeight) maxWeight = val;
-            }
-        }
-        if (maxWeight == 0) maxWeight = 1;
-        if (minWeight == 0) minWeight = -1;
+            // Check if this is the final output layer
+            boolean isOutputLayer = (l == layerSizes.length - 1);
 
-        // 3. Setup Scaling
-        double scale = Math.min(width, height) / 200;
-        double layerDist = (width - 20) / (layers.isEmpty() ? 1 : layers.size());
+            for (int j = 0; j < currSize; j++) {
+                // Load bias
+                float sum = weights[weightIndex++];
 
-        // 4. Draw Input Nodes
-        java.util.List<Vector> previousPositions = new java.util.ArrayList<>();
+                // Compute weighted sum
+                for (int k = 0; k < prevSize; k++) {
+                    sum += prevLayer[k] * weights[weightIndex++];
+                }
 
-        for (int i = 0; i < numInputs; i++) {
-            double nodeDist;
-            double y;
-            if (numInputs % 2 == 0) {
-                nodeDist = height / (numInputs + 1);
-                y = nodeDist * i + nodeDist * 1.125;
-            } else {
-                nodeDist = height / numInputs;
-                y = nodeDist * i + nodeDist / 1.5;
-            }
-
-            Vector pos = new Vector(10, y);
-            previousPositions.add(pos);
-
-            gc.setFill(Color.WHITE);
-            double r = 2 * scale;
-            gc.fillOval(pos.x() - r, pos.y() - r, r * 2, r * 2);
-        }
-
-        // 5. Iterate and Draw Layers
-        for (int i = 0; i < layers.size(); i++) {
-            Layer layer = layers.get(i);
-
-            // --- NEW: Handle 1D Array ---
-            float[] weights = layer.getWeights();
-            int numNeurons = layer.size();
-            int stride = layer.getStride(); // How wide is one neuron's data? (Inputs + 1)
-
-            double x = layerDist * (i + 1) + 10;
-            java.util.List<Vector> nodePositions = new java.util.ArrayList<>();
-
-            double nodeDist = (numNeurons % 2 == 0) ? height / (numNeurons + 1) : height / numNeurons;
-
-            for (int j = 0; j < numNeurons; j++) {
-                // Calculate Y position
-                double y;
-                if (numNeurons % 2 == 0) {
-                    y = nodeDist * j + nodeDist * 1.125;
+                // Apply Activation Function
+                if (isOutputLayer) {
+                    // Sigmoid for the final output layer
+                    currLayer[j] = (float) (1.0 / (1.0 + Math.exp(-sum)));
                 } else {
-                    y = nodeDist * j + nodeDist / 1.5;
+                    // ReLU for all hidden layers
+                    currLayer[j] = Math.max(sum, 0.0f);
                 }
-                Vector curPos = new Vector(x, y);
-
-                // --- NEW: Calculate Index manually ---
-                // Start index for this neuron in the 1D array
-                int neuronStartIndex = j * stride;
-
-                // The first value is Bias (index + 0)
-                // The subsequent values are weights (index + 1 to index + n)
-
-                // Draw Connections
-                for (int n = 1; n < stride; n++) {
-                    // Safety check in case previous layer size doesn't match stride logic
-                    if (n - 1 >= previousPositions.size()) break;
-
-                    // Get weight value from 1D array
-                    float w = weights[neuronStartIndex + n];
-
-                    Color color = calculateColorFromWeight(minWeight, maxWeight, w);
-
-                    Vector prev = previousPositions.get(n - 1);
-
-                    gc.setStroke(Color.WHITE);
-                    gc.setLineWidth(scale * 0.7);
-                    gc.strokeLine(prev.x(), prev.y(), curPos.x(), curPos.y());
-
-                    gc.setStroke(color);
-                    gc.setLineWidth(1.0);
-                    gc.strokeLine(prev.x(), prev.y(), curPos.x(), curPos.y());
-                }
-
-                // Draw Node Circle (Color based on Bias, which is at neuronStartIndex)
-                float bias = weights[neuronStartIndex];
-                Color nodeColor = calculateColorFromWeight(minWeight, maxWeight, bias);
-
-                double r = 2 * scale;
-                gc.setFill(nodeColor);
-                gc.fillOval(curPos.x() - r, curPos.y() - r, r * 2, r * 2);
-
-                gc.setStroke(Color.WHITE);
-                gc.setLineWidth(0.5);
-                gc.strokeOval(curPos.x() - r, curPos.y() - r, r * 2, r * 2);
-
-                nodePositions.add(curPos);
             }
-            previousPositions = nodePositions;
         }
-    }
 
-    private @NotNull Color calculateColorFromWeight(float minWeight, float maxWeight, float weight) {
-        Color color;
-        if (weight > 0) {
-            double intensity = 255 * weight / Math.abs(maxWeight);
-            color = Color.rgb(0, (int)Math.min(255, intensity), 0);
-        } else {
-            double intensity = (minWeight != 0) ? (255 * -weight / Math.abs(minWeight)) : (255 * -weight);
-            color = Color.rgb((int)Math.min(255, intensity), 0, 0);
-        }
-        return color;
+        return layerBuffers[layerSizes.length - 1];
     }
 
     public NeuralNetwork child(double mutationChance, double mutationSize) {
-        return new NeuralNetwork(inputLayer.child(mutationChance, mutationSize));
+        float[] childWeights = new float[weights.length];
+
+        for (int i = 0; i < weights.length; i++) {
+            float val = weights[i];
+            if (Math.random() < mutationChance) {
+                val += (float) ((Math.random() * 2 - 1) * mutationSize);
+            }
+            childWeights[i] = val;
+        }
+
+        return new NeuralNetwork(layerSizes, childWeights);
     }
 
-    public void save(String filename) throws IOException {
-        ObjectOutputStream out = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(filename + ".dat")));
-        out.writeObject(this);
-        out.close();
-    }
 
-    public NeuralNetwork randCopy() {
-        return new NeuralNetwork(inputLayer.randCopy());
-    }
+    /*
+     * Getters and Setters:
+     */
 
     public int getNumInputs() {
         return numInputs;
     }
 
-    public Layer getInputLayer() {
-        return inputLayer;
+    public int[] getLayerSizes() {
+        return layerSizes;
     }
 
     public List<Float> getWeights() {
-        List<Float> weights = new ArrayList<>();
-        Layer layer = inputLayer;
-        while (layer != null) {
-            for (float weight : layer.getWeights()) {
-                weights.add(weight);
-            }
-            layer = layer.getNext();
+        List<Float> list = new ArrayList<>(weights.length);
+
+        for (float weight : weights) {
+            list.add(weight);
         }
-        return weights;
+
+        return list;
     }
 }
-
