@@ -244,13 +244,10 @@ public class Agent  extends MobileEntity {
     }
 
     private double compareGenome(@NotNull Agent other) {
-        float[] g1 = this.genome;
-        float[] g2 = other.genome;
-
         double totalRelativeDiff = 0;
-        for (int i = 0; i < g1.length; i++) {
-            float val1 = g1[i];
-            float val2 = g2[i];
+        for (int i = 0; i < this.genome.length; i++) {
+            float val1 = this.genome[i];
+            float val2 = other.genome[i];
 
             // Proportional difference formula that handles any magnitude gracefully
             double diff = (val1 - val2) / (Math.abs(val1) + Math.abs(val2) + 1e-5);
@@ -258,7 +255,7 @@ public class Agent  extends MobileEntity {
         }
 
         // Return RMS of the relative differences
-        return Math.sqrt(totalRelativeDiff / g1.length);
+        return Math.sqrt(totalRelativeDiff / this.genome.length);
     }
 
     /**
@@ -424,12 +421,8 @@ public class Agent  extends MobileEntity {
     }
 
     private static boolean isSameSpecies(@NotNull Agent agent1, @NotNull Agent agent2) {
-        double comparison;
-        if (agent1.genomeComparisonCache.containsKey(agent2.hashCode())) {
-            comparison = agent1.genomeComparisonCache.get(agent2.hashCode());
-        } else {
-            comparison = agent2.getGenomeComparison(agent1);
-        }
+        Double cached = agent1.genomeComparisonCache.get(agent2.hashCode());
+        double comparison = Objects.requireNonNullElseGet(cached, () -> agent2.getGenomeComparison(agent1));
 
         return Math.exp(-SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR * Math.pow(comparison, 2)) > SPECIES_SIMILARITY_THRESHOLD;
     }
