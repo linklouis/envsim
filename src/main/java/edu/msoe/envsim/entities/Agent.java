@@ -492,17 +492,17 @@ public class Agent  extends MobileEntity {
                 bestFood = food;
             }
         } else if (entity instanceof Agent agent) {
+            if (isSameSpecies(this, agent)) return;
+
             float input1 = (float) (agent.getRadius() / this.getRadius());
             float input2 = (float) (distanceSquared / visionRadiusSquared);
             float input3 = (float) getGenomeComparison(agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
 //            System.out.println("input1: " + input1 + " input2: " + input2 + " input3: " + input3);
 
-            if (!isSameSpecies(this, agent)) {
-                float preyValue = preyEvaluator.predict3x3x1(input1, input2, input3);
-                if (preyValue > maxPreyValue) {
-                    maxPreyValue = preyValue;
-                    bestPrey = agent;
-                }
+            float preyValue = preyEvaluator.predict3x3x1(input1, input2, input3);
+            if (preyValue > maxPreyValue) {
+                maxPreyValue = preyValue;
+                bestPrey = agent;
             }
 
             float threatValue = predatorEvaluator.predict3x3x1(input1, input2, input3);
