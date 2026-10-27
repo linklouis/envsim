@@ -903,4 +903,12 @@ public class Environment extends Canvas {
     public double getDecideMs() {
         return decideMs;
     }
+
+    public int getTerrainWidth() {
+        return terrainData.length;
+    }
+
+    public int getTerrainHeight() {
+        return terrainData[0].length;
+    }
 }

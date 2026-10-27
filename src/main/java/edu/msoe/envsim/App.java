@@ -22,6 +22,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
@@ -38,6 +39,8 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Optional;
@@ -259,56 +262,7 @@ public class App extends Application {
         resetCamera.setFocusTraversable(false);
         resetCamera.setOnAction(e -> environment.resetCamera(stage.getWidth()));
 
-
-        // ---- Editor controls (only shown in edit mode) ----
-        Label editorTitle = new Label("Terrain Editor");
-        editorTitle.setStyle(TITLE_STYLE);
-
-        Label brushTypeLabel = new Label("Brush Type");
-        brushTypeLabel.setStyle(CAPTION_STYLE);
-
-        Button grass = new Button("Grass");
-        Button water = new Button("Water");
-        for (Button b : new Button[]{grass, water}) {
-            b.setFocusTraversable(false);
-            b.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(b, Priority.ALWAYS);
-        }
-
-        // Initial state: Grass is selected by default
-        grass.setStyle(SELECTED_BUTTON_STYLE);
-        water.setStyle(BUTTON_STYLE);
-
-        grass.setOnAction(_ -> {
-            environment.setBrush(TerrainType.STANDARD);
-            grass.setStyle(SELECTED_BUTTON_STYLE);
-            water.setStyle(BUTTON_STYLE);
-        });
-        water.setOnAction(_ -> {
-            environment.setBrush(TerrainType.WATER);
-            water.setStyle(SELECTED_BUTTON_STYLE);
-            grass.setStyle(BUTTON_STYLE);
-        });
-        HBox terrainOptions = new HBox(8, grass, water);
-
-        // --- Refactored Save/Load Controls ---
-        Label brushSizeLabel = new Label("Brush Size: 5");
-        brushSizeLabel.setStyle(CAPTION_STYLE);
-
-        Slider brushSize = new Slider(1, 10, 5);
-        brushSize.setMajorTickUnit(1);
-        brushSize.setMinorTickCount(0);
-        brushSize.setSnapToTicks(true);
-        brushSize.setShowTickLabels(true);
-        brushSize.setShowTickMarks(true);
-        brushSize.setStyle(SLIDER_STYLE);
-        brushSize.setFocusTraversable(false);
-        brushSize.valueProperty().addListener((observable, oldValue, newValue) -> {
-            int val = newValue.intValue();
-            environment.setBrushSize(val);
-            brushSizeLabel.setText("Brush Size: " + val);
-        });
-
+        // --- File management controls (always in the menu) ---
         Label envManagementLabel = new Label("Environments");
         envManagementLabel.setStyle(CAPTION_STYLE);
 
@@ -343,21 +297,67 @@ public class App extends Application {
 
         HBox fileIoOptions = new HBox(8, saveButton, loadButton);
 
+
+        // ---- Editor controls (only shown in edit mode) ----
+        Label editorTitle = new Label("Terrain Editor");
+        editorTitle.setStyle(TITLE_STYLE);
+
+        Label brushTypeLabel = new Label("Brush Type");
+        brushTypeLabel.setStyle(CAPTION_STYLE);
+
+        Button grass = new Button("Grass");
+        Button water = new Button("Water");
+        for (Button b : new Button[]{grass, water}) {
+            b.setFocusTraversable(false);
+            b.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(b, Priority.ALWAYS);
+        }
+
+        // Initial state: Grass is selected by default
+        grass.setStyle(SELECTED_BUTTON_STYLE);
+        water.setStyle(BUTTON_STYLE);
+
+        grass.setOnAction(_ -> {
+            environment.setBrush(TerrainType.STANDARD);
+            grass.setStyle(SELECTED_BUTTON_STYLE);
+            water.setStyle(BUTTON_STYLE);
+        });
+        water.setOnAction(_ -> {
+            environment.setBrush(TerrainType.WATER);
+            water.setStyle(SELECTED_BUTTON_STYLE);
+            grass.setStyle(BUTTON_STYLE);
+        });
+        HBox terrainOptions = new HBox(8, grass, water);
+
+        Label brushSizeLabel = new Label("Brush Size: 5");
+        brushSizeLabel.setStyle(CAPTION_STYLE);
+
+        Slider brushSize = new Slider(1, 10, 5);
+        brushSize.setMajorTickUnit(1);
+        brushSize.setMinorTickCount(0);
+        brushSize.setSnapToTicks(true);
+        brushSize.setShowTickLabels(true);
+        brushSize.setShowTickMarks(true);
+        brushSize.setStyle(SLIDER_STYLE);
+        brushSize.setFocusTraversable(false);
+        brushSize.valueProperty().addListener((observable, oldValue, newValue) -> {
+            int val = newValue.intValue();
+            environment.setBrushSize(val);
+            brushSizeLabel.setText("Brush Size: " + val);
+        });
+
         editorSection = new VBox(10,
                 new Separator(),
                 editorTitle,
                 brushTypeLabel,
                 terrainOptions,
                 brushSizeLabel,
-                brushSize,
-                new Separator(),
-                envManagementLabel,
-                fileIoOptions
+                brushSize
         );
         setEditorSectionVisible(false);
 
         // ---- Panel ----
-        menuPanel = new VBox(10, title, simSpeedLabel, simSpeed, resetCamera, editorSection);
+        menuPanel = new VBox(10, title, simSpeedLabel, simSpeed, resetCamera, new Separator(), envManagementLabel, fileIoOptions, editorSection);
         menuPanel.setPadding(new Insets(15));
         menuPanel.setPrefWidth(240);
         menuPanel.setMaxWidth(USE_PREF_SIZE);
@@ -461,6 +461,21 @@ public class App extends Application {
                     Arrays.sort(files);
                     for (File file : files) {
                         String name = file.getName().replace(".terrain", "");
+
+                        boolean isValid = true;
+                        String invalidReason = "";
+                        try (DataInputStream in = new DataInputStream(new BufferedInputStream(new java.io.FileInputStream(file)))) {
+                            int fileWidth = in.readInt();
+                            int fileHeight = in.readInt();
+                            if (fileWidth != environment.getTerrainWidth() || fileHeight != environment.getTerrainHeight()) {
+                                isValid = false;
+                                invalidReason = "Dimension mismatch: File is " + fileWidth + "x" + fileHeight + ", but world requires " + environment.getTerrainWidth() + "x" + environment.getTerrainHeight() + ".";
+                            }
+                        } catch (Exception e) {
+                            isValid = false;
+                            invalidReason = "Could not read terrain file: " + e.getMessage();
+                        }
+
                         // Larger thumbnail dimensions for high-res/4K screens
                         WritableImage thumb = Environment.loadTerrainThumbnail(file, 200, 120);
                         ImageView imageView = new ImageView(thumb);
@@ -474,6 +489,7 @@ public class App extends Application {
                         Button loadCardBtn = new Button("Load");
                         loadCardBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 12px;");
                         loadCardBtn.setFocusTraversable(false);
+                        loadCardBtn.setDisable(!isValid);
                         loadCardBtn.setOnAction(_ -> {
                             try {
                                 environment.loadTerrain(file);
@@ -496,14 +512,33 @@ public class App extends Application {
 
                         VBox card = new VBox(8, imageView, nameLabel, cardActions);
                         card.setAlignment(Pos.CENTER);
-                        card.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 8;");
+
+                        String cardStyle = isValid
+                                ? "-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 8;"
+                                : "-fx-background-color: rgba(90, 45, 45, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #a55; -fx-border-radius: 8;";
+                        card.setStyle(cardStyle);
+
+                        if (!isValid) {
+                            Tooltip.install(card, new Tooltip(invalidReason));
+                        }
 
                         // Selecting a card populates the name field and highlights it
+                        boolean finalIsValid = isValid;
                         card.setOnMouseClicked(_ -> {
                             nameField.setText(name);
-                            tilePane.getChildren().forEach(n -> n.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 8;"));
-                            card.setStyle("-fx-background-color: rgba(60, 100, 140, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #88c0d0; -fx-border-radius: 8; -fx-border-width: 2;");
+                            tilePane.getChildren().forEach(n -> {
+                                boolean nValid = n.getProperties().get("isValid") == null || (boolean) n.getProperties().get("isValid");
+                                String baseStyle = nValid
+                                        ? "-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 8;"
+                                        : "-fx-background-color: rgba(90, 45, 45, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #a55; -fx-border-radius: 8;";
+                                n.setStyle(baseStyle);
+                            });
+                            String selectedStyle = finalIsValid
+                                    ? "-fx-background-color: rgba(60, 100, 140, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #88c0d0; -fx-border-radius: 8; -fx-border-width: 2;"
+                                    : "-fx-background-color: rgba(110, 50, 50, 0.9); -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand; -fx-border-color: #ff8888; -fx-border-radius: 8; -fx-border-width: 2;";
+                            card.setStyle(selectedStyle);
                         });
+                        card.getProperties().put("isValid", isValid);
 
                         tilePane.getChildren().add(card);
                     }
