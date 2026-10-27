@@ -70,9 +70,9 @@ public record Vector(double x, double y) {
         return new Vector(x() + otherX, y() + otherY);
     }
 
-    public @NotNull Vector addInBoundsWithScale(@NotNull Vector other, @NotNull Vector min, @NotNull Vector max, double scale) {
-        double x = (x() + other.x()) * scale;
-        double y = (y() + other.y()) * scale;
+    public @NotNull Vector addScaledInBounds(@NotNull Vector other, @NotNull Vector min, @NotNull Vector max, double scale) {
+        double x = x() + other.x() * scale;
+        double y = y() + other.y() * scale;
         return new Vector(
                 Math.clamp(x, min.x(), max.x()),
                 Math.clamp(y, min.y(), max.y())

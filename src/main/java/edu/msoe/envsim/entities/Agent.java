@@ -2,7 +2,6 @@ package edu.msoe.envsim.entities;
 
 import edu.msoe.envsim.utilities.*;
 import edu.msoe.envsim.Environment;
-import edu.msoe.envsim.nn.ActivationFunction;
 import edu.msoe.envsim.nn.AgentDecision;
 import edu.msoe.envsim.nn.NeuralNetwork;
 import javafx.scene.canvas.GraphicsContext;
@@ -15,7 +14,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -365,7 +363,7 @@ public class Agent  extends MobileEntity {
 
         if (energy >= cost) {
             double functionalSpeed = effort * Math.abs(isOnLand() - swimSkill);
-            Vector next = getPosition().addInBoundsWithScale(direction, Vector.zero, getBounds(), functionalSpeed);
+            Vector next = getPosition().addScaledInBounds(direction, Vector.zero, getBounds(), functionalSpeed);
             setPosition(next);
             changeEnergy(-cost);
         }
