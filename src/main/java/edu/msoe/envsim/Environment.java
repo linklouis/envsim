@@ -11,14 +11,12 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -31,8 +29,17 @@ public class Environment extends Canvas {
      */
     public static final int TERRAIN_RESOLUTION_RATIO = 20;
 
-    @SuppressWarnings("unchecked")
-    private final Set<Entity>[][] cells = (Set<Entity>[][]) new CopyOnWriteArraySet[NUM_CELLS][NUM_CELLS];
+    // --- Data-Oriented Spatial Grid Arrays ---
+    private static final int INITIAL_CAPACITY = 4000;
+    private Entity[] spatialEntities = new Entity[INITIAL_CAPACITY];
+    private Entity[] sortedSpatialEntities = new Entity[INITIAL_CAPACITY];
+    private int totalEntities = 0;
+
+    private final int numTotalCells = NUM_CELLS * NUM_CELLS;
+    private final int[] cellCounts = new int[numTotalCells];
+    private final int[] cellOffsets = new int[numTotalCells];
+    private final int[] cellStarts = new int[numTotalCells + 1];
+
     private final TerrainType[][] terrainData;
     private final WritableImage terrainCacheImage;
     private final PixelWriter terrainPixelWriter;
@@ -106,7 +113,6 @@ public class Environment extends Canvas {
         EDIT
     }
 
-
     public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom, boolean debugMode,
                        Runnable onSimModeStart, Runnable onEditModeStart, Consumer<Agent> onAgentSelected) {
         super(viewWidth, viewHeight);
@@ -133,7 +139,6 @@ public class Environment extends Canvas {
 
         this.onAgentSelected = onAgentSelected;
 
-        setupCells();
         setupMouseEvents();
         resetCanvas();
         setupSimulationThread();
@@ -178,6 +183,7 @@ public class Environment extends Canvas {
             }
         });
 
+        // Panning controls
         setOnMouseDragged(e -> {
             currentMouseX = e.getX();
             currentMouseY = e.getY();
@@ -215,14 +221,6 @@ public class Environment extends Canvas {
             translateY = mouseY - (mouseY - translateY) * actualZoomFactor;
             scale = newScale;
         });
-    }
-
-    private void setupCells() {
-        for (int i = 0; i < NUM_CELLS; i++) {
-            for (int j = 0; j < NUM_CELLS; j++) {
-                cells[i][j] = new CopyOnWriteArraySet<>();
-            }
-        }
     }
 
     /**
@@ -406,7 +404,7 @@ public class Environment extends Canvas {
             entity.paint(gc, entity == selectedAgent || debugMode);
         }
 
-        for (MobileEntity entity : mobileEntities) {
+        for (Entity entity : mobileEntities) {
             entity.paint(gc, entity == selectedAgent || debugMode);
         }
 
@@ -426,29 +424,32 @@ public class Environment extends Canvas {
 
         // Flush newly created entities into main list before iterating
         if (!pendingMobileEntities.isEmpty()) {
-            for (Entity entity : pendingMobileEntities) {
-                entity.onRegistered(); // TODO: Can I modify the add function of the collection to do the registration?
-            }
             mobileEntities.addAll(pendingMobileEntities);
             pendingMobileEntities.clear();
         }
 
         if (!mobileEntitiesToRemove.isEmpty()) {
-            for (Entity entity : mobileEntitiesToRemove) {
-                getCell(entity.getCellIndex()).remove(entity); // TODO: Can I modify the remove function of the collection to do the removal?
-            }
             mobileEntities.removeAll(mobileEntitiesToRemove);
             mobileEntitiesToRemove.clear();
         }
+
+        // --- Rebuild Spatial Grid via Counting Sort ---
+        rebuildSpatialGrid();
+
         long t1 = System.nanoTime();
 
         mobileEntities.parallelStream().forEach(MobileEntity::getDecision);
         long t2 = System.nanoTime();
+
         Stream.concat(mobileEntities.stream(), stationaryEntities.stream())
                 .parallel().forEach(Entity::parallelStep);
+
         mobileEntities.parallelStream().forEach(MobileEntity::findCollisions);
-        for (MobileEntity e : mobileEntities) e.step();
+
+        for (MobileEntity mobileEntity : mobileEntities) mobileEntity.step();
+
         long t3 = System.nanoTime();
+
         listMs = listMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
         decideMs   = decideMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
         stepMs = stepMs * 0.99 + (t3 - t2) / 1e6 * 0.01;
@@ -456,6 +457,64 @@ public class Environment extends Canvas {
         simClock.update();
     }
 
+    /**
+     * Source: Google Gemini
+     */
+    private void rebuildSpatialGrid() {
+        int count = 0;
+        int statSize = stationaryEntities.size();
+        int mobSize = mobileEntities.size();
+        totalEntities = statSize + mobSize;
+
+        if (spatialEntities.length < totalEntities) {
+            int newCap = Math.max(spatialEntities.length * 2, totalEntities + 500);
+            spatialEntities = new Entity[newCap];
+            sortedSpatialEntities = new Entity[newCap];
+        }
+
+        for (int i = 0; i < statSize; i++) {
+            spatialEntities[count++] = stationaryEntities.get(i);
+        }
+        for (int i = 0; i < mobSize; i++) {
+            spatialEntities[count++] = mobileEntities.get(i);
+        }
+
+        Arrays.fill(cellCounts, 0);
+
+        // Pass 1: Count elements per cell
+        for (int i = 0; i < totalEntities; i++) {
+            Entity e = spatialEntities[i];
+            int cIdx = getCellIndexInt(e.getPosition());
+            cellCounts[cIdx]++;
+        }
+
+        // Pass 2: Prefix sum for cellStarts
+        cellStarts[0] = 0;
+        for (int i = 0; i < numTotalCells; i++) {
+            cellStarts[i + 1] = cellStarts[i] + cellCounts[i];
+        }
+
+        System.arraycopy(cellStarts, 0, cellOffsets, 0, numTotalCells);
+
+        // Pass 3: Place into sorted array
+        for (int i = 0; i < totalEntities; i++) {
+            Entity e = spatialEntities[i];
+            int cIdx = getCellIndexInt(e.getPosition());
+            int dest = cellOffsets[cIdx]++;
+            sortedSpatialEntities[dest] = e;
+        }
+    }
+
+    /**
+     * Source: Google Gemini
+     * @param pos
+     * @return
+     */
+    private int getCellIndexInt(@NotNull Vector pos) {
+        int cx = (int) Math.clamp(pos.x() / cellSize.x(), 0, NUM_CELLS - 1);
+        int cy = (int) Math.clamp(pos.y() / cellSize.y(), 0, NUM_CELLS - 1);
+        return cy * NUM_CELLS + cx;
+    }
 
     /**
      * Source: Google Gemini
@@ -593,7 +652,6 @@ public class Environment extends Canvas {
             pendingMobileEntities.add(mEntity);
         } else {
             stationaryEntities.add(entity);
-            entity.onRegistered();
         }
     }
 
@@ -601,7 +659,7 @@ public class Environment extends Canvas {
         if (entity instanceof MobileEntity mEntity) {
             mobileEntitiesToRemove.add(mEntity);
         } else {
-            throw new RuntimeException("Cannot remove entity of type " + entity.getClass().getName() + ". Must inherit from MobileEntity.");
+            stationaryEntities.remove(entity);
         }
     }
 
@@ -613,6 +671,14 @@ public class Environment extends Canvas {
         return new Vector(worldWidth, worldHeight);
     }
 
+    /**
+     * Source: Google Gemini
+     * @param position
+     * @param immediateRejection
+     * @param evaluate
+     * @param maxDistance
+     * @param maxDistSquared
+     */
     public void evaluateEntitiesInRange(@NotNull Vector position, Predicate<Entity> immediateRejection, BiConsumer<Entity, Double> evaluate, double maxDistance, double maxDistSquared) {
         // Calculate the min and max cell indices that overlap with the vision bounding box
         int minCellX = (int) Math.max(0, (position.x() - maxDistance) / cellSize.x());
@@ -623,7 +689,12 @@ public class Environment extends Canvas {
         // Iterate through only the cells within that bounding box
         for (int x = minCellX; x <= maxCellX; x++) {
             for (int y = minCellY; y <= maxCellY; y++) {
-                for (Entity entity : cells[x][y]) {
+                int cellIdx = y * NUM_CELLS + x;
+                int start = cellStarts[cellIdx];
+                int end = cellStarts[cellIdx + 1];
+
+                for (int i = start; i < end; i++) {
+                    Entity entity = sortedSpatialEntities[i];
                     if (!immediateRejection.test(entity)) continue;
 
                     double distSq = entity.getPosition().distanceSquared(position);
@@ -637,15 +708,12 @@ public class Environment extends Canvas {
     /**
      * TODO: Could add way to do something or store list of non-MobileEntities, since we can handle all the food eating in parallel.
      * Only the Agent-Agent interactions need to happen in series.
+     *
      * @param entity
      * @param collisionRequirement
      * @return
      */
     public List<Entity> getCollisions(@NotNull Entity entity, CollisionRequirement collisionRequirement) {
-        if (!entity.isRegistered()) {
-            return Collections.emptyList();
-        }
-
         List<Entity> collisions = new ArrayList<>();
 
         // Add a buffer to account for the other entity's radius (assuming max entity radius is ~100)
@@ -659,7 +727,12 @@ public class Environment extends Canvas {
 
         for (int x = minCellX; x <= maxCellX; x++) {
             for (int y = minCellY; y <= maxCellY; y++) {
-                for (Entity entity2 : cells[x][y]) {
+                int cellIdx = y * NUM_CELLS + x;
+                int start = cellStarts[cellIdx];
+                int end = cellStarts[cellIdx + 1];
+
+                for (int i = start; i < end; i++) {
+                    Entity entity2 = sortedSpatialEntities[i];
                     // Check strict collision math for entities in adjacent cells
                     if (entity != entity2 && entity.isColliding(entity2) && collisionRequirement.checkCollision(entity, entity2)) {
                         collisions.add(entity2);
@@ -669,41 +742,6 @@ public class Environment extends Canvas {
         }
 
         return collisions;
-    }
-
-    /**
-     * Updates the cell placement for the given {@link Entity}.
-     *
-     * @param entity The {@link Entity} to be updated
-     * @return {@link Vector} representing the x and y index of the new cell the {@link Entity} was assigned.
-     */
-    public Vector updateCell(@NotNull Entity entity) {
-        Vector currentCellIndex = getCellIndexFromPosition(entity.getPosition());
-        Vector previousCellIndex = entity.getCellIndex();
-
-        if (currentCellIndex.equals(previousCellIndex)) {
-            return currentCellIndex;
-        }
-
-        if (previousCellIndex != null) {
-            getCell(previousCellIndex).remove(entity);
-        }
-        getCell(currentCellIndex).add(entity);
-
-        return currentCellIndex;
-    }
-
-    @Contract("_ -> new")
-    private @NotNull Vector getCellIndexFromPosition(@NotNull Vector position) {
-        return position.clampedElementWiseDivision(cellSize, 0, NUM_CELLS - 1);
-    }
-
-    private Set<Entity> getCellFromPosition(@NotNull Vector position) {
-        return getCell(getCellIndexFromPosition(position));
-    }
-
-    private Set<Entity> getCell(@NotNull Vector indices) {
-        return cells[(int) indices.x()][(int) indices.y()];
     }
 
     public TerrainType getTerrainType(@NotNull Vector position) {
@@ -745,8 +783,8 @@ public class Environment extends Canvas {
 
     public int getNumAgents() {
         int num = 0;
-        for (Entity entity : mobileEntities) {
-            if (entity instanceof Agent) {
+        for (int i = 0; i < mobileEntities.size(); i++) {
+            if (mobileEntities.get(i) instanceof Agent) {
                 num++;
             }
         }
