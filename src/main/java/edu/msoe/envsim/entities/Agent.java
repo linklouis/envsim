@@ -338,6 +338,7 @@ public class Agent  extends MobileEntity {
         }
     }
 
+    @Override
     public void findCollisions() {
         collisions = environment.getCollisions(this, (_, entity2) -> entity2.getRadius() > 0);
     }
@@ -523,7 +524,7 @@ public class Agent  extends MobileEntity {
     @Override
     public void getDecision() {
         float[] inputs = getInput();
-        float[] output = brain.predict(inputs);
+        float[] output = brain.predict6x10x7(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);
 
         double targetFood = bestFood == null ? 0 : output[2];
         double targetPrey = bestPrey == null ? 0 : output[3];

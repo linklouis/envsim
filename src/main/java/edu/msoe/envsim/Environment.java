@@ -652,7 +652,7 @@ public class Environment extends Canvas {
         List<Entity> collisions = new ArrayList<>();
 
         // Add a buffer to account for the other entity's radius (assuming max entity radius is ~100)
-        double searchRadius = entity.getRadius() + 100;
+        double searchRadius = entity.getRadius() + 100; // TODO: MAKE THIS THE MAX ENTITY SIZE SOMEHOW
 
         // Calculate bounding box for collision checks
         int minCellX = (int) Math.max(0, (entity.x() - searchRadius) / cellSize.x());
