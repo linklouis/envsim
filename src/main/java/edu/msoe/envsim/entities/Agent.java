@@ -153,7 +153,7 @@ public class Agent  extends MobileEntity {
     private List<Entity> collisions;
 
     private TerrainType cachedTerrain;
-    private Map<Integer, Double> genomeComparisonCache = new ConcurrentHashMap<>();
+    private final Map<Integer, Double> genomeComparisonCache = new HashMap<>();
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -294,13 +294,7 @@ public class Agent  extends MobileEntity {
     }
 
     private double getGenomeComparison(@NotNull Agent other) {
-        return genomeComparisonCache.computeIfAbsent(other.hashCode(), _ -> {
-            if (other.genomeComparisonCache.containsKey(this.hashCode())) {
-               return other.genomeComparisonCache.get(this.hashCode());
-            } else {
-                return compareGenome(other);
-            }
-        });
+        return genomeComparisonCache.computeIfAbsent(other.hashCode(), _ -> compareGenome(other));
     }
 
     public void parallelStep() {
