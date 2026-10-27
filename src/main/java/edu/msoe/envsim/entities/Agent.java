@@ -58,7 +58,7 @@ public class Agent  extends MobileEntity {
      */
     private static final double VISION_QUALITY_COST = 0.0006;
     public static final double SPEED_COST = 0.006;
-    public static final double SIZE_COST = 0.00029;
+    public static final double SIZE_COST = 0.0003;
     public static final int NUM_INPUTS = 6;
 
     /**
@@ -66,10 +66,10 @@ public class Agent  extends MobileEntity {
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.35;
     public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.1;
-    private static final double WANDER_JITTER_DEGREES = 4;
+    private static final double WANDER_JITTER_DEGREES = 20;
 
     private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
-    public static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 3;
+    public static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
     public static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
 
     private final Color baseSpeciesColor;
