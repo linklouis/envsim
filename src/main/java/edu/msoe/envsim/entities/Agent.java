@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiPredicate;
 
@@ -150,7 +151,7 @@ public class Agent extends MobileEntity {
     private final SpatialGrid.Visitor entityEvaluator = this::evaluateEntity;
 
     private TerrainType cachedTerrain;
-    private final Map<Integer, Double> genomeComparisonCache = new HashMap<>();
+    private final Map<Integer, Double> genomeComparisonCache = new ConcurrentHashMap<>();
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -503,6 +504,11 @@ public class Agent extends MobileEntity {
         }
     }
 
+    /**
+     * TODO: ACTUALLY HAVE THIS BE A NN, AND HAVE IT ALSO GET WHETHER THE FOOD IS IN THE WATER OR ON LAND, THAT WAY WE DON'T NEED RAYCASTS
+     * @param food
+     * @return
+     */
     private float evaluateFood(@NotNull Food food) {
         return (float) (food.getRadius() / this.distance(food));
     }
