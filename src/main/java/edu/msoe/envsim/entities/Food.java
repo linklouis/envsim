@@ -54,4 +54,8 @@ public class Food extends Entity {
     public TerrainType getTerrainType() {
         return terrainType;
     }
+
+    public void setTerrainType(TerrainType terrainType) {
+        this.terrainType = terrainType;
+    }
 }

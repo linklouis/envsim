@@ -2,6 +2,7 @@ package edu.msoe.envsim;
 
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Entity;
+import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.entities.MobileEntity;
 import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.apputils.Clock;
@@ -607,6 +608,12 @@ public class Environment extends Canvas {
             }
         }
         resetCanvas();
+
+        for (Entity entity : stationaryEntities) {
+            if (entity instanceof Food food) {
+                food.setTerrainType(getTerrainType(food.getPosition()));
+            }
+        }
     }
 
     public static void createDefaultEnvironments(int worldWidth, int worldHeight) {

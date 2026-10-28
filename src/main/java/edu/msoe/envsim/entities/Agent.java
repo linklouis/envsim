@@ -578,8 +578,7 @@ public class Agent extends MobileEntity {
     }
 
     /**
-     * TODO: Implement NN
-     * TODO: Pass in how related the current agent is to the one it's seeing
+     * TODO: IF I ADD RAYCASTS, SHOULD SWITCH TO BRAIN GETTING THE VALUE OF AN ENTITY AND THE DIRECTION TO IT, AND ALLOW THE BRAIN TO SPIT OUT A DIRECTION TO MOVE.
      */
     @Override
     public void getDecision() {
