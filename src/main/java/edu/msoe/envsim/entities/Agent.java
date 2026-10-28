@@ -21,23 +21,23 @@ public class Agent extends MobileEntity {
      * The energy at which an entity will clone.
      * TODO: Have this depend on max size?
      */
-    public static final int CLONE_THRESHOLD = 50;
+    public static final int CLONE_THRESHOLD = 30;
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
      */
     private static final double MAX_RAD_RATIO_FOR_PREDATION = 0.8;
     /**
-     * The amount of energy wasted when catching and eating prey.
+     * The portion of max energy wasted when catching and eating prey.
      * <p>
      * Scales with the size ratio (so it's easier to eat something smaller.)
      * </p>
      */
-    private static final double PREDATION_COST = 5;
+    private static final double PREDATION_COST_FACTOR = 0.2;
     /**
-     * The amount of health lost from attacking an Agent larger than yourself.
+     * The portion of health lost from attacking an Agent larger than yourself.
      */
-    private static final double FAILED_PREDATION_COST = 2.5;
-    private static final double PREDATION_EFFICIENCY = 1.0; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
+    private static final double FAILED_PREDATION_COST_FACTOR = 0.2;
+    private static final double PREDATION_EFFICIENCY = 0.95; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
     /**
      * The amount of energy an agent needs to start regenerating health.
      */
@@ -47,15 +47,15 @@ public class Agent extends MobileEntity {
      * The amount of energy cost per time step per pixel of vision radius
      */
     private static final double VISION_QUALITY_COST = 0.0006;
-    public static final double SPEED_COST = 0.006;
-    public static final double SIZE_COST = 0.0004;
+    public static final double SPEED_COST = 0.01;
+    public static final double SIZE_COST = 0.002;
     public static final int NUM_INPUTS = 6;
 
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
-    private static final double BOOLEAN_DECISION_THRESHOLD = 0.35;
-    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.11;
+    private static final double BOOLEAN_DECISION_THRESHOLD = 0.32;
+    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.05;
     private static final double WANDER_JITTER_DEGREES = 20;
 
     private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
@@ -401,15 +401,16 @@ public class Agent extends MobileEntity {
 
         // TODO: INSTEAD OF A THRESHOLD, HAVE THE CHANCES FOR AN AGENT TO KILL ANOTHER BE BASED ON THE SIZE DIFFERENCE. (OR EVEN JUST HOW MUCH DAMAGE IT DOES, SO THAT A SMALL AGENT CAN DO DAMAGE TO A LARGE ONE, EVEN IF IT DOESN'T KILL IT? [Is that actually something we want?])
         // TODO: Pass the radius ratio for whatever other agent this one is seeing as input for NN.
-        changeEnergy(-(PREDATION_COST * prey.getRadius() / getRadius()));
+        changeEnergy(-(PREDATION_COST_FACTOR * calculateCloneThreshold() * prey.getRadius() / getRadius()));
         if (prey.getRadius() / getRadius() <= MAX_RAD_RATIO_FOR_PREDATION) {
             energy += prey.energy * PREDATION_EFFICIENCY;
             prey.die();
         } else {
             // TODO: If we fail, but the other dies, we should still gain the energy.
             // TODO: Maybe that wouldn't happen cuz the decision of whether we succeed or not is based on health?
-            setRadius(Math.max(0.001, getRadius() - FAILED_PREDATION_COST * prey.getRadius() / getRadius()));
-            prey.setRadius(Math.max(0.001, prey.getRadius() - FAILED_PREDATION_COST * getRadius() / prey.getRadius()));
+            // Health loss = FPCF * radius * other/self_size_ratio = FPCF * radius * otherRadius / radius = FPCF * otherRadius
+            setRadius(Math.max(0.001, getRadius() - FAILED_PREDATION_COST_FACTOR * prey.getRadius()));
+            prey.setRadius(Math.max(0.001, prey.getRadius() - FAILED_PREDATION_COST_FACTOR * getRadius()));
             // TODO: Also lose energy?
         }
     }
@@ -637,7 +638,7 @@ public class Agent extends MobileEntity {
     }
 
     public static double calculateCloneThreshold(double radius) {
-        return CLONE_THRESHOLD * Math.pow(radius, 0.5);
+        return CLONE_THRESHOLD * Math.pow(radius, 1);
     }
 
     public double calculateCloneThreshold() {

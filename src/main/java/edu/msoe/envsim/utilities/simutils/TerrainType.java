@@ -3,8 +3,8 @@ package edu.msoe.envsim.utilities.simutils;
 import javafx.scene.paint.Color;
 
 public enum TerrainType {
-    STANDARD(new Color(0.1, 0.45, 0.2, 1), 1.0/40),
-    WATER(new Color(0.004, 0.329, 0.6, 1), 1.0/50);
+    STANDARD(new Color(0.1, 0.45, 0.2, 1), 1.0/35),
+    WATER(new Color(0.004, 0.329, 0.6, 1), 1.0/55);
 
     private Color color;
     /**

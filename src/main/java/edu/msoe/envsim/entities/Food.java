@@ -7,7 +7,7 @@ import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
 
 public class Food extends Entity {
-    private final static double RADIUS_VALUE_SCALE = 1.5;
+    private final static double RADIUS_VALUE_SCALE = 1.9;
     private static final double GROWTH_SPEED = 0.002;
     private static final int REGROWTH_TIME = 100;
 
