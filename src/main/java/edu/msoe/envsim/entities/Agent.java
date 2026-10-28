@@ -403,16 +403,33 @@ public class Agent extends MobileEntity {
         // TODO: Pass the radius ratio for whatever other agent this one is seeing as input for NN.
         changeEnergy(-(PREDATION_COST_FACTOR * calculateCloneThreshold() * prey.getRadius() / getRadius()));
         if (prey.getRadius() / getRadius() <= MAX_RAD_RATIO_FOR_PREDATION) {
-            energy += prey.energy * PREDATION_EFFICIENCY;
+            succeedPredation(prey);
             prey.die();
         } else {
-            // TODO: If we fail, but the other dies, we should still gain the energy.
-            // TODO: Maybe that wouldn't happen cuz the decision of whether we succeed or not is based on health?
             // Health loss = FPCF * radius * other/self_size_ratio = FPCF * radius * otherRadius / radius = FPCF * otherRadius
-            setRadius(Math.max(0.001, getRadius() - FAILED_PREDATION_COST_FACTOR * prey.getRadius()));
-            prey.setRadius(Math.max(0.001, prey.getRadius() - FAILED_PREDATION_COST_FACTOR * getRadius()));
+            double selfHealth = getRadius() - FAILED_PREDATION_COST_FACTOR * prey.getRadius();
+            double otherHealth = prey.getRadius() - FAILED_PREDATION_COST_FACTOR * getRadius();
+            this.setRadius(selfHealth);
+            prey.setRadius(otherHealth);
             // TODO: Also lose energy?
+
+            if (selfHealth <= 0 && otherHealth <= 0) {
+                die();
+                prey.die();
+            } else if (selfHealth <= 0) {
+                if (otherHealth > 0 && prey.decision.desiresPredation()) {
+                    prey.succeedPredation(this);
+                }
+                die();
+            } else if (otherHealth <= 0) {
+                succeedPredation(prey);
+                prey.die();
+            }
         }
+    }
+
+    private void succeedPredation(@NotNull Agent prey) {
+        energy += prey.energy * PREDATION_EFFICIENCY;
     }
 
     private void reproduce() {
