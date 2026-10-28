@@ -182,7 +182,7 @@ public class Agent extends MobileEntity {
 
     // CACHES
     private TerrainType cachedTerrain;
-    private final Map<Integer, Double> genomeComparisonCache = new ConcurrentHashMap<>();
+    private final Map<Integer, Double> genomeComparisonCache = new HashMap<>();
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -474,11 +474,15 @@ public class Agent extends MobileEntity {
         timeSinceReproduction = 0;
     }
 
+    private static boolean isSameSpecies(double comparison) {
+        return Math.exp(-SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR * Math.pow(comparison, 2)) > SPECIES_SIMILARITY_THRESHOLD;
+    }
+
     private static boolean isSameSpecies(@NotNull Agent agent1, @NotNull Agent agent2) {
         Double cached = agent1.genomeComparisonCache.get(agent2.hashCode());
         double comparison = Objects.requireNonNullElseGet(cached, () -> agent2.getGenomeComparison(agent1));
 
-        return Math.exp(-SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR * Math.pow(comparison, 2)) > SPECIES_SIMILARITY_THRESHOLD;
+        return isSameSpecies(comparison);
     }
 
     private static @NotNull NeuralNetwork newBrain() {
@@ -527,30 +531,30 @@ public class Agent extends MobileEntity {
         worstThreat = null;
     }
 
-    public void evaluateEntity(Entity entity, double distanceSquared) {
+    public void evaluateEntity(@NotNull Entity entity, double distanceSquared) {
         if (entity instanceof Food food) {
             if (food.getRadius() <= 0 || food == lastEatenFood) return;
 
-            float value = evaluateFood(food);
-            if (value > maxFoodValue) {
-                maxFoodValue = value;
+            float foodValue = evaluateFood(food);
+            if (foodValue > maxFoodValue) {
+                maxFoodValue = foodValue;
                 bestFood = food;
             }
         } else if (entity instanceof Agent agent) {
-            if (isSameSpecies(this, agent)) return;
+            float genomeComparison = (float) getGenomeComparison(agent);
 
-            float input1 = (float) (agent.getRadius() / this.getRadius());
-            float input2 = (float) (distanceSquared / visionRadiusSquared);
-            float input3 = (float) getGenomeComparison(agent); // TODO: Could store a map in Environment of genome comparisons, and delete then when the agents die.
-//            System.out.println("input1: " + input1 + " input2: " + input2 + " input3: " + input3);
+            if (isSameSpecies(genomeComparison)) return;
 
-            float preyValue = preyEvaluator.predict3x3x1(input1, input2, input3);
+            float sizeRatio = (float) (entity.getRadius() / this.getRadius());
+            float distance = (float) (distanceSquared / visionRadiusSquared);
+
+            float preyValue = preyEvaluator.predict3x3x1(sizeRatio, distance, genomeComparison);
             if (preyValue > maxPreyValue) {
                 maxPreyValue = preyValue;
                 bestPrey = agent;
             }
 
-            float threatValue = predatorEvaluator.predict3x3x1(input1, input2, input3);
+            float threatValue = predatorEvaluator.predict3x3x1(sizeRatio, distance, genomeComparison);
             if (threatValue > maxThreatValue) {
                 maxThreatValue = threatValue;
                 worstThreat = agent;
