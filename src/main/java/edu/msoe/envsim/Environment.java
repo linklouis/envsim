@@ -6,6 +6,7 @@ import edu.msoe.envsim.entities.MobileEntity;
 import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.apputils.Clock;
 import edu.msoe.envsim.utilities.apputils.DebugMessage;
+import edu.msoe.envsim.utilities.simutils.SpatialGrid;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
@@ -16,18 +17,14 @@ import javafx.scene.control.Label;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public class Environment extends Canvas {
@@ -38,8 +35,16 @@ public class Environment extends Canvas {
     public static final int TERRAIN_RESOLUTION_RATIO = 20;
     private static final String DEFAULT_ENVIRONMENT = "environments/Standard.terrain";
 
-    @SuppressWarnings("unchecked")
-    private final Set<Entity>[][] cells = (Set<Entity>[][]) new CopyOnWriteArraySet[NUM_CELLS][NUM_CELLS];
+    /**
+     * Food and any other entity that never moves. Rebuilt only when something is added.
+     * Entities here must never grow beyond the radius they were registered with.
+     */
+    private final SpatialGrid staticGrid;
+    /** All mobile entities. Rebuilt in bulk whenever positions or membership change. */
+    private final SpatialGrid agentGrid;
+    private volatile boolean staticGridDirty = true;
+    /** Only touched by the simulation thread. */
+    private boolean agentGridCurrent = false;
     private final TerrainType[][] terrainData;
     private final WritableImage terrainCacheImage;
     private final PixelWriter terrainPixelWriter;
@@ -120,6 +125,8 @@ public class Environment extends Canvas {
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
         this.cellSize = new Vector((double) worldWidth / (NUM_CELLS - 1), (double) worldHeight / (NUM_CELLS - 1));
+        this.staticGrid = new SpatialGrid(NUM_CELLS, cellSize.x(), cellSize.y(), true);
+        this.agentGrid = new SpatialGrid(NUM_CELLS, cellSize.x(), cellSize.y(), false);
         gc = getGraphicsContext2D();
         scale = zoom;
 
@@ -155,7 +162,6 @@ public class Environment extends Canvas {
 
         this.onAgentSelected = onAgentSelected;
 
-        setupCells();
         setupMouseEvents();
         resetCanvas();
         setupSimulationThread();
@@ -237,14 +243,6 @@ public class Environment extends Canvas {
             translateY = mouseY - (mouseY - translateY) * actualZoomFactor;
             scale = newScale;
         });
-    }
-
-    private void setupCells() {
-        for (int i = 0; i < NUM_CELLS; i++) {
-            for (int j = 0; j < NUM_CELLS; j++) {
-                cells[i][j] = new CopyOnWriteArraySet<>();
-            }
-        }
     }
 
     /**
@@ -446,6 +444,11 @@ public class Environment extends Canvas {
     private void simulationStep() {
         long t0 = System.nanoTime();
 
+        if (staticGridDirty) {
+            staticGridDirty = false;
+            staticGrid.rebuild(stationaryEntities);
+        }
+
         // Flush newly created entities into main list before iterating
         if (!pendingMobileEntities.isEmpty()) {
             for (Entity entity : pendingMobileEntities) {
@@ -453,14 +456,20 @@ public class Environment extends Canvas {
             }
             mobileEntities.addAll(pendingMobileEntities);
             pendingMobileEntities.clear();
+            agentGridCurrent = false;
         }
 
         if (!mobileEntitiesToRemove.isEmpty()) {
-            for (Entity entity : mobileEntitiesToRemove) {
-                getCell(entity.getCellIndex()).remove(entity); // TODO: Can I modify the remove function of the collection to do the removal?
-            }
             mobileEntities.removeAll(mobileEntitiesToRemove);
             mobileEntitiesToRemove.clear();
+            agentGridCurrent = false;
+        }
+
+        // Positions only change in the move pass, and the grid is rebuilt right after it,
+        // so the grid is still valid here unless agents were added or removed above.
+        if (!agentGridCurrent) {
+            agentGrid.rebuild(mobileEntities);
+            agentGridCurrent = true;
         }
         long t1 = System.nanoTime();
 
@@ -468,6 +477,7 @@ public class Environment extends Canvas {
         long t2 = System.nanoTime();
         Stream.concat(mobileEntities.stream(), stationaryEntities.stream())
                 .parallel().forEach(Entity::parallelStep);
+        agentGrid.rebuild(mobileEntities);   // positions just changed; collision queries need the new ones
         mobileEntities.parallelStream().forEach(MobileEntity::findCollisions);
         for (MobileEntity e : mobileEntities) e.step();
         long t3 = System.nanoTime();
@@ -659,7 +669,7 @@ public class Environment extends Canvas {
         }
     }
 
-    public static WritableImage loadTerrainThumbnail(File file, int thumbW, int thumbH) {
+    public static @NotNull WritableImage loadTerrainThumbnail(File file, int thumbW, int thumbH) {
         TerrainType[] values = TerrainType.values();
         try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
             int width = in.readInt();
@@ -713,6 +723,7 @@ public class Environment extends Canvas {
         } else {
             stationaryEntities.add(entity);
             entity.onRegistered();
+            staticGridDirty = true;
         }
     }
 
@@ -732,97 +743,39 @@ public class Environment extends Canvas {
         return new Vector(worldWidth, worldHeight);
     }
 
-    public void evaluateEntitiesInRange(@NotNull Vector position, Predicate<Entity> immediateRejection, BiConsumer<Entity, Double> evaluate, double maxDistance, double maxDistSquared) {
-        // Calculate the min and max cell indices that overlap with the vision bounding box
-        int minCellX = (int) Math.max(0, (position.x() - maxDistance) / cellSize.x());
-        int maxCellX = (int) Math.min(NUM_CELLS - 1, (position.x() + maxDistance) / cellSize.x());
-        int minCellY = (int) Math.max(0, (position.y() - maxDistance) / cellSize.y());
-        int maxCellY = (int) Math.min(NUM_CELLS - 1, (position.y() + maxDistance) / cellSize.y());
-
-        // Iterate through only the cells within that bounding box
-        for (int x = minCellX; x <= maxCellX; x++) {
-            for (int y = minCellY; y <= maxCellY; y++) {
-                for (Entity entity : cells[x][y]) {
-                    if (!immediateRejection.test(entity)) continue;
-
-                    double distSq = entity.getPosition().distanceSquared(position);
-
-                    if (distSq <= maxDistSquared) evaluate.accept(entity, distSq);
-                }
-            }
-        }
-    }
-
     /**
-     * TODO: Could add way to do something or store list of non-MobileEntities, since we can handle all the food eating in parallel.
-     * Only the Agent-Agent interactions need to happen in series.
-     * @param entity
-     * @param collisionRequirement
-     * @return
-     */
-    public List<Entity> getCollisions(@NotNull Entity entity, BiPredicate<Entity, Entity> collisionRequirement) {
-        if (!entity.isRegistered()) {
-            return Collections.emptyList();
-        }
-
-        List<Entity> collisions = new ArrayList<>();
-
-        // Add a buffer to account for the other entity's radius (assuming max entity radius is ~100)
-        double searchRadius = entity.getRadius() + 100; // TODO: MAKE THIS THE MAX ENTITY SIZE SOMEHOW
-
-        // Calculate bounding box for collision checks
-        int minCellX = (int) Math.max(0, (entity.x() - searchRadius) / cellSize.x());
-        int maxCellX = (int) Math.min(NUM_CELLS - 1, (entity.x() + searchRadius) / cellSize.x());
-        int minCellY = (int) Math.max(0, (entity.y() - searchRadius) / cellSize.y());
-        int maxCellY = (int) Math.min(NUM_CELLS - 1, (entity.y() + searchRadius) / cellSize.y());
-
-        for (int x = minCellX; x <= maxCellX; x++) {
-            for (int y = minCellY; y <= maxCellY; y++) {
-                for (Entity entity2 : cells[x][y]) {
-                    // Check strict collision math for entities in adjacent cells
-                    if (entity != entity2 && entity.isColliding(entity2) && collisionRequirement.test(entity, entity2)) {
-                        collisions.add(entity2);
-                    }
-                }
-            }
-        }
-
-        return collisions;
-    }
-
-    /**
-     * Updates the cell placement for the given {@link Entity}.
+     * Calls {@code visitor} for every entity other than {@code self} that is within {@code maxDistance} of it.
+     * Static entities (food) are visited first, then mobile ones.
+     * <p>
+     * Safe to call from many threads at once, as long as nothing is rebuilding the grids.
+     * </p>
      *
-     * @param entity The {@link Entity} to be updated
-     * @return {@link Vector} representing the x and y index of the new cell the {@link Entity} was assigned.
+     * @param maxDistSquared {@code maxDistance * maxDistance}, passed in so callers can cache it.
      */
-    public Vector updateCell(@NotNull Entity entity) {
-        Vector currentCellIndex = getCellIndexFromPosition(entity.getPosition());
-        Vector previousCellIndex = entity.getCellIndex();
+    public void visitEntitiesInRange(@NotNull Entity self, double maxDistance, double maxDistSquared,
+                                     @NotNull SpatialGrid.Visitor visitor) {
+        double px = self.x();
+        double py = self.y();
+        staticGrid.forEachInRange(self, px, py, maxDistance, maxDistSquared, visitor);
+        agentGrid.forEachInRange(self, px, py, maxDistance, maxDistSquared, visitor);
+    }
 
-        if (currentCellIndex.equals(previousCellIndex)) {
-            return currentCellIndex;
+    /**
+     * Adds every entity that {@code entity} is colliding with, and that satisfies {@code requirement}, to {@code out}.
+     * Lets callers reuse one list instead of allocating one per query.
+     */
+    public void collectCollisions(@NotNull Entity entity, BiPredicate<Entity, Entity> collisionRequirement, @NotNull List<Entity> out) {
+        if (!entity.isRegistered()) {
+            return;
         }
-
-        if (previousCellIndex != null) {
-            getCell(previousCellIndex).remove(entity);
-        }
-        getCell(currentCellIndex).add(entity);
-
-        return currentCellIndex;
+        staticGrid.collectCollisions(entity, collisionRequirement, out);
+        agentGrid.collectCollisions(entity, collisionRequirement, out);
     }
 
-    @Contract("_ -> new")
-    private @NotNull Vector getCellIndexFromPosition(@NotNull Vector position) {
-        return position.clampedElementWiseDivision(cellSize, 0, NUM_CELLS - 1);
-    }
-
-    private Set<Entity> getCellFromPosition(@NotNull Vector position) {
-        return getCell(getCellIndexFromPosition(position));
-    }
-
-    private Set<Entity> getCell(@NotNull Vector indices) {
-        return cells[(int) indices.x()][(int) indices.y()];
+    public List<Entity> getCollisions(@NotNull Entity entity, BiPredicate<Entity, Entity> collisionRequirement) {
+        List<Entity> collisions = new ArrayList<>();
+        collectCollisions(entity, collisionRequirement, collisions);
+        return collisions;
     }
 
     public TerrainType getTerrainType(@NotNull Vector position) {

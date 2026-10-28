@@ -6,20 +6,15 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Function;
-
 public abstract class Entity {
     private Vector position;
     private Color color;
     private double radius;
-    private Vector cellIndex;
     private volatile boolean registered;
-    private final Function<Entity, Vector> updateCell;
 
     public Entity(@NotNull Vector position, double radius, Color color, @NotNull Environment env) {
         this.radius = radius;
         this.color = color;
-        this.updateCell = env::updateCell;
         this.position = position;
         env.addEntity(this);
     }
@@ -38,7 +33,6 @@ public abstract class Entity {
 
     /** Called by the Environment when this entity is flushed into the active simulation. */
     public void onRegistered() {
-        cellIndex = updateCell.apply(this);
         registered = true;
     }
 
@@ -60,7 +54,6 @@ public abstract class Entity {
 
     protected void setPosition(Vector position) {
         this.position = position;
-        this.cellIndex = updateCell.apply(this);
     }
 
     public double x() {
@@ -80,8 +73,5 @@ public abstract class Entity {
     }
     protected void setRadius(double radius) {
         this.radius = radius;
-    }
-    public Vector getCellIndex() {
-        return cellIndex;
     }
 }

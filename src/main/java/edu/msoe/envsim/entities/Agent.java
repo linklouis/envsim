@@ -1,13 +1,9 @@
 package edu.msoe.envsim.entities;
 
-import edu.msoe.envsim.utilities.*;
 import edu.msoe.envsim.Environment;
 import edu.msoe.envsim.utilities.Vector;
-import edu.msoe.envsim.utilities.simutils.AgentData;
-import edu.msoe.envsim.utilities.simutils.AgentDecision;
+import edu.msoe.envsim.utilities.simutils.*;
 import edu.msoe.envsim.utilities.NeuralNetwork;
-import edu.msoe.envsim.utilities.simutils.SpeciesColorMapper;
-import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
@@ -16,10 +12,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.BiConsumer;
-import java.util.function.Predicate;
+import java.util.function.BiPredicate;
 
-public class Agent  extends MobileEntity {
+public class Agent extends MobileEntity {
     public static final double MIN_HEALTH_FOR_REPRODUCTION = 0.8;
     /**
      * The energy at which an entity will clone.
@@ -90,7 +85,7 @@ public class Agent  extends MobileEntity {
      */
     private final double visionRadius;
     /**
-     * Caching the squared radius so it doesn't have to be recalculated in {@link Environment#evaluateEntitiesInRange(Vector, Predicate, BiConsumer, double, double)} every tick}.
+     * Caching the squared radius so it doesn't have to be recalculated in {@link Environment#visitEntitiesInRange(Entity, double, double, SpatialGrid.Visitor)} every tick.
      */
     private final double visionRadiusSquared;
     private final double healthRegenSpeed;
@@ -149,7 +144,10 @@ public class Agent  extends MobileEntity {
     private AgentDecision decision;
     private String action = "WANDER";
 
-    private List<Entity> collisions;
+    private final List<Entity> collisions = new ArrayList<>();
+    private static final BiPredicate<Entity, Entity> STILL_PRESENT = (_, other) -> other.getRadius() > 0;
+    /** Created once so {@link #getInput()} doesn't allocate a method reference every tick. */
+    private final SpatialGrid.Visitor entityEvaluator = this::evaluateEntity;
 
     private TerrainType cachedTerrain;
     private final Map<Integer, Double> genomeComparisonCache = new HashMap<>();
@@ -173,7 +171,7 @@ public class Agent  extends MobileEntity {
                 newFoodEvaluator(),
                 newAgentEvaluator(),
                 newAgentEvaluator()
-                );
+        );
 
         this(agentData, env, null);
     }
@@ -323,7 +321,8 @@ public class Agent  extends MobileEntity {
 
     @Override
     public void findCollisions() {
-        collisions = environment.getCollisions(this, (_, entity2) -> entity2.getRadius() > 0);
+        collisions.clear();
+        environment.collectCollisions(this, STILL_PRESENT, collisions);
     }
 
     @Override
@@ -437,7 +436,7 @@ public class Agent  extends MobileEntity {
 
     /**
      * TODO: consider velocity/direction?
-      */
+     */
     private static @NotNull NeuralNetwork newAgentEvaluator() {
         return new NeuralNetwork(new int[] {3, 3, 1});
     }
@@ -449,13 +448,11 @@ public class Agent  extends MobileEntity {
      */
     @Contract(" -> new")
     private float @NotNull [] getInput() {
+        // TODO: Add current terrain
         // TODO: Add way to see what terrain is around it.
         //  Maybe if I add raycasts, have each one also say what the closest new terrain is in that direction?
         resetEntityEvaluation();
-        environment.evaluateEntitiesInRange(
-                getPosition(),
-                e -> e != this, this::evaluateEntity,
-                visionRadius, visionRadiusSquared);
+        environment.visitEntitiesInRange(this, visionRadius, visionRadiusSquared, entityEvaluator);
         return new float[] {
                 (float) (energy / calculateCloneThreshold()),
                 (float) (getRadius() / size),
