@@ -44,11 +44,11 @@ public class Agent extends MobileEntity {
     /**
      * The portion of the prey's energy that the predator actually receives.
      */
-    private static final double PREDATION_EFFICIENCY = 0.98; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
+    private static final double PREDATION_EFFICIENCY = 0.985; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
     /**
      * The portion of energy to spend when trying to attempt predation and not touching another agent
      */
-    public static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.06;
+    public static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.05;
     /**
      * The portion of total energy an agent needs to start regenerating health.
      */
@@ -68,12 +68,12 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    public static final double SIZE_COST = 0.002;
+    public static final double SIZE_COST = 0.001;
     /**
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
-    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.045;
+    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.046;
     /**
      * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
      * Prevents looping.
@@ -195,7 +195,7 @@ public class Agent extends MobileEntity {
                 Math.random() * 2.5 + 0.4,
                 Math.random() * 180 + 50,
                 radius,
-                Math.random() * 500 + 150,
+                Math.random() * 700 + 200,
                 Math.random(),
 //                Math.pow(Math.random(), 0.2),
                 Math.random(),
