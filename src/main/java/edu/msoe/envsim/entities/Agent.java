@@ -39,9 +39,13 @@ public class Agent extends MobileEntity {
     private static final double FAILED_PREDATION_COST_FACTOR = 0.2;
     private static final double PREDATION_EFFICIENCY = 0.95; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
     /**
-     * The amount of energy an agent needs to start regenerating health.
+     * The portion of energy to spend when trying to attempt predation and not touching another agent
      */
-    private static final double HEALTH_REGENERATION_THRESHOLD = 25;
+    public static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.1;
+    /**
+     * The portion of total energy an agent needs to start regenerating health.
+     */
+    private static final double HEALTH_REGENERATION_THRESHOLD = 0.3;
     private static final double HEALTH_REGEN_COST = 1;
     /**
      * The amount of energy cost per time step per pixel of vision radius
@@ -310,7 +314,7 @@ public class Agent extends MobileEntity {
         changeEnergy(-getPassiveEnergyCost());
 
         // TODO: Health regen could instead be something the NN can decide to consume energy to do.
-        if (energy > HEALTH_REGENERATION_THRESHOLD && getRadius() < size) {
+        if (energy > HEALTH_REGENERATION_THRESHOLD * calculateCloneThreshold() && getRadius() < size) {
             // TODO: Have passive health regen speed be partially based on how low health is?
             setRadius(getRadius() + (ThreadLocalRandom.current().nextDouble() * healthRegenSpeed));
             changeEnergy(-(HEALTH_REGEN_COST * healthRegenSpeed)); // TODO: Have the cost be based on how successful the regen was?
@@ -330,12 +334,18 @@ public class Agent extends MobileEntity {
     public void step() {
         if (!alive) return;
 
-        for (Entity entity : collisions) {
-            if (entity.getRadius() <= 0) continue;
-            if (entity instanceof Food food) {
-                eat(food);
-            } else if (entity instanceof Agent agent) {
-                interact(agent, decision.desiresPredation());
+        if (collisions.isEmpty()) {
+            if (decision.desiresPredation()) {
+                energy -= FALSE_PREDATION_PUNISHMENT_FACTOR * getRadius();
+            }
+        } else {
+            for (Entity entity : collisions) {
+                if (entity.getRadius() <= 0) continue;
+                if (entity instanceof Food food) {
+                    eat(food);
+                } else if (entity instanceof Agent agent) {
+                    interact(agent, decision.desiresPredation());
+                }
             }
         }
 
@@ -371,11 +381,11 @@ public class Agent extends MobileEntity {
         lastEatenFood = food;
     }
 
-    private void interact(Agent agent, boolean attemptPredation) {
-        if (!this.alive || !agent.alive) return;
+    private void interact(Agent other, boolean attemptPredation) {
+        if (!this.alive || !other.alive) return;
 
         if (attemptPredation) {
-            attemptPredation(agent);
+            attemptPredation(other);
         }
     }
 
@@ -390,8 +400,7 @@ public class Agent extends MobileEntity {
      * @param prey
      */
     private void attemptPredation(@NotNull Agent prey) {
-        if (this.parent == prey || prey.parent == this) return;
-        if (!this.alive || !prey.alive) return;
+//        if (this.parent == prey || prey.parent == this) return;  // Should be covered by the genome comparison
         // TODO: Punish agents for outputting the predation signal when not touching another agent?`
 
         if (prey.decision.desiresPredation() && prey.getRadius() > getRadius()) {
@@ -429,6 +438,7 @@ public class Agent extends MobileEntity {
     }
 
     private void succeedPredation(@NotNull Agent prey) {
+        if (!prey.alive) return;
         energy += prey.energy * PREDATION_EFFICIENCY;
     }
 
