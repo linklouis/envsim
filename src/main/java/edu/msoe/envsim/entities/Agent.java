@@ -16,10 +16,14 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiPredicate;
 
 public class Agent extends MobileEntity {
+    // SIM PARAMETERS
+    /**
+     * The minimum portion of its max health an agent must have to be eligible for reproduction.
+     */
     public static final double MIN_HEALTH_FOR_REPRODUCTION = 0.8;
     /**
      * The energy at which an entity will clone.
-     * TODO: Have this depend on max size?
+     * The actual threshold is calculated using this and radius.
      */
     public static final int CLONE_THRESHOLD = 30;
     /**
@@ -32,45 +36,72 @@ public class Agent extends MobileEntity {
      * Scales with the size ratio (so it's easier to eat something smaller.)
      * </p>
      */
-    private static final double PREDATION_COST_FACTOR = 0.2;
+    private static final double PREDATION_COST_FACTOR = 0.15;
     /**
      * The portion of health lost from attacking an Agent larger than yourself.
      */
     private static final double FAILED_PREDATION_COST_FACTOR = 0.2;
-    private static final double PREDATION_EFFICIENCY = 0.95; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
+    /**
+     * The portion of the prey's energy that the predator actually receives.
+     */
+    private static final double PREDATION_EFFICIENCY = 0.98; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
     /**
      * The portion of energy to spend when trying to attempt predation and not touching another agent
      */
-    public static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.1;
+    public static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.06;
     /**
      * The portion of total energy an agent needs to start regenerating health.
      */
     private static final double HEALTH_REGENERATION_THRESHOLD = 0.3;
+    /**
+     * The energy an agent spends to regain a single pixel of radius.
+     */
     private static final double HEALTH_REGEN_COST = 1;
     /**
      * The amount of energy cost per time step per pixel of vision radius
      */
     private static final double VISION_QUALITY_COST = 0.0006;
+    /**
+     * The number of energy points it costs an Agent to move one pixel in a tick.
+     */
     public static final double SPEED_COST = 0.01;
+    /**
+     * The passive energy an Agent loses each tick per pixel of its radius squared.
+     */
     public static final double SIZE_COST = 0.002;
-    public static final int NUM_INPUTS = 6;
+    /**
+     * The multiplier for how much energy an Agent actually loses each tick.
+     * Allows for overall simulation difficulty control without messing with other parameters
+     */
+    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.045;
+    /**
+     * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
+     * Prevents looping.
+     */
+    private static final double WANDER_JITTER_DEGREES = 20;
 
+    // ARCHITECTURE PARAMETERS
+    /**
+     * The number of inputs the main neural network takes in.
+     */
+    public static final int NUM_INPUTS = 6;
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.32;
-    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.05;
-    private static final double WANDER_JITTER_DEGREES = 20;
-
-    private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
     public static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
     public static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
 
-    private final Color baseSpeciesColor;
+    // OTHER CONSTANTS
+    private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
 
+    // MISC VALUES
     private final @NotNull Environment environment;
+    private final Color baseSpeciesColor;
+    private final Agent parent;
 
-    // Genetic Attributes:
+
+    // GENETIC ATTRIBUTES
     /**
      * The maximum distance an Agent can move each time step in pixels.
      * <p>Higher values consume more {@link #energy} each time step.</p>
@@ -100,7 +131,6 @@ public class Agent extends MobileEntity {
     private final float[] genome;
     private final float genomeNormSq;
 
-
     public final @NotNull NeuralNetwork brain;
     /**
      * Inputs: food size, distance
@@ -115,7 +145,7 @@ public class Agent extends MobileEntity {
     private final @NotNull NeuralNetwork predatorEvaluator;
 
 
-    // State:
+    // STATE
     private Vector direction;
     /**
      * The amount of energy the Agent currently has.
@@ -132,10 +162,6 @@ public class Agent extends MobileEntity {
     private double timeSinceReproduction = 100000;
     private Food lastEatenFood;
     private boolean alive = true;
-    /*
-     * radius is the health of the Agent. If it hits 0, it dies.
-     * This value is **not** inherited by children.
-     */
 
     private Food bestFood;
     private Agent bestPrey;
@@ -145,15 +171,16 @@ public class Agent extends MobileEntity {
     private float maxPreyValue;
     private float maxThreatValue;
 
-    private final Agent parent;
     private AgentDecision decision;
     private String action = "WANDER";
 
+    // COLLISION HANDLING
     private final List<Entity> collisions = new ArrayList<>();
     private static final BiPredicate<Entity, Entity> STILL_PRESENT = (_, other) -> other.getRadius() > 0;
     /** Created once so {@link #getInput()} doesn't allocate a method reference every tick. */
     private final SpatialGrid.Visitor entityEvaluator = this::evaluateEntity;
 
+    // CACHES
     private TerrainType cachedTerrain;
     private final Map<Integer, Double> genomeComparisonCache = new ConcurrentHashMap<>();
 
@@ -334,19 +361,19 @@ public class Agent extends MobileEntity {
     public void step() {
         if (!alive) return;
 
-        if (collisions.isEmpty()) {
-            if (decision.desiresPredation()) {
-                energy -= FALSE_PREDATION_PUNISHMENT_FACTOR * getRadius();
+        boolean collidedAgent = false;
+        for (Entity entity : collisions) {
+            if (entity.getRadius() <= 0) continue;
+            if (entity instanceof Food food) {
+                eat(food);
+            } else if (entity instanceof Agent agent) {
+                interact(agent);
+                collidedAgent = true;
             }
-        } else {
-            for (Entity entity : collisions) {
-                if (entity.getRadius() <= 0) continue;
-                if (entity instanceof Food food) {
-                    eat(food);
-                } else if (entity instanceof Agent agent) {
-                    interact(agent, decision.desiresPredation());
-                }
-            }
+        }
+
+        if (!collidedAgent && decision.desiresPredation()) {
+            energy -= FALSE_PREDATION_PUNISHMENT_FACTOR * getRadius();
         }
 
         if (energy <= 0 || getRadius() <= 0) die();
@@ -381,10 +408,10 @@ public class Agent extends MobileEntity {
         lastEatenFood = food;
     }
 
-    private void interact(Agent other, boolean attemptPredation) {
+    private void interact(Agent other) {
         if (!this.alive || !other.alive) return;
 
-        if (attemptPredation) {
+        if (decision.desiresPredation()) {
             attemptPredation(other);
         }
     }
@@ -401,7 +428,6 @@ public class Agent extends MobileEntity {
      */
     private void attemptPredation(@NotNull Agent prey) {
 //        if (this.parent == prey || prey.parent == this) return;  // Should be covered by the genome comparison
-        // TODO: Punish agents for outputting the predation signal when not touching another agent?`
 
         if (prey.decision.desiresPredation() && prey.getRadius() > getRadius()) {
             prey.attemptPredation(this);
