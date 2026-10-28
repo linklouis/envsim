@@ -497,7 +497,7 @@ public class Agent extends MobileEntity {
      * TODO: consider velocity/direction?
      */
     private static @NotNull NeuralNetwork newAgentEvaluator() {
-        return new NeuralNetwork(new int[] {3, 3, 1});
+        return new NeuralNetwork(new int[] {4, 3, 1});
     }
 
 
@@ -532,10 +532,15 @@ public class Agent extends MobileEntity {
     }
 
     public void evaluateEntity(@NotNull Entity entity, double distanceSquared) {
+        // TODO: HAVING THE PREFERENCE FOR FOOD/PREY ON ONE TERRAIN TYPE MIGHT MAKE EVOLVING OUT/INTO THE WATER MUCH HARDER
         if (entity instanceof Food food) {
             if (food.getRadius() <= 0 || food == lastEatenFood) return;
 
-            float foodValue = evaluateFood(food);
+            float sizeRatio = (float) (entity.getRadius() / this.getRadius());
+            float distance = (float) (distanceSquared / visionRadiusSquared);
+
+//            float foodValue = evaluateFood(food);
+            float foodValue = foodEvaluator.predict3x3x1(sizeRatio, distance, food.getTerrainType().ordinal());
             if (foodValue > maxFoodValue) {
                 maxFoodValue = foodValue;
                 bestFood = food;
@@ -548,13 +553,14 @@ public class Agent extends MobileEntity {
             float sizeRatio = (float) (entity.getRadius() / this.getRadius());
             float distance = (float) (distanceSquared / visionRadiusSquared);
 
-            float preyValue = preyEvaluator.predict3x3x1(sizeRatio, distance, genomeComparison);
+            float preyValue = preyEvaluator.predict4x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal());
             if (preyValue > maxPreyValue) {
                 maxPreyValue = preyValue;
                 bestPrey = agent;
             }
 
-            float threatValue = predatorEvaluator.predict3x3x1(sizeRatio, distance, genomeComparison);
+            // TODO: Do we even need the terrain type here?
+            float threatValue = predatorEvaluator.predict4x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal());
             if (threatValue > maxThreatValue) {
                 maxThreatValue = threatValue;
                 worstThreat = agent;

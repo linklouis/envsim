@@ -2,6 +2,7 @@ package edu.msoe.envsim.entities;
 
 import edu.msoe.envsim.Environment;
 import edu.msoe.envsim.utilities.Vector;
+import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
@@ -13,10 +14,12 @@ public class Food extends Entity {
 
     private final double maxSize;
     private int regrowthTimer = 0;
+    private TerrainType terrainType;
 
     public Food(Vector position, double maxSize, @NotNull Environment env) {
         super(position, maxSize, Color.YELLOW, env);
         this.maxSize = maxSize;
+        terrainType = env.getTerrainType(getPosition());
     }
 
     @Override
@@ -46,5 +49,9 @@ public class Food extends Entity {
         if (getRadius() <= 0) {
             regrowthTimer = REGROWTH_TIME;
         }
+    }
+
+    public TerrainType getTerrainType() {
+        return terrainType;
     }
 }
