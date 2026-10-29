@@ -87,10 +87,10 @@ public class NeuralNetwork implements Serializable {
 
     /**
      * Source: Claude
-     * @param a
-     * @param b
-     * @param c
-     * @return
+     * @param a The first input value
+     * @param b The second input value
+     * @param c The third input value
+     * @return The predicted value
      */
     public float predict3x3x1(float a, float b, float c) {
         float[] w = weights;

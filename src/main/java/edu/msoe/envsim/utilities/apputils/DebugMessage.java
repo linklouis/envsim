@@ -23,7 +23,7 @@ public class DebugMessage extends Label {
                 return String.format(formatString, ((Number) val).doubleValue(), label);
             }
 
-            return val.toString() + " " + label;
+            return val + " " + label;
         };
 
         environment.addDebugMessage(this);
