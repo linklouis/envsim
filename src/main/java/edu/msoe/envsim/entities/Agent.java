@@ -127,9 +127,8 @@ public class Agent extends MobileEntity {
     private final double healthRegenSpeed;
     private final double turnSpeed;
     private final double swimSkill;
-
-    private final float[] genome;
-    private final float genomeNormSq;
+    private final double attack;
+    private final double defense;
 
     public final @NotNull NeuralNetwork brain;
     /**
@@ -143,6 +142,9 @@ public class Agent extends MobileEntity {
      */
     private final @NotNull NeuralNetwork preyEvaluator;
     private final @NotNull NeuralNetwork predatorEvaluator;
+
+    private final float[] genome;
+    private final float genomeNormSq;
 
 
     // STATE
@@ -199,6 +201,8 @@ public class Agent extends MobileEntity {
                 Math.random(),
 //                Math.pow(Math.random(), 0.2),
                 Math.random(),
+                Math.random() * 4 + 1,
+                Math.random() * 4 + 1,
                 newBrain(),
                 newFoodEvaluator(),
                 newAgentEvaluator(),
@@ -223,6 +227,8 @@ public class Agent extends MobileEntity {
         visionRadiusSquared = visionRadius * visionRadius;
         healthRegenSpeed = agentData.healthRegenSpeed();
         swimSkill = agentData.swimSkill();
+        attack = agentData.attack();
+        defense = agentData.defense();
         brain =  agentData.brain();
         foodEvaluator = agentData.foodEvaluator();
         preyEvaluator = agentData.preyEvaluator();
@@ -688,6 +694,8 @@ public class Agent extends MobileEntity {
                 this.visionRadius,
                 this.healthRegenSpeed,
                 this.swimSkill,
+                this.attack,
+                this.defense,
                 this.brain,
                 this.foodEvaluator,
                 this.preyEvaluator,
