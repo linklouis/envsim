@@ -90,7 +90,6 @@ public class Environment extends Canvas {
 
     private final int worldWidth;
     private final int worldHeight;
-    private final Vector cellSize;
     private double scale;
     private double translateX = 0.0;
     private double translateY = 0.0;
@@ -125,7 +124,7 @@ public class Environment extends Canvas {
         super(viewWidth, viewHeight);
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
-        this.cellSize = new Vector((double) worldWidth / (NUM_CELLS - 1), (double) worldHeight / (NUM_CELLS - 1));
+        Vector cellSize = new Vector((double) worldWidth / (NUM_CELLS - 1), (double) worldHeight / (NUM_CELLS - 1));
         this.staticGrid = new SpatialGrid(NUM_CELLS, cellSize.x(), cellSize.y(), true);
         this.agentGrid = new SpatialGrid(NUM_CELLS, cellSize.x(), cellSize.y(), false);
         gc = getGraphicsContext2D();
@@ -172,8 +171,8 @@ public class Environment extends Canvas {
      *  Source: Google Gemini
      */
     private void setupMouseEvents() {
-        setOnMouseEntered(e -> mouseInside = true);
-        setOnMouseExited(e -> mouseInside = false);
+        setOnMouseEntered(_ -> mouseInside = true);
+        setOnMouseExited(_ -> mouseInside = false);
 
         setOnMouseMoved(e -> {
             currentMouseX = e.getX();
@@ -225,7 +224,7 @@ public class Environment extends Canvas {
             }
         });
 
-        setOnMouseReleased(e -> {
+        setOnMouseReleased(_ -> {
             isPainting = false;
             lastTerrainX = -1;
             lastTerrainY = -1;
@@ -248,9 +247,9 @@ public class Environment extends Canvas {
 
     /**
      * Source: Google Gemini
-     * @param terrainX
-     * @param terrainY
-     * @param brushType
+     * @param terrainX The x position on the terrain to paint to
+     * @param terrainY The y position on the terrain to paint to
+     * @param brushType The {@link TerrainType} to paint at the specified location
      */
     private void setTerrainTile(int terrainX, int terrainY, TerrainType brushType) {
         if (terrainX >= 0 && terrainX < terrainData.length && terrainY >= 0 && terrainY < terrainData[0].length) {
@@ -492,9 +491,9 @@ public class Environment extends Canvas {
 
     /**
      * Source: Google Gemini
-     * @param screenX
-     * @param screenY
-     * @param brushType
+     * @param screenX The x position on the screen to paint to
+     * @param screenY The y position on the screen to paint to
+     * @param brushType The {@link TerrainType} to paint at the specified location
      */
     private void handleTerrainPaint(double screenX, double screenY, TerrainType brushType) {
         if (mode != Mode.EDIT) return;
@@ -550,9 +549,9 @@ public class Environment extends Canvas {
 
     /**
      * Source: Google Gemini
-     * @param centerTerrainX
-     * @param centerTerrainY
-     * @param brushType
+     * @param centerTerrainX The x location on the terrain that the brush stroke should be centered around
+     * @param centerTerrainY The y location on the terrain that the brush stroke should be centered around
+     * @param brushType The {@link TerrainType} to paint
      */
     private void paintBrushAt(int centerTerrainX, int centerTerrainY, TerrainType brushType) {
         for (int x = centerTerrainX - brushSize; x <= centerTerrainX + brushSize; x++) {

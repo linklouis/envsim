@@ -11,7 +11,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiPredicate;
 
@@ -247,16 +246,6 @@ public class Agent extends MobileEntity {
         updateColor();
     }
 
-    /**
-     * TODO
-     * @param parent1Data
-     * @param parent2Data
-     * @param env
-     */
-    public Agent(@NotNull AgentData parent1Data, @NotNull AgentData parent2Data, @NotNull Environment env) {
-        this(parent1Data.energy() > parent2Data.energy() ? parent1Data : parent2Data, env, null); // TODO
-    }
-
     private float @NotNull [] extractGenome() {
         List<Float> traits = new ArrayList<>();
 
@@ -279,6 +268,11 @@ public class Agent extends MobileEntity {
         return genome;
     }
 
+    /**
+     *
+     * @param other The other {@link Agent} to compare genomes with.
+     * @return The Root Mean Squared proportional difference between the genes of the two {@link Agent}s.
+     */
     private double compareGenome(@NotNull Agent other) {
         double totalRelativeDiff = 0;
         for (int i = 0; i < this.genome.length; i++) {
@@ -296,8 +290,8 @@ public class Agent extends MobileEntity {
 
     /**
      * Source: Claude
-     * @param other
-     * @return
+     * @param other The other {@link Agent} to compare genomes with.
+     * @return A `double` representing the similarity score between the genetics of the two {@link Agent}s.
      */
     private double compareGenomeOld(@NotNull Agent other) {
         float[] g1 = this.genome;
@@ -430,7 +424,7 @@ public class Agent extends MobileEntity {
     /**
      * TODO: ADD ATTACK AND DEFENSE STATS. DEFENSE COSTS MORE TO LIVE EACH STEP, ATTACK COSTS MORE EACH ATTACK (SO ATTACKING IS MORE RISKY IF YOU LOSE, BUT YOU'RE LESS LIKELY TO)
      *  INCORPORATE THESE INTO WHETHER AN ATTACK IS SUCCESSFUL OR NOT, JUST AS MUCH AS SIZE.
-     * @param prey
+     * @param prey The {@link Agent} to attempt to predate upon.
      */
     private void attemptPredation(@NotNull Agent prey) {
 //        if (this.parent == prey || prey.parent == this) return;  // Should be covered by the genome comparison
@@ -576,8 +570,8 @@ public class Agent extends MobileEntity {
 
     /**
      * TODO: ACTUALLY HAVE THIS BE A NN, AND HAVE IT ALSO GET WHETHER THE FOOD IS IN THE WATER OR ON LAND, THAT WAY WE DON'T NEED RAYCASTS
-     * @param food
-     * @return
+     * @param food The {@link Food} object to evaluate
+     * @return The calculated value score for the {@link Food}.
      */
     private float evaluateFood(@NotNull Food food) {
         return (float) (food.getRadius() / this.distance(food));
