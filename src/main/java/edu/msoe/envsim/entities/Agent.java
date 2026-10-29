@@ -323,9 +323,7 @@ public class Agent extends MobileEntity {
 
     private double getGenomeComparison(@NotNull Agent other) {
         Double cached = genomeComparisonCache.get(other.id);
-        if (cached != null) {
-            return cached;
-        }
+        if (cached != null) return cached;
 
         double comparison = compareGenome(other);
         genomeComparisonCache.put(other.id, comparison);

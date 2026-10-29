@@ -5,6 +5,7 @@ import edu.msoe.envsim.utilities.simutils.AgentData;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import org.jetbrains.annotations.NotNull;
@@ -16,14 +17,17 @@ import org.jetbrains.annotations.Nullable;
 public class AgentInspectorPane extends VBox {
     private final Label energyLabel = new Label();
     private final Label healthLabel = new Label();
+    private final Label terrainLabel = new Label();
+    private final Label predationLabel = new Label();
+    private final Label actionLabel = new Label();
+
     private final Label speedLabel = new Label();
     private final Label turnSpeedLabel = new Label();
     private final Label visionLabel = new Label();
     private final Label regenLabel = new Label();
     private final Label swimSkillLabel = new Label();
-    private final Label terrainLabel = new Label();
-    private final Label predationLabel = new Label();
-    private final Label actionLabel = new Label();
+    private final Label attackLabel = new Label();
+    private final Label defenseLabel = new Label();
 
     private final Runnable onCloseCallback;
 
@@ -53,14 +57,18 @@ public class AgentInspectorPane extends VBox {
         int row = 0;
         addStandardRow(grid, row++, "Energy:", energyLabel);
         addStandardRow(grid, row++, "Health:", healthLabel);
+        addStandardRow(grid, row++, "Terrain:", terrainLabel);
+        addStandardRow(grid, row++, "Desires Predation:", predationLabel);
+        addStandardRow(grid, row++, "Current Action:", actionLabel);
+        grid.add(new Separator(), 0, row++);
         addStandardRow(grid, row++, "Max Speed:", speedLabel);
         addStandardRow(grid, row++, "Turn Speed:", turnSpeedLabel);
         addStandardRow(grid, row++, "Vision:", visionLabel);
         addStandardRow(grid, row++, "Regen:", regenLabel);
         addStandardRow(grid, row++, "Swim Skill:", swimSkillLabel);
-        addStandardRow(grid, row++, "Terrain:", terrainLabel);
-        addStandardRow(grid, row++, "Desires Predation:", predationLabel);
-        addStandardRow(grid, row++, "Current Action:", actionLabel);
+        addStandardRow(grid, row++, "Attack:", attackLabel);
+        addStandardRow(grid, row++, "Defense:", defenseLabel);
+
 
         Button closeButton = new Button("Close");
         closeButton.setOnAction(_ -> hide());
@@ -86,15 +94,17 @@ public class AgentInspectorPane extends VBox {
         // %6.2f ensures the first value reserves a fixed 6-character width, right-aligned with spaces
         energyLabel.setText(String.format("%6.2f / %.2f", data.energy(), agent.calculateCloneThreshold()));
         healthLabel.setText(String.format("%6.2f / %.2f", agent.getRadius(), data.size()));
+        terrainLabel.setText(agent.getTerrainType().name());
+        predationLabel.setText(agent.desiresPredation() ? "True" : "False");
+        actionLabel.setText(agent.getAction());
 
         speedLabel.setText(String.format("%.2f", data.speed()));
         turnSpeedLabel.setText(String.format("%.2f", data.turnSpeed()));
         visionLabel.setText(String.format("%.2f", data.visionRadius()));
         regenLabel.setText(String.format("%.2f", data.healthRegenSpeed()));
         swimSkillLabel.setText(String.format("%.2f", data.swimSkill()));
-        terrainLabel.setText(agent.getTerrainType().name());
-        predationLabel.setText(agent.desiresPredation() ? "True" : "False");
-        actionLabel.setText(agent.getAction());
+        attackLabel.setText(String.format("%.2f", data.attack()));
+        defenseLabel.setText(String.format("%.2f", data.defense()));
 
         setVisible(true);
     }
