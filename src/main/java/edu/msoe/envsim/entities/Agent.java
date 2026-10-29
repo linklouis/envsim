@@ -59,15 +59,23 @@ public class Agent extends MobileEntity {
     /**
      * The amount of energy cost per time step per pixel of vision radius
      */
-    private static final double VISION_QUALITY_COST = 0.0006;
+    private static final double PASSIVE_VISION_QUALITY_COST = 0.0006;
+    /**
+     * The energy cost per time step per point of defense
+     */
+    public static final double PASSIVE_DEFENSE_COST = 0.1;
+    /**
+     * The passive energy an Agent loses each tick per pixel of its radius squared.
+     */
+    public static final double PASSIVE_SIZE_COST = 0.001;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
     public static final double SPEED_COST = 0.01;
     /**
-     * The passive energy an Agent loses each tick per pixel of its radius squared.
+     * The number of energy points it costs an Agent to attack per attack point
      */
-    public static final double SIZE_COST = 0.001;
+    public static final double ATTACK_COST = 0.1;
     /**
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
@@ -432,43 +440,42 @@ public class Agent extends MobileEntity {
     private void attemptPredation(@NotNull Agent prey) {
 //        if (this.parent == prey || prey.parent == this) return;  // Should be covered by the genome comparison
 
-        if (prey.decision.desiresPredation() && prey.getRadius() > getRadius()) {
-            prey.attemptPredation(this);
-            return;
+        changeEnergy(getPredationCost(prey));
+        double selfAttack = this.attack / prey.defense * this.getRadius() / prey.getRadius();
+
+        double otherAttack = 0;
+        if (prey.decision.desiresPredation()) {
+            prey.changeEnergy(prey.getPredationCost(this));
+            otherAttack = prey.attack / this.defense * prey.getRadius() / this.getRadius();
         }
 
-        // TODO: INSTEAD OF A THRESHOLD, HAVE THE CHANCES FOR AN AGENT TO KILL ANOTHER BE BASED ON THE SIZE DIFFERENCE. (OR EVEN JUST HOW MUCH DAMAGE IT DOES, SO THAT A SMALL AGENT CAN DO DAMAGE TO A LARGE ONE, EVEN IF IT DOESN'T KILL IT? [Is that actually something we want?])
-        // TODO: Pass the radius ratio for whatever other agent this one is seeing as input for NN.
-        changeEnergy(-(PREDATION_COST_FACTOR * calculateCloneThreshold() * prey.getRadius() / getRadius()));
-        if (prey.getRadius() / getRadius() <= MAX_RAD_RATIO_FOR_PREDATION) {
+        double selfHealth = this.getRadius() - otherAttack;
+        double otherHealth = prey.getRadius() - selfAttack;
+
+        if (selfHealth <= 0 && otherHealth <= 0) {
+            die();
+            prey.die();
+        } else if (selfHealth <= 0) {
+            if (otherHealth > 0 && prey.decision.desiresPredation()) {
+                prey.succeedPredation(this);
+            }
+            die();
+        } else if (otherHealth <= 0) {
             succeedPredation(prey);
             prey.die();
         } else {
-            // Health loss = FPCF * radius * other/self_size_ratio = FPCF * radius * otherRadius / radius = FPCF * otherRadius
-            double selfHealth = getRadius() - FAILED_PREDATION_COST_FACTOR * prey.getRadius();
-            double otherHealth = prey.getRadius() - FAILED_PREDATION_COST_FACTOR * getRadius();
             this.setRadius(selfHealth);
             prey.setRadius(otherHealth);
-            // TODO: Also lose energy?
-
-            if (selfHealth <= 0 && otherHealth <= 0) {
-                die();
-                prey.die();
-            } else if (selfHealth <= 0) {
-                if (otherHealth > 0 && prey.decision.desiresPredation()) {
-                    prey.succeedPredation(this);
-                }
-                die();
-            } else if (otherHealth <= 0) {
-                succeedPredation(prey);
-                prey.die();
-            }
         }
     }
 
     private void succeedPredation(@NotNull Agent prey) {
         if (!prey.alive) return;
         energy += prey.energy * PREDATION_EFFICIENCY;
+    }
+
+    private double getPredationCost(@NotNull Agent prey) {
+        return -(PREDATION_COST_FACTOR * calculateCloneThreshold() * prey.getRadius() / getRadius() + ATTACK_COST * attack);
     }
 
     private void reproduce() {
@@ -498,6 +505,7 @@ public class Agent extends MobileEntity {
 
     /**
      * TODO: consider velocity/direction?
+     * TODO: Add attack and defense
      */
     private static @NotNull NeuralNetwork newAgentEvaluator() {
         return new NeuralNetwork(new int[] {4, 3, 1});
@@ -676,7 +684,9 @@ public class Agent extends MobileEntity {
     }
 
     private double getPassiveEnergyCost() {
-        return visionRadius * VISION_QUALITY_COST + Math.pow(getRadius(), 2) * SIZE_COST;
+        return visionRadius * PASSIVE_VISION_QUALITY_COST
+                + Math.pow(getRadius(), 2) * PASSIVE_SIZE_COST
+                + defense * PASSIVE_DEFENSE_COST;
     }
 
     @Contract(" -> new")
