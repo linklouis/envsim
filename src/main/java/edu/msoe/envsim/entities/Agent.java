@@ -8,10 +8,10 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiPredicate;
 
 public class Agent extends MobileEntity {
@@ -79,6 +79,8 @@ public class Agent extends MobileEntity {
      */
     private static final double WANDER_JITTER_DEGREES = 20;
 
+    private static final AtomicLong NEXT_ID = new AtomicLong(1);
+
 
     // ARCHITECTURE PARAMETERS
     /**
@@ -95,8 +97,9 @@ public class Agent extends MobileEntity {
 
     // MISC VALUES
     private final @NotNull Environment environment;
-    private final Color baseSpeciesColor;
-    private final Agent parent;
+    private final Color baseColor;
+    private final int generation;
+    private final long id;
 
 
     // GENETIC ATTRIBUTES
@@ -182,7 +185,7 @@ public class Agent extends MobileEntity {
 
     // CACHES
     private TerrainType cachedTerrain;
-    private final Map<Integer, Double> genomeComparisonCache = new HashMap<>();
+    private final Map<Long, Double> genomeComparisonCache = new HashMap<>();
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -204,15 +207,18 @@ public class Agent extends MobileEntity {
                 newBrain(),
                 newFoodEvaluator(),
                 newAgentEvaluator(),
-                newAgentEvaluator()
+                newAgentEvaluator(),
+                0
         );
 
-        this(agentData, env, null);
+        this(agentData, env);
     }
 
 
-    public Agent(@NotNull AgentData agentData, @NotNull Environment env, @Nullable Agent parent) {
+    public Agent(@NotNull AgentData agentData, @NotNull Environment env) {
         super(agentData.position().add(Vector.random(20)), agentData.size(), agentData.color(), env);
+
+        this.id = NEXT_ID.getAndIncrement();
 
         cachedTerrain = env.getStandingTerrainType(this);
 
@@ -232,7 +238,7 @@ public class Agent extends MobileEntity {
         preyEvaluator = agentData.preyEvaluator();
         predatorEvaluator = agentData.predatorEvaluator();
 
-        this.parent = parent;
+        generation = agentData.generation();
 
         direction = Vector.random(1);
 
@@ -241,7 +247,7 @@ public class Agent extends MobileEntity {
         for (float val : genome) { norm += val * val; }
         this.genomeNormSq = norm;
 
-        this.baseSpeciesColor = SpeciesColorMapper.getBaseSpeciesColor(genome);
+        this.baseColor = SpeciesColorMapper.getBaseSpeciesColor(genome);
         updateColor();
     }
 
@@ -314,15 +320,13 @@ public class Agent extends MobileEntity {
     }
 
     private double getGenomeComparison(@NotNull Agent other) {
-        int otherHash = other.hashCode();
-
-        Double cached = genomeComparisonCache.get(otherHash);
+        Double cached = genomeComparisonCache.get(other.id);
         if (cached != null) {
             return cached;
         }
 
         double comparison = compareGenome(other);
-        genomeComparisonCache.put(otherHash, comparison);
+        genomeComparisonCache.put(other.id, comparison);
 
         return comparison;
     }
@@ -417,7 +421,7 @@ public class Agent extends MobileEntity {
 
     private void updateColor() {
         double brightness = Math.clamp(energy / calculateCloneThreshold(), 0.0, 1.0);
-        setColor(Color.hsb(baseSpeciesColor.getHue(), baseSpeciesColor.getSaturation(), brightness));
+        setColor(Color.hsb(baseColor.getHue(), baseColor.getSaturation(), brightness));
     }
 
     /**
@@ -469,7 +473,7 @@ public class Agent extends MobileEntity {
 
     private void reproduce() {
         energy /= 2;
-        new Agent(getAgentData().mutate(), environment, parent);
+        new Agent(getAgentData().mutate(), environment);
         timeSinceReproduction = 0;
     }
 
@@ -478,7 +482,7 @@ public class Agent extends MobileEntity {
     }
 
     private static boolean isSameSpecies(@NotNull Agent agent1, @NotNull Agent agent2) {
-        Double cached = agent1.genomeComparisonCache.get(agent2.hashCode());
+        Double cached = agent1.genomeComparisonCache.get(agent2.id);
         double comparison = Objects.requireNonNullElseGet(cached, () -> agent2.getGenomeComparison(agent1));
 
         return isSameSpecies(comparison);
@@ -692,7 +696,8 @@ public class Agent extends MobileEntity {
                 this.brain,
                 this.foodEvaluator,
                 this.preyEvaluator,
-                this.predatorEvaluator
+                this.predatorEvaluator,
+                this.generation
         );
     }
 
