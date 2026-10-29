@@ -7,37 +7,33 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Random;
 
 public class SpeciesColorMapper {
-
-    private final float lightness = 0.65f;
-    private final float maxRadius = 0.18f;
-    private float[][] projectionMatrix;
-    private final long seed = 42L;
-
-    public SpeciesColorMapper() {}
+    private final static float LIGHTNESS = 0.65f;
+    /**
+     * TODO: What does this actually do?
+     */
+    private final static float MAX_RADIUS = 0.18f;
+    private final static long SEED = 42L;
 
     /**
      * Calculates base species color (Hue & Saturation at constant lightness) from explicit genetic parameters.
      */
-    public Color getBaseSpeciesColor(float[] genome) {
-
-        if (projectionMatrix == null || projectionMatrix[0].length != genome.length) {
-            initializeMatrix(genome.length);
-        }
-
-        float[] rgb = getSpeciesRGB(genome);
+    public static @NotNull Color getBaseSpeciesColor(float @NotNull [] genome) {
+        float[][] projectionMatrix = initializeMatrix(genome.length);
+        float[] rgb = getSpeciesRGB(genome, projectionMatrix);
         return Color.color(rgb[0], rgb[1], rgb[2]);
     }
 
-    private void initializeMatrix(int numInputs) {
-        projectionMatrix = new float[2][numInputs];
-        Random random = new Random(seed);
+    private static float @NotNull [][] initializeMatrix(int numInputs) {
+        float[][] projectionMatrix = new float[2][numInputs];
+        Random random = new Random(SEED);
         for (int i = 0; i < numInputs; i++) {
             projectionMatrix[0][i] = (float) (random.nextGaussian() * 0.35);
             projectionMatrix[1][i] = (float) (random.nextGaussian() * 0.35);
         }
+        return projectionMatrix;
     }
 
-    private float @NotNull [] getSpeciesRGB(float @NotNull [] genome) {
+    private static float @NotNull [] getSpeciesRGB(float @NotNull [] genome, float[][] projectionMatrix) {
         float a = 0.0f;
         float b = 0.0f;
 
@@ -49,25 +45,25 @@ public class SpeciesColorMapper {
 
         float radius = (float) Math.hypot(a, b);
         if (radius > 0.0f) {
-            float scale = (float) (Math.tanh(radius / maxRadius) / (radius / maxRadius));
+            float scale = (float) (Math.tanh(radius / MAX_RADIUS) / (radius / MAX_RADIUS));
             a *= scale;
             b *= scale;
         }
 
-        return oklabToSrgb(this.lightness, a, b);
+        return oklabToSrgb(a, b);
     }
 
-    @Contract("_, _, _ -> new")
-    private float @NotNull [] oklabToSrgb(float L, float a, float b) {
-        float l_ = L + 0.3963377774f * a + 0.2158037573f * b;
-        float m_ = L - 0.1055613458f * a - 0.0638541728f * b;
-        float s_ = L - 0.0894841775f * a - 1.2914855480f * b;
+    @Contract("_, _ -> new")
+    private static float @NotNull [] oklabToSrgb(float a, float b) {
+        float l_ = LIGHTNESS + 0.3963377774f * a + 0.2158037573f * b;
+        float m_ = LIGHTNESS - 0.1055613458f * a - 0.0638541728f * b;
+        float s_ = LIGHTNESS - 0.0894841775f * a - 1.2914855480f * b;
 
         float l = l_ * l_ * l_;
         float m = m_ * m_ * m_;
         float s = s_ * s_ * s_;
 
-        float rLinear = +4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s;
+        float rLinear = 4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s;
         float gLinear = -1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s;
         float bLinear = -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s;
 
@@ -78,7 +74,7 @@ public class SpeciesColorMapper {
         return new float[]{r, g, bComponent};
     }
 
-    private float linearToSrgb(float c) {
+    private static float linearToSrgb(float c) {
         if (c <= 0.0031308f) {
             return 12.92f * c;
         } else {

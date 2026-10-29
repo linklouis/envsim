@@ -79,6 +79,7 @@ public class Agent extends MobileEntity {
      */
     private static final double WANDER_JITTER_DEGREES = 20;
 
+
     // ARCHITECTURE PARAMETERS
     /**
      * The number of inputs the main neural network takes in.
@@ -91,8 +92,6 @@ public class Agent extends MobileEntity {
     public static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
     public static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
 
-    // OTHER CONSTANTS
-    private static final SpeciesColorMapper COLOR_MAPPER = new SpeciesColorMapper();
 
     // MISC VALUES
     private final @NotNull Environment environment;
@@ -242,7 +241,7 @@ public class Agent extends MobileEntity {
         for (float val : genome) { norm += val * val; }
         this.genomeNormSq = norm;
 
-        this.baseSpeciesColor = COLOR_MAPPER.getBaseSpeciesColor(genome);
+        this.baseSpeciesColor = SpeciesColorMapper.getBaseSpeciesColor(genome);
         updateColor();
     }
 
