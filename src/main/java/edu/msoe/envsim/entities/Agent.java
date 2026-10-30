@@ -68,6 +68,8 @@ public class Agent extends MobileEntity {
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
     private static final double PASSIVE_SIZE_COST = 0.002;
+    public static final double PASSIVE_LIFE_COST = 0.1;
+    public static final double PASSIVE_TURN_SPEED_COST = 0.001;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
@@ -106,7 +108,6 @@ public class Agent extends MobileEntity {
     private static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
     private static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
     private static final double SPECIES_MAX_DIFFERENCE = Math.sqrt(-Math.log(SPECIES_SIMILARITY_THRESHOLD) / SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR);
-    public static final double PASSIVE_LIFE_COST = 0.1;
 
 
     // MISC VALUES
@@ -423,7 +424,7 @@ public class Agent extends MobileEntity {
         direction = direction.turn(turn);
         double speedModifier = Math.pow(getRadius() * cachedTerrain.getSpeedSizeCostFactor(), 2) + 1;
         double effort = speed / speedModifier;
-        double cost = SPEED_COST * Math.pow(effort, 2) + TURN_COST * Math.abs(turn) / maxTurnPerTick(); // TODO: Have moving in your non-preferred terrain cost more energy?
+        double cost = SPEED_COST * Math.pow(effort, 2) + TURN_COST * Math.abs(turn); // TODO: Have moving in your non-preferred terrain cost more energy?
 
         if (energy >= cost) {
             double functionalSpeed = effort * Math.abs(isOnLand() - swimSkill);
@@ -703,6 +704,7 @@ public class Agent extends MobileEntity {
 
     private double getPassiveEnergyCost() {
         return PASSIVE_LIFE_COST
+                + turnSpeed * PASSIVE_TURN_SPEED_COST
                 + visionRadius * PASSIVE_VISION_QUALITY_COST
                 + Math.pow(getRadius(), 2) * PASSIVE_SIZE_COST
                 + defense * PASSIVE_DEFENSE_COST;
