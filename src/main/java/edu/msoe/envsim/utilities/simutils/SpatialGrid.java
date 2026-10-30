@@ -148,7 +148,7 @@ public final class SpatialGrid {
                 if (distSq <= maxDistSq) {
                     Entity other = entities[i];
                     if (other != self) {
-                        visitor.visit(other, Math.sqrt(distSq));
+                        visitor.visit(other, distSq);
                     }
                 }
             }

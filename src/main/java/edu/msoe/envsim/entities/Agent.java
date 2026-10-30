@@ -27,6 +27,7 @@ public class Agent extends MobileEntity {
     private static final int CLONE_THRESHOLD = 20;
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
+     * TODO: RENAME
      */
     private static final double MAX_RAD_RATIO_FOR_PREDATION = 0.8;
     /**
@@ -135,6 +136,9 @@ public class Agent extends MobileEntity {
      */
     private final double visionRadiusSquared;
     private final double healthRegenSpeed;
+    /**
+     * TODO: IS THIS EVEN REALLY DOING ANYTHING?
+     */
     private final double turnSpeed;
     private final double swimSkill;
     private final double attack;
@@ -209,7 +213,7 @@ public class Agent extends MobileEntity {
                 Math.random() * 2.5 + 0.4,
                 Math.random() * 180 + 50,
                 radius,
-                Math.random() * 700 + 200,
+                Math.random() * 1000 + 400,
                 Math.random(),
 //                Math.pow(Math.random(), 0.2),
                 Math.random(),
@@ -292,6 +296,8 @@ public class Agent extends MobileEntity {
      * @return The Root Mean Squared proportional difference between the genes of the two {@link Agent}s.
      */
     private double compareGenome(@NotNull Agent other) {
+        // TODO: This was updated to make each gene matter equally, which makes sense for the species check,
+        //  but less sense for the color. I think physical traits should probably matter more.
         double totalRelativeDiff = 0;
         for (int i = 0; i < this.genome.length; i++) {
             float val1 = this.genome[i];
@@ -432,7 +438,7 @@ public class Agent extends MobileEntity {
 
     private void eat(@NotNull Food food) {
         if (food == lastEatenFood) return;
-        double consumptionSize = Math.min(1, getRadius() * MAX_RAD_RATIO_FOR_PREDATION / food.getRadius());    // TODO: Does this make any sense? The idea is for agents to not be able to eat an entire food if they are smaller than it. They should only be able to eat MAX_DIF... % of their  // TODO: Maybe switch to max energy once it relies on radius?
+        double consumptionSize = getRadius() * MAX_RAD_RATIO_FOR_PREDATION / food.getRadius();//Math.min(1, getRadius() * MAX_RAD_RATIO_FOR_PREDATION / food.getRadius());    // TODO: Does this make any sense? The idea is for agents to not be able to eat an entire food if they are smaller than it. They should only be able to eat MAX_DIF... % of their  // TODO: Maybe switch to max energy once it relies on radius?
         energy += consumptionSize * food.getValue();
         food.getEaten(consumptionSize);
         lastEatenFood = food;
@@ -452,20 +458,18 @@ public class Agent extends MobileEntity {
     }
 
     /**
-     * TODO: ADD ATTACK AND DEFENSE STATS. DEFENSE COSTS MORE TO LIVE EACH STEP, ATTACK COSTS MORE EACH ATTACK (SO ATTACKING IS MORE RISKY IF YOU LOSE, BUT YOU'RE LESS LIKELY TO)
-     *  INCORPORATE THESE INTO WHETHER AN ATTACK IS SUCCESSFUL OR NOT, JUST AS MUCH AS SIZE.
      * @param prey The {@link Agent} to attempt to predate upon.
      */
     private void attemptPredation(@NotNull Agent prey) {
 //        if (this.parent == prey || prey.parent == this) return;  // Should be covered by the genome comparison
 
         changeEnergy(getPredationCost(prey));
-        double selfAttack = this.attack / prey.defense * this.getRadius() / prey.getRadius();
+        double selfAttack = this.attack / prey.defense;
 
         double otherAttack = 0;
         if (prey.decision.desiresPredation()) {
             prey.changeEnergy(prey.getPredationCost(this));
-            otherAttack = prey.attack / this.defense * prey.getRadius() / this.getRadius();
+            otherAttack = prey.attack / this.defense;
         }
 
         double selfHealth = this.getRadius() - otherAttack;
@@ -490,11 +494,12 @@ public class Agent extends MobileEntity {
 
     private void succeedPredation(@NotNull Agent prey) {
         if (!prey.alive) return;
+//        System.out.println("Predation!");
         energy += prey.energy * PREDATION_EFFICIENCY;
     }
 
     private double getPredationCost(@NotNull Agent prey) {
-        return -(PREDATION_COST_FACTOR * calculateCloneThreshold() * prey.getRadius() / getRadius() + ATTACK_COST * attack);
+        return -GLOBAL_ENERGY_LOSS_FACTOR * (PREDATION_COST_FACTOR * calculateCloneThreshold() * prey.getRadius() / getRadius() + ATTACK_COST * attack);
     }
 
     private void reproduce() {
@@ -672,6 +677,7 @@ public class Agent extends MobileEntity {
     }
 
     protected void die() {
+        if (!alive) return;
         environment.removeEntity(this);
         alive = false;
     }
