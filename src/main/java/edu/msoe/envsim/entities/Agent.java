@@ -26,10 +26,9 @@ public class Agent extends MobileEntity {
      */
     private static final int CLONE_THRESHOLD = 20;
     /**
-     * The maximum ratio between a predator's radius and its prey for the predation to be a success.
-     * TODO: RENAME
+     * The size of bite an Agent can take relative to its radius.
      */
-    private static final double MAX_RAD_RATIO_FOR_PREDATION = 0.8;
+    private static final double MAX_BITE_SIZE = 0.8;
     /**
      * The portion of max energy wasted when catching and eating prey.
      * <p>
@@ -68,11 +67,15 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.0006;
+    private static final double PASSIVE_SIZE_COST = 0.002;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
     private static final double SPEED_COST = 0.013;
+    /**
+     * TODO
+     */
+    private static final double TURN_COST = 1;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
@@ -81,7 +84,7 @@ public class Agent extends MobileEntity {
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
-    private static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.043;
+    private static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.046;
     /**
      * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
      * Prevents looping.
@@ -103,6 +106,7 @@ public class Agent extends MobileEntity {
     private static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
     private static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
     private static final double SPECIES_MAX_DIFFERENCE = Math.sqrt(-Math.log(SPECIES_SIMILARITY_THRESHOLD) / SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR);
+    public static final double PASSIVE_LIFE_COST = 0.1;
 
 
     // MISC VALUES
@@ -151,7 +155,7 @@ public class Agent extends MobileEntity {
      */
     private final @NotNull NeuralNetwork foodEvaluator;
     /**
-     * Inputs: self size, agent size, distance // TODO: In the future, maybe add whether the other wants to mate, if it's the same species, and what direction it's moving in?
+     * Inputs: self size, agent size, distance // TODO: In the future, maybe add what direction it's moving in?
      * Outputs: Value (1 = invaluable, 0 = useless, -1 = deadly threat)
      */
     private final @NotNull NeuralNetwork preyEvaluator;
@@ -210,7 +214,7 @@ public class Agent extends MobileEntity {
                 position,
                 color,
                 calculateCloneThreshold(radius) - 1,
-                Math.random() * 2.5 + 0.4,
+                Math.random() * 2.5 + 0.6,
                 Math.random() * 180 + 50,
                 radius,
                 Math.random() * 1000 + 400,
@@ -419,7 +423,7 @@ public class Agent extends MobileEntity {
         direction = direction.turn(turn);
         double speedModifier = Math.pow(getRadius() * cachedTerrain.getSpeedSizeCostFactor(), 2) + 1;
         double effort = speed / speedModifier;
-        double cost = SPEED_COST * Math.pow(effort, 2); // TODO: Have moving in your non-preferred terrain cost more energy?
+        double cost = SPEED_COST * Math.pow(effort, 2) + TURN_COST * Math.abs(turn) / maxTurnPerTick(); // TODO: Have moving in your non-preferred terrain cost more energy?
 
         if (energy >= cost) {
             double functionalSpeed = effort * Math.abs(isOnLand() - swimSkill);
@@ -438,7 +442,7 @@ public class Agent extends MobileEntity {
 
     private void eat(@NotNull Food food) {
         if (food == lastEatenFood) return;
-        double consumptionSize = getRadius() * MAX_RAD_RATIO_FOR_PREDATION / food.getRadius();//Math.min(1, getRadius() * MAX_RAD_RATIO_FOR_PREDATION / food.getRadius());    // TODO: Does this make any sense? The idea is for agents to not be able to eat an entire food if they are smaller than it. They should only be able to eat MAX_DIF... % of their  // TODO: Maybe switch to max energy once it relies on radius?
+        double consumptionSize = getRadius() * MAX_BITE_SIZE / food.getRadius();//Math.min(1, getRadius() * MAX_RAD_RATIO_FOR_PREDATION / food.getRadius());    // TODO: Does this make any sense? The idea is for agents to not be able to eat an entire food if they are smaller than it. They should only be able to eat MAX_DIF... % of their  // TODO: Maybe switch to max energy once it relies on radius?
         energy += consumptionSize * food.getValue();
         food.getEaten(consumptionSize);
         lastEatenFood = food;
@@ -499,7 +503,7 @@ public class Agent extends MobileEntity {
     }
 
     private double getPredationCost(@NotNull Agent prey) {
-        return -GLOBAL_ENERGY_LOSS_FACTOR * (PREDATION_COST_FACTOR * calculateCloneThreshold() * prey.getRadius() / getRadius() + ATTACK_COST * attack);
+        return -(PREDATION_COST_FACTOR * calculateCloneThreshold() * prey.getRadius() / getRadius() + ATTACK_COST * attack);
     }
 
     private void reproduce() {
@@ -698,7 +702,8 @@ public class Agent extends MobileEntity {
     }
 
     private double getPassiveEnergyCost() {
-        return visionRadius * PASSIVE_VISION_QUALITY_COST
+        return PASSIVE_LIFE_COST
+                + visionRadius * PASSIVE_VISION_QUALITY_COST
                 + Math.pow(getRadius(), 2) * PASSIVE_SIZE_COST
                 + defense * PASSIVE_DEFENSE_COST;
     }
@@ -730,7 +735,7 @@ public class Agent extends MobileEntity {
     }
 
     private static double calculateCloneThreshold(double radius) {
-        return CLONE_THRESHOLD * Math.pow(radius, 0.7);
+        return CLONE_THRESHOLD * Math.pow(radius, 0.8); // TODO: Make the exponent a constant
     }
 
     public double calculateCloneThreshold() {
