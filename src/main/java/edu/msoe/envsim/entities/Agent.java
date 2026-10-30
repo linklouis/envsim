@@ -195,6 +195,8 @@ public class Agent extends MobileEntity {
     // CACHES
     private TerrainType cachedTerrain;
     private final Map<Long, Double> genomeComparisonCache = new HashMap<>();
+    private final long[] genomeComparisonIds = new long[256];     // ids start at 1, so 0 = empty
+    private final double[] genomeComparisonValues = new double[256];
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -330,13 +332,29 @@ public class Agent extends MobileEntity {
         return Math.sqrt(Math.max(0.0, squaredDistance) / g1.length);
     }
 
-    private double getGenomeComparison(@NotNull Agent other) {
+    /**
+     * TODO
+     * @param other
+     * @return
+     */
+    private double getGenomeComparisonOld(@NotNull Agent other) {
         Double cached = genomeComparisonCache.get(other.id);
         if (cached != null) return cached;
 
         double comparison = compareGenome(other);
         genomeComparisonCache.put(other.id, comparison);
 
+        return comparison;
+    }
+
+    private double getGenomeComparison(@NotNull Agent other) {
+        int slot = (int) (other.id & 255);
+        if (genomeComparisonIds[slot] == other.id) {
+            return genomeComparisonValues[slot];
+        }
+        double comparison = compareGenome(other);
+        genomeComparisonIds[slot] = other.id;
+        genomeComparisonValues[slot] = comparison;
         return comparison;
     }
 
