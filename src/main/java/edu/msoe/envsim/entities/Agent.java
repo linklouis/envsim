@@ -68,11 +68,11 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.0004;
+    private static final double PASSIVE_SIZE_COST = 0.0006;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
-    private static final double SPEED_COST = 0.01;
+    private static final double SPEED_COST = 0.013;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
@@ -297,7 +297,7 @@ public class Agent extends MobileEntity {
      */
     private double compareGenome(@NotNull Agent other) {
         // TODO: This was updated to make each gene matter equally, which makes sense for the species check,
-        //  but less sense for the color. I think physical traits should probably matter more.
+        //  but less sense for the color. I think physical traits should probably matter more for that.
         double totalRelativeDiff = 0;
         for (int i = 0; i < this.genome.length; i++) {
             float val1 = this.genome[i];
@@ -634,12 +634,14 @@ public class Agent extends MobileEntity {
             action = "ESCAPE";
         } else {
             target = direction;
-            double brainTurn = ((output[6] * 2) - 1) * turnSpeed;
+            double brainTurn = (output[6] * 2 - 1) * turnSpeed;
             double jitter = ThreadLocalRandom.current().nextDouble(-1, 1) * WANDER_JITTER_DEGREES;
             turn = brainTurn * 0.25 + jitter;
             desiresPredation = false;
             action = "WANDER";
         }
+
+        turn = Math.clamp(turn, -maxTurnPerTick(), maxTurnPerTick());
 
         this.decision =  new AgentDecision(
                 output[0],// * 2 - 1,
@@ -656,8 +658,7 @@ public class Agent extends MobileEntity {
 
     private double getTurnToTarget(@NotNull Vector target) {
         double rawChange = target.angle() - direction.angle(); // radians
-        double neededDegrees = Math.toDegrees(Math.atan2(Math.sin(rawChange), Math.cos(rawChange)));
-        return Math.clamp(neededDegrees, -maxTurnPerTick(), maxTurnPerTick());
+        return Math.toDegrees(Math.atan2(Math.sin(rawChange), Math.cos(rawChange)));
     }
 
 
