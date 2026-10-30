@@ -99,10 +99,9 @@ public class Agent extends MobileEntity {
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.32;
-    public static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
-    public static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
     private static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
     private static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
+    private static final double SPECIES_MAX_DIFFERENCE = Math.sqrt(-Math.log(SPECIES_SIMILARITY_THRESHOLD) / SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR);
 
 
     // MISC VALUES
@@ -486,17 +485,6 @@ public class Agent extends MobileEntity {
         timeSinceReproduction = 0;
     }
 
-    private static boolean isSameSpecies(double comparison) {
-        return Math.exp(-SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR * Math.pow(comparison, 2)) > SPECIES_SIMILARITY_THRESHOLD;
-    }
-
-    private static boolean isSameSpecies(@NotNull Agent agent1, @NotNull Agent agent2) {
-        Double cached = agent1.genomeComparisonCache.get(agent2.id);
-        double comparison = Objects.requireNonNullElseGet(cached, () -> agent2.getGenomeComparison(agent1));
-
-        return isSameSpecies(comparison);
-    }
-
     private static @NotNull NeuralNetwork newBrain() {
         return new NeuralNetwork(new int[] {NUM_INPUTS, 10, 7});    // TODO: Probably make the hidden layer a little bigger
     }
@@ -560,8 +548,7 @@ public class Agent extends MobileEntity {
             }
         } else if (entity instanceof Agent agent) {
             float genomeComparison = (float) getGenomeComparison(agent);
-
-            if (isSameSpecies(genomeComparison)) return;
+            if (genomeComparison < SPECIES_MAX_DIFFERENCE) return;
 
             float sizeRatio = (float) (entity.getRadius() / this.getRadius());
             float distance = (float) (distanceSquared / visionRadiusSquared);
