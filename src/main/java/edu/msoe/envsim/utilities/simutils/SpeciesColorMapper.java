@@ -9,28 +9,44 @@ import java.util.Random;
 public class SpeciesColorMapper {
     private final static float LIGHTNESS = 0.65f;
     /**
-     * TODO: What does this actually do?
+     * Controls the maximum radial spread of species chromaticity in the Oklab color space.
+     * <p>
+     * Acts as a soft-limiting compression threshold via hyperbolic tangent scaling.
+     * Lower values compress genetic variations tightly (creating more pastel/muted colors),
+     * while higher values allow genomes to utilize the full, highly-saturated gamut
+     * of distinct colors to represent different species.
+     * </p>
      */
-    private final static float MAX_RADIUS = 0.18f;
+    private final static float MAX_RADIUS = 0.25f;
     private final static long SEED = 42L;
+    private static volatile float[][] projectionMatrix;
 
     /**
      * Calculates base species color (Hue & Saturation at constant lightness) from explicit genetic parameters.
      */
     public static @NotNull Color getBaseSpeciesColor(float @NotNull [] genome) {
-        float[][] projectionMatrix = initializeMatrix(genome.length);
+        getOrCreateMatrix(genome.length);
         float[] rgb = getSpeciesRGB(genome, projectionMatrix);
         return Color.color(rgb[0], rgb[1], rgb[2]);
     }
 
-    private static float @NotNull [][] initializeMatrix(int numInputs) {
-        float[][] projectionMatrix = new float[2][numInputs];
+    private static void getOrCreateMatrix(int numInputs) {
+        if (projectionMatrix == null || projectionMatrix[0].length != numInputs) {
+            synchronized (SpeciesColorMapper.class) {
+                if (projectionMatrix == null || projectionMatrix[0].length != numInputs) {
+                    initializeMatrix(numInputs);
+                }
+            }
+        }
+    }
+
+    private static void initializeMatrix(int numInputs) {
+        projectionMatrix = new float[2][numInputs];
         Random random = new Random(SEED);
         for (int i = 0; i < numInputs; i++) {
-            projectionMatrix[0][i] = (float) (random.nextGaussian() * 0.35);
-            projectionMatrix[1][i] = (float) (random.nextGaussian() * 0.35);
+            projectionMatrix[0][i] = (float) (random.nextGaussian() * 0.4);
+            projectionMatrix[1][i] = (float) (random.nextGaussian() * 0.4);
         }
-        return projectionMatrix;
     }
 
     private static float @NotNull [] getSpeciesRGB(float @NotNull [] genome, float[][] projectionMatrix) {
