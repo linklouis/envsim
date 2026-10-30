@@ -19,12 +19,12 @@ public class Agent extends MobileEntity {
     /**
      * The minimum portion of its max health an agent must have to be eligible for reproduction.
      */
-    public static final double MIN_HEALTH_FOR_REPRODUCTION = 0.8;
+    private static final double MIN_HEALTH_FOR_REPRODUCTION = 0.8;
     /**
      * The energy at which an entity will clone.
      * The actual threshold is calculated using this and radius.
      */
-    public static final int CLONE_THRESHOLD = 30;
+    private static final int CLONE_THRESHOLD = 20;
     /**
      * The maximum ratio between a predator's radius and its prey for the predation to be a success.
      */
@@ -47,7 +47,7 @@ public class Agent extends MobileEntity {
     /**
      * The portion of energy to spend when trying to attempt predation and not touching another agent
      */
-    public static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.05;
+    private static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.05;
     /**
      * The portion of total energy an agent needs to start regenerating health.
      */
@@ -63,24 +63,24 @@ public class Agent extends MobileEntity {
     /**
      * The energy cost per time step per point of defense
      */
-    public static final double PASSIVE_DEFENSE_COST = 0.1;
+    private static final double PASSIVE_DEFENSE_COST = 0.01;
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    public static final double PASSIVE_SIZE_COST = 0.001;
+    private static final double PASSIVE_SIZE_COST = 0.0004;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
-    public static final double SPEED_COST = 0.01;
+    private static final double SPEED_COST = 0.01;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
-    public static final double ATTACK_COST = 0.1;
+    private static final double ATTACK_COST = 0.8;
     /**
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
-    public static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.046;
+    private static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.043;
     /**
      * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
      * Prevents looping.
@@ -94,13 +94,15 @@ public class Agent extends MobileEntity {
     /**
      * The number of inputs the main neural network takes in.
      */
-    public static final int NUM_INPUTS = 6;
+    private static final int NUM_INPUTS = 6;
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.32;
     public static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
     public static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
+    private static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
+    private static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
 
 
     // MISC VALUES
@@ -139,7 +141,7 @@ public class Agent extends MobileEntity {
     private final double attack;
     private final double defense;
 
-    public final @NotNull NeuralNetwork brain;
+    private final @NotNull NeuralNetwork brain;
     /**
      * Inputs: food size, distance
      * Output: value
@@ -715,8 +717,8 @@ public class Agent extends MobileEntity {
         energy += change * GLOBAL_ENERGY_LOSS_FACTOR;
     }
 
-    public static double calculateCloneThreshold(double radius) {
-        return CLONE_THRESHOLD * Math.pow(radius, 1);
+    private static double calculateCloneThreshold(double radius) {
+        return CLONE_THRESHOLD * Math.pow(radius, 0.7);
     }
 
     public double calculateCloneThreshold() {
