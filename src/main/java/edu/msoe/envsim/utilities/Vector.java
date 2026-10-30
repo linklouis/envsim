@@ -31,7 +31,7 @@ public record Vector(double x, double y) {
     public static final @NotNull Vector ONE = new Vector(1, 1);
 
     /**
-     * @return A new {@link Vector} whose components are both random values between 0 and 1.
+     * @return A new unit {@link Vector} in a random direction.
      */
     public static @NotNull Vector random() {
         return fromAngle(ThreadLocalRandom.current().nextDouble() * 2 * Math.PI);
