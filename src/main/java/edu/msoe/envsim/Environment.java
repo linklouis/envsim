@@ -485,6 +485,7 @@ public class Environment extends Canvas {
         decideMs   = decideMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
         stepMs = stepMs * 0.99 + (t3 - t2) / 1e6 * 0.01;
 
+        Agent.updateDifficulty();
         simClock.update();
     }
 

@@ -77,7 +77,7 @@ public class Agent extends MobileEntity {
     /**
      * TODO
      */
-    private static final double TURN_COST = 1;
+    private static final double TURN_COST = 2;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
@@ -86,7 +86,10 @@ public class Agent extends MobileEntity {
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
-    private static final double GLOBAL_ENERGY_LOSS_FACTOR = 0.046;
+    private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.00006;
+    private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.04;
+    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 300000;
+    private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     /**
      * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
      * Prevents looping.
@@ -372,14 +375,14 @@ public class Agent extends MobileEntity {
     public void parallelStep() {
         if (!alive) return;
 
+        move(decision.turn(), decision.speed() * maxSpeed);
+        changeEnergy(-getPassiveEnergyCost());
+
         timeSinceReproduction++;
         //if (reproductionDesire > 0.6 && energy > 80) {
         if (energy > calculateCloneThreshold() && getRadius() / size > MIN_HEALTH_FOR_REPRODUCTION) {
             reproduce();
         }
-
-        move(decision.turn(), decision.speed() * maxSpeed);
-        changeEnergy(-getPassiveEnergyCost());
 
         // TODO: Health regen could instead be something the NN can decide to consume energy to do.
         if (energy > HEALTH_REGENERATION_THRESHOLD * calculateCloneThreshold() && getRadius() < size) {
@@ -704,7 +707,7 @@ public class Agent extends MobileEntity {
 
     private double getPassiveEnergyCost() {
         return PASSIVE_LIFE_COST
-                + turnSpeed * PASSIVE_TURN_SPEED_COST
+                + turnSpeed * getRadius() * PASSIVE_TURN_SPEED_COST
                 + visionRadius * PASSIVE_VISION_QUALITY_COST
                 + Math.pow(getRadius(), 2) * PASSIVE_SIZE_COST
                 + defense * PASSIVE_DEFENSE_COST;
@@ -759,5 +762,11 @@ public class Agent extends MobileEntity {
     protected void setPosition(Vector position) {
         super.setPosition(position);
         cachedTerrain = environment.getStandingTerrainType(this);
+    }
+
+    public static void updateDifficulty() {
+        if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
+            GLOBAL_ENERGY_LOSS_FACTOR += GLOBAL_ENERGY_LOSS_ANNEALING_RATE;
+        }
     }
 }
