@@ -146,8 +146,11 @@ public class App extends Application {
         DebugMessage TpSpA = new DebugMessage(
                 () -> 1 / (environment.getSimUpdateRate() * (double) environment.getNumAgents()), "SpAT", 10, environment
         );
+        DebugMessage numPredations = new DebugMessage(
+                () -> environment.getNumPredations(), "predations", 0, environment
+        );
 
-        debugBox.getChildren().addAll(tick, framesPerSecond, ticksPerSecond, numAgents, listMs, decideMs, stepMs, TpSpA);
+        debugBox.getChildren().addAll(tick, framesPerSecond, ticksPerSecond, numAgents, listMs, decideMs, stepMs, TpSpA, numPredations);
         toggleDebugMode(debugMode);
     }
 

@@ -28,6 +28,9 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+/**
+ * TODO: Add a way to save the sim state
+ */
 public class Environment extends Canvas {
     public static final int NUM_CELLS = 80;
     /**
@@ -101,9 +104,6 @@ public class Environment extends Canvas {
 
     private final Runnable onSimModeStart;
     private final Runnable onEditModeStart;
-    private double listMs;
-    private double decideMs;
-    private double stepMs;
 
     private double currentMouseX;
     private double currentMouseY;
@@ -113,7 +113,13 @@ public class Environment extends Canvas {
     private int lastTerrainY = -1;
     private boolean isPainting = false;
 
+    // STATS
     private int currentTick = 0;
+    private double listMs;
+    private double decideMs;
+    private double stepMs;
+    private int numPredations = 0;
+    private int numPredationsCounter = 0;
 
     private enum Mode {
         SIMULATION,
@@ -481,7 +487,11 @@ public class Environment extends Canvas {
                 .parallel().forEach(Entity::parallelStep);
         agentGrid.rebuild(mobileEntities);   // positions just changed; collision queries need the new ones
         mobileEntities.parallelStream().forEach(MobileEntity::findCollisions);
+
+        numPredationsCounter = 0;
         for (MobileEntity e : mobileEntities) e.step();
+        numPredations = numPredationsCounter;
+
         long t3 = System.nanoTime();
         listMs = listMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
         decideMs   = decideMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
@@ -501,6 +511,7 @@ public class Environment extends Canvas {
      * @param brushType The {@link TerrainType} to paint at the specified location
      */
     private void handleTerrainPaint(double screenX, double screenY, TerrainType brushType) {
+        // TODO: Change the cached terrain types for all the Food on this area
         if (mode != Mode.EDIT) return;
 
         double worldX = (screenX - translateX) / scale;
@@ -803,6 +814,11 @@ public class Environment extends Canvas {
         return getTerrainType(entity.getPosition());
     }
 
+    public void countPredation() {
+        numPredationsCounter++;
+    }
+
+
     @Override
     public boolean isResizable() {
         return true;
@@ -878,5 +894,9 @@ public class Environment extends Canvas {
 
     public int getCurrentTick() {
         return currentTick;
+    }
+
+    public int getNumPredations() {
+        return numPredations;
     }
 }
