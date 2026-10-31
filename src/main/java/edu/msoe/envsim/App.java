@@ -92,9 +92,9 @@ public class App extends Application {
             new Agent(Math.random() * 30 + 3, randomColor, environment);
         }
 
-        for (int i = 0; i < 2000; i++) {
+        for (int i = 0; i < 3000; i++) {
             Vector position = Vector.random(Vector.ZERO, environment.getSize());
-            new Food(position, Math.pow(Math.random(), 3) * 40 + 5, environment);
+            new Food(position, Math.pow(Math.random(), 4) * 40 + 5, environment);
         }
 
         environment.startSimulation();
@@ -122,6 +122,9 @@ public class App extends Application {
     private void setupDebugPane() {
         debugBox = new HBox();
 
+        DebugMessage tick = new DebugMessage(
+                () -> environment.getCurrentTick(), "Ticks", 0, environment
+        );
         DebugMessage framesPerSecond = new DebugMessage(
                 () -> environment.getFrameRate(), "FpS", 2, environment
         );
@@ -144,7 +147,7 @@ public class App extends Application {
                 () -> 1 / (environment.getSimUpdateRate() * (double) environment.getNumAgents()), "SpAT", 10, environment
         );
 
-        debugBox.getChildren().addAll(framesPerSecond, ticksPerSecond, numAgents, listMs, decideMs, stepMs, TpSpA);
+        debugBox.getChildren().addAll(tick, framesPerSecond, ticksPerSecond, numAgents, listMs, decideMs, stepMs, TpSpA);
         toggleDebugMode(debugMode);
     }
 

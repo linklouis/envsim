@@ -34,7 +34,7 @@ public class Environment extends Canvas {
      * The number of screen pixels per terrain pixel on each axis.
      */
     public static final int TERRAIN_RESOLUTION_RATIO = 20;
-    private static final String DEFAULT_ENVIRONMENT = "environments/Standard.terrain";
+    private static final String DEFAULT_ENVIRONMENT = "environments/ocean-with-lake-2.terrain";
 
     /**
      * Food and any other entity that never moves. Rebuilt only when something is added.
@@ -112,6 +112,8 @@ public class Environment extends Canvas {
     private int lastTerrainX = -1;
     private int lastTerrainY = -1;
     private boolean isPainting = false;
+
+    private int currentTick = 0;
 
     private enum Mode {
         SIMULATION,
@@ -487,6 +489,8 @@ public class Environment extends Canvas {
 
         Agent.updateDifficulty();
         simClock.update();
+
+        currentTick++;
     }
 
 
@@ -870,5 +874,9 @@ public class Environment extends Canvas {
 
     public int getTerrainHeight() {
         return terrainData[0].length;
+    }
+
+    public int getCurrentTick() {
+        return currentTick;
     }
 }

@@ -37,13 +37,9 @@ public class Agent extends MobileEntity {
      */
     private static final double PREDATION_COST_FACTOR = 0.15;
     /**
-     * The portion of health lost from attacking an Agent larger than yourself.
-     */
-    private static final double FAILED_PREDATION_COST_FACTOR = 0.2;
-    /**
      * The portion of the prey's energy that the predator actually receives.
      */
-    private static final double PREDATION_EFFICIENCY = 0.985; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
+    private static final double PREDATION_EFFICIENCY = 0.99; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
     /**
      * The portion of energy to spend when trying to attempt predation and not touching another agent
      */
@@ -59,7 +55,7 @@ public class Agent extends MobileEntity {
     /**
      * The amount of energy cost per time step per pixel of vision radius
      */
-    private static final double PASSIVE_VISION_QUALITY_COST = 0.0006;
+    private static final double PASSIVE_VISION_QUALITY_COST = 0.001;
     /**
      * The energy cost per time step per point of defense
      */
@@ -67,27 +63,27 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.002;
+    private static final double PASSIVE_SIZE_COST = 0.019;
     public static final double PASSIVE_LIFE_COST = 0.1;
     public static final double PASSIVE_TURN_SPEED_COST = 0.001;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
-    private static final double SPEED_COST = 0.013;
+    private static final double SPEED_COST = 0.03;
     /**
      * TODO
      */
-    private static final double TURN_COST = 2;
+    private static final double TURN_COST = 4;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
-    private static final double ATTACK_COST = 0.8;
+    private static final double ATTACK_COST = 0.7;
     /**
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
     private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.00006;
-    private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.04;
+    private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.005;
     private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 300000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     /**
@@ -529,7 +525,7 @@ public class Agent extends MobileEntity {
      * TODO: Add attack and defense
      */
     private static @NotNull NeuralNetwork newAgentEvaluator() {
-        return new NeuralNetwork(new int[] {4, 3, 1});
+        return new NeuralNetwork(new int[] {6, 3, 1});
     }
 
 
@@ -583,15 +579,17 @@ public class Agent extends MobileEntity {
 
             float sizeRatio = (float) (entity.getRadius() / this.getRadius());
             float distance = (float) (distanceSquared / visionRadiusSquared);
+            float attackDefenseRatio = (float) (this.attack / agent.defense);
+            float defenseAttackRatio = (float) (this.defense / agent.attack);
 
-            float preyValue = preyEvaluator.predict4x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal());
+            float preyValue = preyEvaluator.predict6x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal(), attackDefenseRatio, defenseAttackRatio);
             if (preyValue > maxPreyValue) {
                 maxPreyValue = preyValue;
                 bestPrey = agent;
             }
 
             // TODO: Do we even need the terrain type here?
-            float threatValue = predatorEvaluator.predict4x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal());
+            float threatValue = predatorEvaluator.predict6x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal(), attackDefenseRatio, defenseAttackRatio);
             if (threatValue > maxThreatValue) {
                 maxThreatValue = threatValue;
                 worstThreat = agent;
