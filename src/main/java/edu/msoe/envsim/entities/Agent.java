@@ -73,7 +73,7 @@ public class Agent extends MobileEntity {
     /**
      * TODO
      */
-    private static final double TURN_COST = 4;
+    private static final double TURN_COST = 3;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
@@ -421,10 +421,11 @@ public class Agent extends MobileEntity {
     }
 
     private void move(double turn, double speed) {
+        // TODO: Also add acceleration so larger ones start slower?
         direction = direction.turn(turn);
         double speedModifier = Math.pow(getRadius() * cachedTerrain.getSpeedSizeCostFactor(), 2) + 1;
         double effort = speed / speedModifier;
-        double cost = SPEED_COST * Math.pow(effort, 2) + TURN_COST * Math.abs(turn); // TODO: Have moving in your non-preferred terrain cost more energy?
+        double cost = SPEED_COST * Math.pow(effort, 2) + TURN_COST * turn * turn; // TODO: Have moving in your non-preferred terrain cost more energy?
 
         if (energy >= cost) {
             double functionalSpeed = effort * Math.abs(isOnLand() - swimSkill);
@@ -613,6 +614,8 @@ public class Agent extends MobileEntity {
      */
     @Override
     public void getDecision() {
+        // TODO: Update the brain to take in the direction to the best food and the best prey and worst threat, as well as the value of each. Allow the brain to decide how to turn as a value -1 - 1, instead of only allowing it to pick which one to face towards.
+        // TODO: When passing the direction to the above things, have it be relative to the Agent's direction, not the map.
         float[] inputs = getInput();
 //        System.out.println(Arrays.toString(inputs));
         float[] output = brain.predict6x10x7(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);
