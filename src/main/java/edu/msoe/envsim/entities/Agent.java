@@ -79,6 +79,11 @@ public class Agent extends MobileEntity {
      */
     private static final double ATTACK_COST = 0.5;
     /**
+     * Sets the max energy at a clone event to be the clone threshold times this value.
+     * TODO: make better name
+     */
+    public static final int MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT = 2;
+    /**
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
@@ -191,10 +196,6 @@ public class Agent extends MobileEntity {
     private float maxFoodValue;
     private float maxPreyValue;
     private float maxThreatValue;
-
-    private Vector direcToBestFood;
-    private Vector direcToBestPrey;
-    private Vector direcToWorstThreat;
 
     private AgentDecision decision;
     private String action = "WANDER";
@@ -514,7 +515,7 @@ public class Agent extends MobileEntity {
     }
 
     private void reproduce() {
-        energy /= 2;
+        energy = Math.min(energy, calculateCloneThreshold() * MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT) / 2;
         new Agent(getAgentData().mutate(), environment);
         timeSinceReproduction = 0;
     }
