@@ -171,6 +171,12 @@ public record Vector(double x, double y) {
         return fromAngle(angle() + Math.toRadians(degrees));
     }
 
+    public double angleTo(@NotNull Vector other) {
+        double x = other.x() - x();
+        double y = other.y - y();
+        return Math.atan2(y, x);
+    }
+
     @Contract("_ -> new")
     public @NotNull Vector elementWiseDivision(@NotNull Vector other) {
         return new Vector(x() / other.x(), y() / other.y());
