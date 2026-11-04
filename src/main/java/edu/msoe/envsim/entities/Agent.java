@@ -115,7 +115,6 @@ public class Agent extends MobileEntity {
     private final Color baseColor;
     private final int generation;
     private final long id;
-    private int numPredations = 0;
 
 
     // GENETIC ATTRIBUTES
@@ -371,7 +370,6 @@ public class Agent extends MobileEntity {
 
     public void parallelStep() {
         if (!alive) return;
-        numPredations = 0;
 
         move(decision.turn(), decision.speed() * maxSpeed);
         changeEnergy(-getPassiveEnergyCost());
@@ -503,7 +501,7 @@ public class Agent extends MobileEntity {
         if (!prey.alive) return;
 //        System.out.println("Predation!");
         energy += prey.energy * PREDATION_EFFICIENCY;
-        numPredations++;
+        environment.countPredation();
     }
 
     private double getPredationCost(@NotNull Agent prey) {
@@ -806,9 +804,5 @@ public class Agent extends MobileEntity {
         if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
             GLOBAL_ENERGY_LOSS_FACTOR += GLOBAL_ENERGY_LOSS_ANNEALING_RATE;
         }
-    }
-
-    public int getNumPredations() {
-        return numPredations;
     }
 }
