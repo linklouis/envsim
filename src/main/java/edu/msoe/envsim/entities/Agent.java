@@ -65,15 +65,15 @@ public class Agent extends MobileEntity {
      */
     private static final double PASSIVE_SIZE_COST = 0.017;
     public static final double PASSIVE_LIFE_COST = 0.1;
-    public static final double PASSIVE_TURN_SPEED_COST = 0.001;
+    public static final double PASSIVE_TURN_SPEED_COST = 0.002;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
-    private static final double SPEED_COST = 0.03;
+    private static final double SPEED_COST = 0.05;
     /**
      * TODO
      */
-    private static final double TURN_COST = 3;
+    private static final double TURN_COST = 4;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
@@ -82,14 +82,14 @@ public class Agent extends MobileEntity {
      * Sets the max energy at a clone event to be the clone threshold times this value.
      * TODO: make better name
      */
-    public static final int MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT = 2;
+    public static final int MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT = 3;
     /**
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
     private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.00006;
-    private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.005;
-    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 300000;
+    private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.004;
+    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 600000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     /**
      * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
