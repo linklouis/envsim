@@ -102,10 +102,6 @@ public class Agent extends MobileEntity {
 
     // ARCHITECTURE PARAMETERS
     /**
-     * The number of inputs the main neural network takes in.
-     */
-    private static final int NUM_INPUTS = 6;
-    /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.32;
@@ -198,7 +194,7 @@ public class Agent extends MobileEntity {
     private float maxThreatValue;
 
     private AgentDecision decision;
-    private String action = "WANDER";
+    private String priority = "WANDER";
 
     // COLLISION HANDLING
     private final List<Entity> collisions = new ArrayList<>();
@@ -521,7 +517,7 @@ public class Agent extends MobileEntity {
     }
 
     private static @NotNull NeuralNetwork newBrain() {
-        return new NeuralNetwork(new int[] {NUM_INPUTS, 10, 7});    // TODO: Probably make the hidden layer a little bigger
+        return new NeuralNetwork(new int[] {9, 10, 5});    // TODO: Probably make the hidden layer a little bigger
     }
 
     private static @NotNull NeuralNetwork newFoodEvaluator() {
@@ -548,21 +544,53 @@ public class Agent extends MobileEntity {
         //  Maybe if I add raycasts, have each one also say what the closest new terrain is in that direction?
         resetEntityEvaluation();
         environment.visitEntitiesInRange(this, visionRadius, visionRadiusSquared, entityEvaluator);
-        double dir = direction.angle();
-        double toFood = bestFood != null ? dir - getPosition().angleTo(bestFood.getPosition()) : dir;
-        double toPrey = bestPrey != null ? dir - getPosition().angleTo(bestPrey.getPosition()) : dir;
-        double toThreat = worstThreat != null ? dir - getPosition().angleTo(worstThreat.getPosition()) : dir;
         return new float[] {
                 (float) (energy / calculateCloneThreshold()),
                 (float) (getRadius() / size),
                 maxFoodValue,
                 maxPreyValue,
                 maxThreatValue,
-                (float) (toFood),
-                (float) (toPrey),
-                (float) (toThreat),
+                calculateNormalizedRelativeAngle(bestFood),
+                calculateNormalizedRelativeAngle(bestPrey),
+                calculateNormalizedRelativeAngle(worstThreat),
                 cachedTerrain.ordinal()
         };
+    }
+
+    /**
+     * Computes the relative angle between the agent's facing direction and a target entity,
+     * normalized directly into the [-1.0, 1.0] range.
+     * Returns 0.0 if target is null or at the exact same location.
+     * Source: Google Gemini
+     */
+    private float calculateNormalizedRelativeAngle(Entity target) {
+        if (target == null) {
+            return 0f;
+        }
+
+        // Direct manual vector difference (Target Position - Agent Position)
+        double tx = target.x() - x();
+        double ty = target.y() - y();
+
+        double distSq = tx * tx + ty * ty;
+        if (distSq < 1e-12) {
+            return 0f;
+        }
+
+        double invDist = 1.0 / Math.sqrt(distSq);
+        tx *= invDist;
+        ty *= invDist;
+
+        double dirX = direction.x();
+        double dirY = direction.y();
+
+        // 2D Vector Cross product (sin of relative angle) & Dot product (cos of relative angle)
+        // cross = dirX * ty - dirY * tx
+        // dot   = dirX * tx + dirY * ty
+        double relativeAngle = Math.atan2(dirX * ty - dirY * tx, dirX * tx + dirY * ty);
+
+        // Normalize [-PI, PI] range into [-1, 1]
+        return (float) (relativeAngle / Math.PI);
     }
 
     public void resetEntityEvaluation() {
@@ -630,49 +658,40 @@ public class Agent extends MobileEntity {
         // TODO: When passing the direction to the above things, have it be relative to the Agent's direction, not the map.
         float[] inputs = getInput();
 //        System.out.println(Arrays.toString(inputs));
-        float[] output = brain.predict(inputs);
-//        float[] output = brain.predict6x10x7(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);   // TODO: ADD BY-HAND METHOD
+        float[] output = brain.predict9x10x5(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);   // TODO: ADD BY-HAND METHOD
 
-        double targetFood = bestFood == null ? 0 : output[2];
-        double targetPrey = bestPrey == null ? 0 : output[3];
-        double runFromThreat = worstThreat == null ? 0 :output[4];
+        double targetFood = bestFood == null ? 0 : output[1];
+        double targetPrey = bestPrey == null ? 0 : output[2];
+        double runFromThreat = worstThreat == null ? 0 :output[3];
 
-        Vector target;
         double turn;
         boolean desiresPredation;
 
         if (targetFood > targetPrey && targetFood > runFromThreat && targetFood > BOOLEAN_DECISION_THRESHOLD) {
-//            target = directionTo(bestFood);
-//            turn = getTurnToTarget(target);
-            turn = (output[6] * 2 - 1) * turnSpeed;
+            turn = (output[4] * 2 - 1) * turnSpeed;
             desiresPredation = false;
-            action = "FORAGE";
+            priority = "FORAGE";
         } else if (targetPrey > targetFood && targetPrey > runFromThreat && targetPrey > BOOLEAN_DECISION_THRESHOLD) {
-//            target = directionTo(bestPrey);
-//            turn = getTurnToTarget(target);
             desiresPredation = true;
-            turn = (output[6] * 2 - 1) * turnSpeed;
-            action = "HUNT";
+            turn = (output[4] * 2 - 1) * turnSpeed;
+            priority = "HUNT";
         } else if (runFromThreat > targetFood && runFromThreat > targetPrey && runFromThreat > BOOLEAN_DECISION_THRESHOLD) {
-//            target = directionTo(worstThreat).scale(-1);
-//            turn = getTurnToTarget(target);
-            turn = (output[6] * 2 - 1) * turnSpeed;
+
+            turn = (output[4] * 2 - 1) * turnSpeed;
             desiresPredation = false;
-            action = "ESCAPE";
+            priority = "ESCAPE";
         } else {
-            target = direction;
-            double brainTurn = (output[6] * 2 - 1) * turnSpeed;
+            double brainTurn = (output[4] * 2 - 1) * turnSpeed;
             double jitter = ThreadLocalRandom.current().nextDouble(-1, 1) * WANDER_JITTER_DEGREES;
             turn = brainTurn * 0.25 + jitter;
             desiresPredation = false;
-            action = "WANDER";
+            priority = "WANDER";
         }
 
         turn = Math.clamp(turn, -maxTurnPerTick(), maxTurnPerTick());
 
         this.decision =  new AgentDecision(
                 output[0],// * 2 - 1,
-//                target, // TODO: Can probably remove
                 turn,
                 desiresPredation
         );
@@ -770,8 +789,8 @@ public class Agent extends MobileEntity {
         return decision.desiresPredation();
     }
 
-    public String getAction() {
-        return action;
+    public String getPriority() {
+        return priority;
     }
 
     public TerrainType getTerrainType() {

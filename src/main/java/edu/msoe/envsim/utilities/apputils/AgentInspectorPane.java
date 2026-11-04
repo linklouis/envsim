@@ -59,7 +59,7 @@ public class AgentInspectorPane extends VBox {
         addStandardRow(grid, row++, "Health:", healthLabel);
         addStandardRow(grid, row++, "Terrain:", terrainLabel);
         addStandardRow(grid, row++, "Desires Predation:", predationLabel);
-        addStandardRow(grid, row++, "Current Action:", actionLabel);
+        addStandardRow(grid, row++, "Current Priority:", actionLabel);
         grid.add(new Separator(), 0, row++);
         addStandardRow(grid, row++, "Max Speed:", speedLabel);
         addStandardRow(grid, row++, "Turn Speed:", turnSpeedLabel);
@@ -96,7 +96,7 @@ public class AgentInspectorPane extends VBox {
         healthLabel.setText(String.format("%6.2f / %.2f", agent.getRadius(), data.size()));
         terrainLabel.setText(agent.getTerrainType().name());
         predationLabel.setText(agent.desiresPredation() ? "True" : "False");
-        actionLabel.setText(agent.getAction());
+        actionLabel.setText(agent.getPriority());
 
         speedLabel.setText(String.format("%.2f", data.speed()));
         turnSpeedLabel.setText(String.format("%.2f", data.turnSpeed()));

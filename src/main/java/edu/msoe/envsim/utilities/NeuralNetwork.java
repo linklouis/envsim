@@ -154,6 +154,39 @@ public class NeuralNetwork implements Serializable {
         return out;
     }
 
+    /**
+     * Specialized unrolled forward pass for the 9 -> 10 -> 5 agent brain.
+     * Eliminates all loop overhead and array lookups.
+     * Source: Google Gemini
+     */
+    public float[] predict9x10x5(float i0, float i1, float i2, float i3, float i4, float i5, float i6, float i7, float i8) {
+        float[] w = weights;
+        float[] h = layerBuffers[1]; // size 10 hidden layer
+        float[] out = layerBuffers[2]; // size 5 output layer
+
+        // --- Hidden Layer (10 neurons, 9 inputs + bias = 10 weights each) ---
+        h[0] = Math.max(w[0]  + w[1]*i0  + w[2]*i1  + w[3]*i2  + w[4]*i3  + w[5]*i4  + w[6]*i5  + w[7]*i6  + w[8]*i7  + w[9]*i8, 0f);
+        h[1] = Math.max(w[10] + w[11]*i0 + w[12]*i1 + w[13]*i2 + w[14]*i3 + w[15]*i4 + w[16]*i5 + w[17]*i6 + w[18]*i7 + w[19]*i8, 0f);
+        h[2] = Math.max(w[20] + w[21]*i0 + w[22]*i1 + w[23]*i2 + w[24]*i3 + w[25]*i4 + w[26]*i5 + w[27]*i6 + w[28]*i7 + w[29]*i8, 0f);
+        h[3] = Math.max(w[30] + w[31]*i0 + w[32]*i1 + w[33]*i2 + w[34]*i3 + w[35]*i4 + w[36]*i5 + w[37]*i6 + w[38]*i7 + w[39]*i8, 0f);
+        h[4] = Math.max(w[40] + w[41]*i0 + w[42]*i1 + w[43]*i2 + w[44]*i3 + w[45]*i4 + w[46]*i5 + w[47]*i6 + w[48]*i7 + w[49]*i8, 0f);
+        h[5] = Math.max(w[50] + w[51]*i0 + w[52]*i1 + w[53]*i2 + w[54]*i3 + w[55]*i4 + w[56]*i5 + w[57]*i6 + w[58]*i7 + w[59]*i8, 0f);
+        h[6] = Math.max(w[60] + w[61]*i0 + w[62]*i1 + w[63]*i2 + w[64]*i3 + w[65]*i4 + w[66]*i5 + w[67]*i6 + w[68]*i7 + w[69]*i8, 0f);
+        h[7] = Math.max(w[70] + w[71]*i0 + w[72]*i1 + w[73]*i2 + w[74]*i3 + w[75]*i4 + w[76]*i5 + w[77]*i6 + w[78]*i7 + w[79]*i8, 0f);
+        h[8] = Math.max(w[80] + w[81]*i0 + w[82]*i1 + w[83]*i2 + w[84]*i3 + w[85]*i4 + w[86]*i5 + w[87]*i6 + w[88]*i7 + w[89]*i8, 0f);
+        h[9] = Math.max(w[90] + w[91]*i0 + w[92]*i1 + w[93]*i2 + w[94]*i3 + w[95]*i4 + w[96]*i5 + w[97]*i6 + w[98]*i7 + w[99]*i8, 0f);
+
+        // --- Output Layer (5 neurons, 10 hidden inputs + bias = 11 weights each) ---
+        // Starting index after hidden weights = 100
+        out[0] = (float) (1.0 / (1.0 + Math.exp(-(w[100] + w[101]*h[0] + w[102]*h[1] + w[103]*h[2] + w[104]*h[3] + w[105]*h[4] + w[106]*h[5] + w[107]*h[6] + w[108]*h[7] + w[109]*h[8] + w[110]*h[9]))));
+        out[1] = (float) (1.0 / (1.0 + Math.exp(-(w[111] + w[112]*h[0] + w[113]*h[1] + w[114]*h[2] + w[115]*h[3] + w[116]*h[4] + w[117]*h[5] + w[118]*h[6] + w[119]*h[7] + w[120]*h[8] + w[121]*h[9]))));
+        out[2] = (float) (1.0 / (1.0 + Math.exp(-(w[122] + w[123]*h[0] + w[124]*h[1] + w[125]*h[2] + w[126]*h[3] + w[127]*h[4] + w[128]*h[5] + w[129]*h[6] + w[130]*h[7] + w[131]*h[8] + w[132]*h[9]))));
+        out[3] = (float) (1.0 / (1.0 + Math.exp(-(w[133] + w[134]*h[0] + w[135]*h[1] + w[136]*h[2] + w[137]*h[3] + w[138]*h[4] + w[139]*h[5] + w[140]*h[6] + w[141]*h[7] + w[142]*h[8] + w[143]*h[9]))));
+        out[4] = (float) (1.0 / (1.0 + Math.exp(-(w[144] + w[145]*h[0] + w[146]*h[1] + w[147]*h[2] + w[148]*h[3] + w[149]*h[4] + w[150]*h[5] + w[151]*h[6] + w[152]*h[7] + w[153]*h[8] + w[154]*h[9]))));
+
+        return out;
+    }
+
     public NeuralNetwork child(double mutationChance, double mutationSize) {
         float[] childWeights = new float[weights.length];
 
