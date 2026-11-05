@@ -2,6 +2,7 @@ package edu.msoe.envsim.entities;
 
 import edu.msoe.envsim.Environment;
 import edu.msoe.envsim.utilities.Vector;
+import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
@@ -20,6 +21,8 @@ public abstract class Entity {
     }
 
     public abstract void parallelStep();
+
+    public abstract TerrainType getTerrainType();
 
     public void step() {
     }

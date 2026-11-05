@@ -809,6 +809,7 @@ public class Agent extends MobileEntity {
         return priority;
     }
 
+    @Override
     public TerrainType getTerrainType() {
         return cachedTerrain;
     }

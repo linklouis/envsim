@@ -51,6 +51,7 @@ public class Food extends Entity {
         }
     }
 
+    @Override
     public TerrainType getTerrainType() {
         return terrainType;
     }

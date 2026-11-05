@@ -127,6 +127,10 @@ public record Vector(double x, double y) {
         return Math.hypot(x(), y());
     }
 
+    public double magnitudeSquared() {
+        return x() * x() + y() * y();
+    }
+
     @Contract(" -> new")
     public @NotNull Vector signs() {
         return new Vector(
