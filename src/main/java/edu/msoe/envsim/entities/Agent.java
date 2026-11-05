@@ -148,6 +148,7 @@ public class Agent extends MobileEntity {
     private final double swimSkill;
     private final double attack;
     private final double defense;
+    private final double fieldOfView;
 
     private final @NotNull NeuralNetwork brain;
     /**
@@ -224,6 +225,7 @@ public class Agent extends MobileEntity {
                 Math.random(),
                 Math.random() * 10,
                 Math.random() * 5,
+                Math.random() * Math.PI,
                 newBrain(),
                 newFoodEvaluator(),
                 newAgentEvaluator(),
@@ -252,6 +254,7 @@ public class Agent extends MobileEntity {
         swimSkill = agentData.swimSkill();
         attack = agentData.attack();
         defense = agentData.defense();
+        fieldOfView = agentData.fieldOfView();
         brain =  agentData.brain();
         foodEvaluator = agentData.foodEvaluator();
         preyEvaluator = agentData.preyEvaluator();
@@ -763,7 +766,7 @@ public class Agent extends MobileEntity {
         return PASSIVE_LIFE_COST
                 + turnSpeed * getRadius() * PASSIVE_TURN_SPEED_COST
                 + visionRadius * PASSIVE_VISION_QUALITY_COST
-                + Math.pow(getRadius(), 2) * PASSIVE_SIZE_COST
+                + Math.pow(getRadius(), 2.5) * PASSIVE_SIZE_COST
                 + defense * PASSIVE_DEFENSE_COST;
     }
 
@@ -781,6 +784,7 @@ public class Agent extends MobileEntity {
                 this.swimSkill,
                 this.attack,
                 this.defense,
+                this.fieldOfView,
                 this.brain,
                 this.foodEvaluator,
                 this.preyEvaluator,

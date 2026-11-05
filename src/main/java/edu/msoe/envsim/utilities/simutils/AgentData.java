@@ -11,6 +11,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public record AgentData(Vector position, Color color, double energy, double speed, double turnSpeed, double size,
                         double visionRadius, double healthRegenSpeed, double swimSkill, double attack, double defense,
+                        double fieldOfView,
                         NeuralNetwork brain, NeuralNetwork foodEvaluator,
                         NeuralNetwork preyEvaluator, NeuralNetwork predatorEvaluator,
                         int generation) {
@@ -36,6 +37,7 @@ public record AgentData(Vector position, Color color, double energy, double spee
                 Math.clamp(mutateAttribute(swimSkill), 0, 1),
                 mutateAttribute(attack),
                 mutateAttribute(defense),
+                mutateAttribute(fieldOfView),
                 this.brain.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
                 this.foodEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
                 this.preyEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),

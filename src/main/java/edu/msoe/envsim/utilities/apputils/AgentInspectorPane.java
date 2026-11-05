@@ -28,6 +28,7 @@ public class AgentInspectorPane extends VBox {
     private final Label swimSkillLabel = new Label();
     private final Label attackLabel = new Label();
     private final Label defenseLabel = new Label();
+    private final Label fovLabel = new Label();
 
     private final Runnable onCloseCallback;
 
@@ -68,6 +69,7 @@ public class AgentInspectorPane extends VBox {
         addStandardRow(grid, row++, "Swim Skill:", swimSkillLabel);
         addStandardRow(grid, row++, "Attack:", attackLabel);
         addStandardRow(grid, row++, "Defense:", defenseLabel);
+        addStandardRow(grid, row++, "FOV:", fovLabel);
 
 
         Button closeButton = new Button("Close");
@@ -105,6 +107,7 @@ public class AgentInspectorPane extends VBox {
         swimSkillLabel.setText(String.format("%.2f", data.swimSkill()));
         attackLabel.setText(String.format("%.2f", data.attack()));
         defenseLabel.setText(String.format("%.2f", data.defense()));
+        fovLabel.setText(String.format("%.2f", data.fieldOfView()));
 
         setVisible(true);
     }
