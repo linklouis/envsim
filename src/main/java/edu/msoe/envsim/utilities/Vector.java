@@ -166,6 +166,9 @@ public record Vector(double x, double y) {
     }
 
 
+    /**
+     * @return The angle of the {@link Vector} in radians.
+     */
     public double angle() {
         return Math.atan2(y(), x());
     }

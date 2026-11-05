@@ -7,6 +7,7 @@ import edu.msoe.envsim.entities.MobileEntity;
 import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.apputils.Clock;
 import edu.msoe.envsim.utilities.apputils.DebugMessage;
+import edu.msoe.envsim.utilities.simutils.RayCaster;
 import edu.msoe.envsim.utilities.simutils.SpatialGrid;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.animation.AnimationTimer;
@@ -26,6 +27,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -734,6 +736,10 @@ public class Environment extends Canvas {
         translateY = 0;
     }
 
+    public RayCaster.RayData castRay(@NotNull Vector origin, @NotNull Vector direction, double maxDistance) {
+        return RayCaster.castRay(origin, direction, maxDistance, allEntities(), this::getTerrainType);
+    }
+
 
     public void clearSelectedAgent() {
         selectedAgent = null;
@@ -898,5 +904,10 @@ public class Environment extends Canvas {
 
     public int getNumPredations() {
         return numPredations;
+    }
+
+    private Set<Entity> allEntities() {
+        return Stream.concat(mobileEntities.stream(), stationaryEntities.stream())
+                .collect(Collectors.toSet());
     }
 }

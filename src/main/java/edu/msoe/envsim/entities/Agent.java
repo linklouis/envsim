@@ -13,6 +13,8 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiPredicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Agent extends MobileEntity {
     /**
@@ -104,6 +106,7 @@ public class Agent extends MobileEntity {
 
     // ARCHITECTURE PARAMETERS
     private static final int NUM_RAYS = 11;
+    private static final int NUM_INPUTS = 9 + NUM_RAYS * 6;
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
@@ -207,6 +210,7 @@ public class Agent extends MobileEntity {
 
     // CACHES
     private TerrainType cachedTerrain;
+    private final double[] rayDirections;
     private final Map<Long, Double> genomeComparisonCache = new HashMap<>();
     private final long[] genomeComparisonIds = new long[256];     // ids start at 1, so 0 = empty
     private final double[] genomeComparisonValues = new double[256];
@@ -262,6 +266,8 @@ public class Agent extends MobileEntity {
         foodEvaluator = agentData.foodEvaluator();
         preyEvaluator = agentData.preyEvaluator();
         predatorEvaluator = agentData.predatorEvaluator();
+
+        rayDirections = RayCaster.calculateRayDirections(fieldOfView, NUM_RAYS);
 
         generation = agentData.generation();
 
@@ -522,7 +528,7 @@ public class Agent extends MobileEntity {
     }
 
     private static @NotNull NeuralNetwork newBrain() {
-        return new NeuralNetwork(new int[] {9, 10, 5});    // TODO: Probably make the hidden layer a little bigger
+        return new NeuralNetwork(new int[] {NUM_INPUTS, 10, 5});    // TODO: Probably make the hidden layer a little bigger
     }
 
     private static @NotNull NeuralNetwork newFoodEvaluator() {
@@ -538,28 +544,72 @@ public class Agent extends MobileEntity {
     }
 
 
+    private RayCaster.RayData @NotNull [] doRaycasts() {
+        RayCaster.RayData[] rayData =  new RayCaster.RayData[NUM_RAYS];
+        double direction = this.direction.angle();
+
+        int i = 0;
+        for (double rayDirection : rayDirections) {
+            Vector trueDirection = Vector.fromAngle(direction + rayDirection);
+            rayData[i] = environment.castRay(getPosition(), trueDirection, visionRadius);
+            i++;
+        }
+
+        return rayData;
+    }
+
     /**
      * Inputs (For now): energy, health, bestFood, bestPrey, worstThreat, currentTerrain
      * Outputs (For now): speed, repDesire, predDesire, targetFood, targetPrey, runFromThreat, turn
      */
     @Contract(" -> new")
     private float @NotNull [] getInput() {
-        // TODO: Add current terrain
-        // TODO: Add way to see what terrain is around it.
-        //  Maybe if I add raycasts, have each one also say what the closest new terrain is in that direction?
         resetEntityEvaluation();
         environment.visitEntitiesInRange(this, visionRadius, visionRadiusSquared, entityEvaluator);
-        return new float[] {
-                (float) (energy / calculateCloneThreshold()),
-                (float) (getRadius() / size),
-                maxFoodValue,
-                maxPreyValue,
-                maxThreatValue,
-                calculateNormalizedRelativeAngle(bestFood),
-                calculateNormalizedRelativeAngle(bestPrey),
-                calculateNormalizedRelativeAngle(worstThreat),
-                cachedTerrain.ordinal()
-        };
+        float[] inputs = new float[NUM_INPUTS];
+
+        inputs[0] = (float) (energy / calculateCloneThreshold());
+        inputs[1] = (float) (getRadius() / size);
+        inputs[2] = maxFoodValue;
+        inputs[3] = maxPreyValue;
+        inputs[4] = maxThreatValue;
+        inputs[5] = calculateNormalizedRelativeAngle(bestFood);
+        inputs[6] = calculateNormalizedRelativeAngle(bestPrey);
+        inputs[7] = calculateNormalizedRelativeAngle(worstThreat);
+        inputs[8] = cachedTerrain.ordinal();
+
+        RayCaster.RayData[] rayData = doRaycasts();
+        for (int i = 0; i < NUM_RAYS * 6; i += 6) {
+            RayCaster.RayData ray = rayData[i/6];
+            Entity entity = ray.entity();
+
+            float sizeRatio = 0;
+            float distance = 0;
+            float attackDefenseRatio = 0;
+            float defenseAttackRatio = 0;
+            int entityType = 0;
+
+            if (entity != null) {
+                sizeRatio = (float) (entity.getRadius() / this.getRadius());
+                distance = (float) (ray.distance() / visionRadius);
+
+                if (entity instanceof Agent agent) {
+                    attackDefenseRatio = (float) (this.attack / agent.defense);
+                    defenseAttackRatio = (float) (this.defense / agent.attack);
+                    entityType = 1;
+                } else {
+                    entityType = -1;
+                }
+            }
+
+            inputs[9 + i] = sizeRatio;
+            inputs[10 + i] = distance;
+            inputs[11 + i] = attackDefenseRatio;
+            inputs[12 + i] = defenseAttackRatio;
+            inputs[13 + i] = ray.terrain().ordinal();
+            inputs[14 + i] = entityType;    // TODO: Maybe make two, one for isAgent, one for isFood?
+        }
+        return inputs;
     }
 
     /**
@@ -656,9 +706,6 @@ public class Agent extends MobileEntity {
         return (float) (food.getRadius() / this.distance(food));
     }
 
-    /**
-     * TODO: IF I ADD RAYCASTS, SHOULD SWITCH TO BRAIN GETTING THE VALUE OF AN ENTITY AND THE DIRECTION TO IT, AND ALLOW THE BRAIN TO SPIT OUT A DIRECTION TO MOVE.
-     */
     @Override
     public void getDecision() {
         // TODO: Update the brain to take in the direction to the best food and the best prey and worst threat, as well as the value of each. Allow the brain to decide how to turn as a value -1 - 1, instead of only allowing it to pick which one to face towards.
@@ -695,7 +742,7 @@ public class Agent extends MobileEntity {
 //            priority = "WANDER";
 //        }
 
-        float[] output = brain.predict9x10x3(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);
+        float[] output = brain.predict(inputs);
 
         double targetPrey = bestPrey == null ? 0 : output[1];
 
