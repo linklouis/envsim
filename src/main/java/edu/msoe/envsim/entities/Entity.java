@@ -77,4 +77,7 @@ public abstract class Entity {
     protected void setRadius(double radius) {
         this.radius = radius;
     }
+    protected double getDiameter() {
+        return radius * 2;
+    }
 }

@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiPredicate;
 
 public class Agent extends MobileEntity {
-    // SIM PARAMETERS
     /**
      * The minimum portion of its max health an agent must have to be eligible for reproduction.
      */
@@ -25,6 +24,7 @@ public class Agent extends MobileEntity {
      * The actual threshold is calculated using this and radius.
      */
     private static final int CLONE_THRESHOLD = 20;
+    private static final double CLONE_THRESHOLD_EXPONENT = 0.8;
     /**
      * The size of bite an Agent can take relative to its radius.
      */
@@ -63,13 +63,15 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.012;
+    private static final double PASSIVE_SIZE_COST = 0.014;
+    private static final double PASSIVE_SIZE_EXPONENT = 2.5;
     public static final double PASSIVE_LIFE_COST = 0.01;
     public static final double PASSIVE_TURN_SPEED_COST = 0.003;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
     private static final double SPEED_COST = 0.07;
+    private static final int EFFORT_COST_EXPONENT = 2;
     /**
      * TODO
      */
@@ -82,7 +84,7 @@ public class Agent extends MobileEntity {
      * Sets the max energy at a clone event to be the clone threshold times this value.
      * TODO: make better name
      */
-    public static final int MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT = 3;
+    private static final int MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT = 3;
     /**
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
@@ -101,6 +103,7 @@ public class Agent extends MobileEntity {
 
 
     // ARCHITECTURE PARAMETERS
+    private static final int NUM_RAYS = 11;
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
@@ -427,7 +430,7 @@ public class Agent extends MobileEntity {
         direction = direction.turn(turn);
         double speedModifier = Math.pow(getRadius() * cachedTerrain.getSpeedSizeCostFactor(), 2) + 1;
         double effort = speed / speedModifier;
-        double cost = SPEED_COST * Math.pow(effort, 2) + TURN_COST * turn * turn; // TODO: Have moving in your non-preferred terrain cost more energy?
+        double cost = SPEED_COST * Math.pow(effort, EFFORT_COST_EXPONENT) + TURN_COST * turn * turn; // TODO: Have moving in your non-preferred terrain cost more energy?
 
         if (energy >= cost) {
             double functionalSpeed = effort * Math.abs(isOnLand() - swimSkill);
@@ -691,7 +694,7 @@ public class Agent extends MobileEntity {
 //            priority = "WANDER";
 //        }
 
-        float[] output = brain.predict9x10x3(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);   // TODO: ADD BY-HAND METHOD
+        float[] output = brain.predict9x10x3(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);
 
         double targetPrey = bestPrey == null ? 0 : output[1];
 
@@ -731,10 +734,10 @@ public class Agent extends MobileEntity {
     public void paint(@NotNull GraphicsContext gc, boolean drawVisionRadius) {
         updateColor();
         gc.setFill(getColor());
-        gc.fillOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
+        gc.fillOval(x() - getRadius(), y() - getRadius(), getDiameter(), getDiameter());
         gc.setStroke(Color.WHITE);
         gc.setLineWidth(3);
-        gc.strokeOval(x() - getRadius(), y() - getRadius(), getRadius() * 2, getRadius() * 2);
+        gc.strokeOval(x() - getRadius(), y() - getRadius(), getDiameter(), getDiameter());
 
         if (drawVisionRadius) {
             gc.setLineWidth(1);
@@ -766,7 +769,7 @@ public class Agent extends MobileEntity {
         return PASSIVE_LIFE_COST
                 + turnSpeed * getRadius() * PASSIVE_TURN_SPEED_COST
                 + visionRadius * PASSIVE_VISION_QUALITY_COST
-                + Math.pow(getRadius(), 2.5) * PASSIVE_SIZE_COST
+                + Math.pow(getRadius(), PASSIVE_SIZE_EXPONENT) * PASSIVE_SIZE_COST
                 + defense * PASSIVE_DEFENSE_COST;
     }
 
@@ -798,7 +801,7 @@ public class Agent extends MobileEntity {
     }
 
     private static double calculateCloneThreshold(double radius) {
-        return CLONE_THRESHOLD * Math.pow(radius, 0.8); // TODO: Make the exponent a constant
+        return CLONE_THRESHOLD * Math.pow(radius, CLONE_THRESHOLD_EXPONENT); // TODO: Make the exponent a constant
     }
 
     public double calculateCloneThreshold() {
