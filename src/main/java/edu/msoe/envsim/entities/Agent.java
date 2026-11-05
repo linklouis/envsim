@@ -658,14 +658,14 @@ public class Agent extends MobileEntity {
         // TODO: When passing the direction to the above things, have it be relative to the Agent's direction, not the map.
         float[] inputs = getInput();
 //        System.out.println(Arrays.toString(inputs));
-        float[] output = brain.predict9x10x5(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);   // TODO: ADD BY-HAND METHOD
+//        float[] output = brain.predict9x10x5(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);   // TODO: ADD BY-HAND METHOD
 
-        double targetFood = bestFood == null ? 0 : output[1];
-        double targetPrey = bestPrey == null ? 0 : output[2];
-        double runFromThreat = worstThreat == null ? 0 :output[3];
-
-        double turn;
-        boolean desiresPredation;
+//        double targetFood = bestFood == null ? 0 : output[1];
+//        double targetPrey = bestPrey == null ? 0 : output[2];
+//        double runFromThreat = worstThreat == null ? 0 :output[3];
+//
+//        double turn;
+//        boolean desiresPredation;
 
 //        if (targetFood > targetPrey && targetFood > runFromThreat && targetFood > BOOLEAN_DECISION_THRESHOLD) {
 //            turn = (output[4] * 2 - 1) * turnSpeed;
@@ -688,31 +688,26 @@ public class Agent extends MobileEntity {
 //            priority = "WANDER";
 //        }
 
-        if (targetFood > targetPrey && targetFood > runFromThreat && targetFood > BOOLEAN_DECISION_THRESHOLD) {
-            turn = (output[4] * 2 - 1) * turnSpeed;
-            desiresPredation = false;
-            priority = "FORAGE";
-        } else if (targetPrey > targetFood && targetPrey > runFromThreat && targetPrey > BOOLEAN_DECISION_THRESHOLD) {
-            desiresPredation = true;
-            turn = (output[4] * 2 - 1) * turnSpeed;
-            priority = "HUNT";
-        } else if (runFromThreat > targetFood && runFromThreat > targetPrey && runFromThreat > BOOLEAN_DECISION_THRESHOLD) {
+        float[] output = brain.predict9x10x3(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);   // TODO: ADD BY-HAND METHOD
 
-            turn = (output[4] * 2 - 1) * turnSpeed;
-            desiresPredation = false;
-            priority = "ESCAPE";
+        double targetPrey = bestPrey == null ? 0 : output[1];
+
+        double turn;
+        boolean desiresPredation;
+
+        if (targetPrey > BOOLEAN_DECISION_THRESHOLD) {
+            desiresPredation = true;
+            priority = "HUNT";
         } else {
-            double brainTurn = (output[4] * 2 - 1) * turnSpeed;
-            double jitter = ThreadLocalRandom.current().nextDouble(-1, 1) * WANDER_JITTER_DEGREES;
-            turn = brainTurn * 0.25 + jitter;
             desiresPredation = false;
             priority = "WANDER";
         }
+        turn = (output[2] * 2 - 1) * turnSpeed;
 
         turn = Math.clamp(turn, -maxTurnPerTick(), maxTurnPerTick());
 
         this.decision =  new AgentDecision(
-                output[0],// * 2 - 1,
+                output[0],
                 turn,
                 desiresPredation
         );
