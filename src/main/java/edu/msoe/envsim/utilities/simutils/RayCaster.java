@@ -145,4 +145,8 @@ public class RayCaster {
     public SpatialGrid.Visitor getVisitor() {
         return visitor;
     }
+
+    public @NotNull Vector getDirection() {
+        return direction;
+    }
 }

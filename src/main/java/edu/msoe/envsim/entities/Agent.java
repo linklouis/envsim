@@ -8,6 +8,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.*;
@@ -122,6 +123,9 @@ public class Agent extends MobileEntity {
     private final Color baseColor;
     private final int generation;
     private final long id;
+
+    public record RaySnapshot(Vector direction, double distance, @Nullable Entity entity, TerrainType terrain) {}
+    private final RaySnapshot[] raySnapshots = new RaySnapshot[NUM_RAYS];
 
 
     // GENETIC ATTRIBUTES
@@ -548,15 +552,18 @@ public class Agent extends MobileEntity {
 
 
     private RayCaster.RayData @NotNull [] doRaycasts() {
-        RayCaster.RayData[] rayData =  new RayCaster.RayData[NUM_RAYS];
+        RayCaster.RayData[] rayData = new RayCaster.RayData[NUM_RAYS];
         double angle = this.direction.angle();
 
         int i = 0;
         for (RayCaster caster: rayCasters) {
-//            Vector trueDirection = Vector.fromAngle(angle + rayDirection);
             caster.reset(getPosition(), angle);
             environment.visitEntitiesInRange(this, visionRadius, visionRadiusSquared, caster.getVisitor());
-            rayData[i] = caster.getRayData();
+            RayCaster.RayData data = caster.getRayData();
+            rayData[i] = data;
+
+            // Capture a thread-safe snapshot for the rendering thread
+            raySnapshots[i] = new RaySnapshot(caster.getDirection(), data.distance(), data.entity(), data.terrain());
             i++;
         }
 
@@ -795,6 +802,25 @@ public class Agent extends MobileEntity {
         if (drawVisionRadius) {
             gc.setLineWidth(1);
             gc.strokeOval(x() - visionRadius, y() - visionRadius, visionRadius * 2, visionRadius * 2);
+
+            gc.setLineWidth(3);
+            for (RaySnapshot ray : raySnapshots) {
+                if (ray == null) continue;
+                Vector start = getPosition();
+                Vector end = start.add(ray.direction().scale(ray.distance()));
+
+                if (ray.entity() != null) {
+                    // Hit an entity: draw a bright red/orange line and a yellow intersection dot
+                    gc.setStroke(Color.TOMATO);
+                    gc.strokeLine(start.x(), start.y(), end.x(), end.y());
+                    gc.setFill(Color.YELLOW);
+                    gc.fillOval(end.x() - 2, end.y() - 2, 4, 4);
+                } else {
+                    // Miss (max distance): draw a translucent blue/gray line
+                    gc.setStroke(Color.web("#4a90e2", 0.6));
+                    gc.strokeLine(start.x(), start.y(), end.x(), end.y());
+                }
+            }
         }
     }
 
