@@ -35,7 +35,7 @@ public class Agent extends MobileEntity {
      * Scales with the size ratio (so it's easier to eat something smaller.)
      * </p>
      */
-    private static final double PREDATION_COST_FACTOR = 0.15;
+    private static final double PREDATION_COST_FACTOR = 0.1;    // TODO: Can maybe get rid of since we have predation efficiency?
     /**
      * The portion of the prey's energy that the predator actually receives.
      */
@@ -43,7 +43,7 @@ public class Agent extends MobileEntity {
     /**
      * The portion of energy to spend when trying to attempt predation and not touching another agent
      */
-    private static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.05;
+    private static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.02;
     /**
      * The portion of total energy an agent needs to start regenerating health.
      */
@@ -63,21 +63,21 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.017;
-    public static final double PASSIVE_LIFE_COST = 0.1;
-    public static final double PASSIVE_TURN_SPEED_COST = 0.002;
+    private static final double PASSIVE_SIZE_COST = 0.012;
+    public static final double PASSIVE_LIFE_COST = 0.01;
+    public static final double PASSIVE_TURN_SPEED_COST = 0.003;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
-    private static final double SPEED_COST = 0.05;
+    private static final double SPEED_COST = 0.07;
     /**
      * TODO
      */
-    private static final double TURN_COST = 4;
+    private static final double TURN_COST = 6;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
-    private static final double ATTACK_COST = 0.5;
+    private static final double ATTACK_COST = 0.3;
     /**
      * Sets the max energy at a clone event to be the clone threshold times this value.
      * TODO: make better name
@@ -87,9 +87,9 @@ public class Agent extends MobileEntity {
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
-    private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.00006;
+    private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.000001;
     private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.004;
-    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 600000;
+    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 3000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     /**
      * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
@@ -519,7 +519,7 @@ public class Agent extends MobileEntity {
     }
 
     private static @NotNull NeuralNetwork newFoodEvaluator() {
-        return new NeuralNetwork(new int[] {3, 3, 1});
+        return new NeuralNetwork(new int[] {4, 3, 1});
     }
 
     /**
@@ -527,7 +527,7 @@ public class Agent extends MobileEntity {
      * TODO: Add attack and defense
      */
     private static @NotNull NeuralNetwork newAgentEvaluator() {
-        return new NeuralNetwork(new int[] {6, 3, 1});
+        return new NeuralNetwork(new int[] {7, 3, 1});
     }
 
 
@@ -607,9 +607,10 @@ public class Agent extends MobileEntity {
 
             float sizeRatio = (float) (entity.getRadius() / this.getRadius());
             float distance = (float) (distanceSquared / visionRadiusSquared);
+            float directionTo = calculateNormalizedRelativeAngle(entity);
 
 //            float foodValue = evaluateFood(food);
-            float foodValue = foodEvaluator.predict3x3x1(sizeRatio, distance, food.getTerrainType().ordinal());
+            float foodValue = foodEvaluator.predict4x3x1(sizeRatio, distance, food.getTerrainType().ordinal(), directionTo);
             if (foodValue > maxFoodValue) {
                 maxFoodValue = foodValue;
                 bestFood = food;
@@ -620,17 +621,18 @@ public class Agent extends MobileEntity {
 
             float sizeRatio = (float) (entity.getRadius() / this.getRadius());
             float distance = (float) (distanceSquared / visionRadiusSquared);
+            float directionTo = calculateNormalizedRelativeAngle(entity);
             float attackDefenseRatio = (float) (this.attack / agent.defense);
             float defenseAttackRatio = (float) (this.defense / agent.attack);
 
-            float preyValue = preyEvaluator.predict6x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal(), attackDefenseRatio, defenseAttackRatio);
+            float preyValue = preyEvaluator.predict7x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal(), attackDefenseRatio, defenseAttackRatio, directionTo);
             if (preyValue > maxPreyValue) {
                 maxPreyValue = preyValue;
                 bestPrey = agent;
             }
 
             // TODO: Do we even need the terrain type here?
-            float threatValue = predatorEvaluator.predict6x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal(), attackDefenseRatio, defenseAttackRatio);
+            float threatValue = predatorEvaluator.predict7x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal(), attackDefenseRatio, defenseAttackRatio, directionTo);
             if (threatValue > maxThreatValue) {
                 maxThreatValue = threatValue;
                 worstThreat = agent;
@@ -664,6 +666,27 @@ public class Agent extends MobileEntity {
 
         double turn;
         boolean desiresPredation;
+
+//        if (targetFood > targetPrey && targetFood > runFromThreat && targetFood > BOOLEAN_DECISION_THRESHOLD) {
+//            turn = (output[4] * 2 - 1) * turnSpeed;
+//            desiresPredation = false;
+//            priority = "FORAGE";
+//        } else if (targetPrey > targetFood && targetPrey > runFromThreat && targetPrey > BOOLEAN_DECISION_THRESHOLD) {
+//            desiresPredation = true;
+//            turn = (output[4] * 2 - 1) * turnSpeed;
+//            priority = "HUNT";
+//        } else if (runFromThreat > targetFood && runFromThreat > targetPrey && runFromThreat > BOOLEAN_DECISION_THRESHOLD) {
+//
+//            turn = (output[4] * 2 - 1) * turnSpeed;
+//            desiresPredation = false;
+//            priority = "ESCAPE";
+//        } else {
+//            double brainTurn = (output[4] * 2 - 1) * turnSpeed;
+//            double jitter = ThreadLocalRandom.current().nextDouble(-1, 1) * WANDER_JITTER_DEGREES;
+//            turn = brainTurn * 0.25 + jitter;
+//            desiresPredation = false;
+//            priority = "WANDER";
+//        }
 
         if (targetFood > targetPrey && targetFood > runFromThreat && targetFood > BOOLEAN_DECISION_THRESHOLD) {
             turn = (output[4] * 2 - 1) * turnSpeed;

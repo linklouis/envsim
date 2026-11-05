@@ -119,6 +119,15 @@ public class NeuralNetwork implements Serializable {
         return (float) (1.0 / (1.0 + Math.exp(-s)));
     }
 
+    public float predict7x3x1(float a, float b, float c, float d, float e, float f, float g) {
+        float[] w = weights;
+        float h0 = Math.max(w[0]  + w[1]*a  + w[2]*b  + w[3]*c  + w[4]*d  + w[5]*e  + w[6]*f + w[7]*g, 0f);
+        float h1 = Math.max(w[8]  + w[9]*a  + w[10]*b  + w[11]*c + w[12]*d + w[13]*e + w[14]*f + w[15]*g, 0f);
+        float h2 = Math.max(w[16] + w[17]*a + w[18]*b + w[19]*c + w[20]*d + w[21]*e + w[22]*f + w[23]*f, 0f);
+        float s  = w[24] + w[25]*h0 + w[25]*h1 + w[27]*h2;
+        return (float) (1.0 / (1.0 + Math.exp(-s)));
+    }
+
     /**
      * Specialized unrolled forward pass for the 6 -> 10 -> 7 agent brain.
      * Eliminates all loop overhead and array lookups.
