@@ -736,10 +736,6 @@ public class Environment extends Canvas {
         translateY = 0;
     }
 
-    public RayCaster.RayData castRay(@NotNull Vector origin, @NotNull Vector direction, double maxDistance) {
-        return RayCaster.castRay(origin, direction, maxDistance, allEntities(), this::getTerrainType);
-    }
-
 
     public void clearSelectedAgent() {
         selectedAgent = null;

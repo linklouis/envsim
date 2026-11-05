@@ -8,6 +8,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -210,7 +211,8 @@ public class Agent extends MobileEntity {
 
     // CACHES
     private TerrainType cachedTerrain;
-    private final double[] rayDirections;
+    private double[] rayDirections;
+    private final RayCaster[] rayCasters;
     private final Map<Long, Double> genomeComparisonCache = new HashMap<>();
     private final long[] genomeComparisonIds = new long[256];     // ids start at 1, so 0 = empty
     private final double[] genomeComparisonValues = new double[256];
@@ -267,11 +269,12 @@ public class Agent extends MobileEntity {
         preyEvaluator = agentData.preyEvaluator();
         predatorEvaluator = agentData.predatorEvaluator();
 
-        rayDirections = RayCaster.calculateRayDirections(fieldOfView, NUM_RAYS);
-
         generation = agentData.generation();
 
         direction = Vector.random(1);
+
+//        rayDirections = RayCaster.calculateRayDirections(fieldOfView, NUM_RAYS);
+        rayCasters = RayCaster.getCasters(fieldOfView, NUM_RAYS, getPosition(), visionRadius, direction.angle(), environment::getTerrainType);
 
         genome = extractGenome();
         float norm = 0;
@@ -546,12 +549,14 @@ public class Agent extends MobileEntity {
 
     private RayCaster.RayData @NotNull [] doRaycasts() {
         RayCaster.RayData[] rayData =  new RayCaster.RayData[NUM_RAYS];
-        double direction = this.direction.angle();
+        double angle = this.direction.angle();
 
         int i = 0;
-        for (double rayDirection : rayDirections) {
-            Vector trueDirection = Vector.fromAngle(direction + rayDirection);
-            rayData[i] = environment.castRay(getPosition(), trueDirection, visionRadius);
+        for (RayCaster caster: rayCasters) {
+//            Vector trueDirection = Vector.fromAngle(angle + rayDirection);
+            caster.reset(getPosition(), angle);
+            environment.visitEntitiesInRange(this, visionRadius, visionRadiusSquared, caster.getVisitor());
+            rayData[i] = caster.getRayData();
             i++;
         }
 
