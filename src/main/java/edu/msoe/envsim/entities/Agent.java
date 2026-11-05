@@ -287,6 +287,7 @@ public class Agent extends MobileEntity {
         traits.add((float) swimSkill);
         traits.add((float) attack);
         traits.add((float) defense);
+        traits.add((float) fieldOfView);
 
         traits.addAll(brain.getWeights());
         traits.addAll(foodEvaluator.getWeights());
