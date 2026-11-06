@@ -191,7 +191,7 @@ public class Agent extends MobileEntity {
      * TODO: Actually maybe don't so carnivores don't keep eating their kids?
      */
     private double timeSinceReproduction = 100000;
-    private Food lastEatenFood;
+    private Food lastEatenFood; // TODO: Probably don't need this anymore with raycasts
     private boolean alive = true;
 
     private AgentDecision decision;
