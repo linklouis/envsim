@@ -91,9 +91,9 @@ public class Agent extends MobileEntity {
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
-    private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.000001;
+    private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.0000005;
     private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.0045;
-    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 4000000;
+    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 2000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     /**
      * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
@@ -146,7 +146,7 @@ public class Agent extends MobileEntity {
      */
     private final double visionRadius;
     /**
-     * Caching the squared radius so it doesn't have to be recalculated in {@link Environment#visitEntitiesInRange(Entity, double, double, SpatialGrid.Visitor)} every tick.
+     * Caching the squared radius so it doesn't have to be recalculated in {@link Environment#visitEntitiesInRange(Entity, double, double, SpatialGrid.Visitor, SpatialGrid.Visitor)} every tick.
      */
     private final double visionRadiusSquared;
     private final double healthRegenSpeed;
@@ -265,7 +265,8 @@ public class Agent extends MobileEntity {
         direction = Vector.random(1);
 
 //        rayDirections = RayCaster.calculateRayDirections(fieldOfView, NUM_RAYS);
-        rayCasters = RayCaster.getCasters(fieldOfView, NUM_RAYS, getPosition(), visionRadius, direction.angle(), environment::getTerrainType);
+        rayCasters = RayCaster.getCasters(fieldOfView, NUM_RAYS, getPosition(), visionRadius, direction.angle(),
+                environment::getTerrainType, a -> getGenomeComparison(a) < SPECIES_MAX_DIFFERENCE);
 
         genome = extractGenome();
         float norm = 0;
@@ -549,7 +550,7 @@ public class Agent extends MobileEntity {
         int i = 0;
         for (RayCaster caster: rayCasters) {
             caster.reset(getPosition(), angle);
-            environment.visitEntitiesInRange(this, visionRadius, visionRadiusSquared, caster.getVisitor());
+            environment.visitEntitiesInRange(this, visionRadius, visionRadiusSquared, caster.getStationaryVisitor(), caster.getMobileVisitor());
             RayCaster.RayData data = caster.getRayData();
             rayData[i] = data;
 

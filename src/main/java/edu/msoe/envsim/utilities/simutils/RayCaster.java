@@ -1,5 +1,6 @@
 package edu.msoe.envsim.utilities.simutils;
 
+import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Entity;
 import edu.msoe.envsim.utilities.Vector;
 import org.jetbrains.annotations.NotNull;
@@ -15,27 +16,43 @@ public class RayCaster {
     private final double relativeDirection;
     private final double maxDistance;
     private final @NotNull Function<Vector, TerrainType> terrainTypeResolver;
+    private final @NotNull Function<Agent, Boolean> speciesResolver;
     private @NotNull Vector origin;
     private @NotNull Vector direction;
     private double closestIntersection;
     private @Nullable Entity closestEntity;
 
-    private final SpatialGrid.Visitor visitor;
+    private final SpatialGrid.Visitor stationaryVisitor;
+    private final SpatialGrid.Visitor mobileVisitor;
 
     public RayCaster(@NotNull Vector origin, double relativeDirection, double maxDistance, double direction,
-                     @NotNull Function<Vector, TerrainType> terrainTypeResolver) {
+                     @NotNull Function<Vector, TerrainType> terrainTypeResolver,
+                     @NotNull Function<Agent, Boolean> speciesResolver) {
         if (maxDistance < 0) throw new IllegalArgumentException("maxDistance is negative");
 
         this.relativeDirection = relativeDirection;
         this.maxDistance = maxDistance;
         this.terrainTypeResolver = terrainTypeResolver;
+        this.speciesResolver = speciesResolver;
 
         reset(origin, direction);
 
-        visitor = this::visit;
+        stationaryVisitor = this::visitStationary;
+        mobileVisitor = this::visitMobile;
     }
 
-    public void visit(@NotNull Entity entity, double centerDistance) {
+    public void visitStationary(@NotNull Entity entity, double centerDistance) {
+        if (entity.getRadius() <= 0) return;
+        double distance = getCircleCollisionDistance(origin, direction, entity.getPosition(), entity.getRadius());
+        if (distance > 0 && distance <= closestIntersection) {
+            closestIntersection = distance;
+            closestEntity = entity;
+        }
+    }
+
+    public void visitMobile(@NotNull Entity entity, double centerDistance) {
+        // TODO: Not seeing members of your species could prevent more complex social behavior, but I'm not expecting that for now anyway. Might have to find a way around it at some point.
+        if (entity instanceof Agent agent && speciesResolver.apply(agent)) return;  // Don't see other members of species. Allows grouping without getting in each other's way.
         double distance = getCircleCollisionDistance(origin, direction, entity.getPosition(), entity.getRadius());
         if (distance > 0 && distance <= closestIntersection) {
             closestIntersection = distance;
@@ -84,7 +101,7 @@ public class RayCaster {
 //    }
 
     /**
-     *
+     * TODO: ALSO CONSIDER THE WORLD BOUNDS
      * @param origin
      * @param direction MUST BE A UNIT VECTOR
      * @param center
@@ -127,7 +144,8 @@ public class RayCaster {
 
     public static RayCaster @NotNull [] getCasters(double fieldOfView, int numRays, @NotNull Vector origin,
                                                    double maxDistance, double sourceDirection,
-                                                   @NotNull Function<Vector, TerrainType> terrainTypeResolver) {
+                                                   @NotNull Function<Vector, TerrainType> terrainTypeResolver,
+                                                   @NotNull Function<Agent, Boolean> speciesResolver) {
         if (numRays <= 0) return new RayCaster[0];
         if (numRays % 2 == 0) throw new  IllegalArgumentException("numRays must be odd");
         RayCaster[] rayCasters = new RayCaster[numRays];
@@ -136,14 +154,18 @@ public class RayCaster {
         double start = -fieldOfView / 2;
         for (int i = 0; i < numRays; i++) {
             double direction = start + change * i;
-            rayCasters[i] = new RayCaster(origin, direction, maxDistance, sourceDirection, terrainTypeResolver);
+            rayCasters[i] = new RayCaster(origin, direction, maxDistance, sourceDirection, terrainTypeResolver, speciesResolver);
         }
 
         return rayCasters;
     }
 
-    public SpatialGrid.Visitor getVisitor() {
-        return visitor;
+    public SpatialGrid.Visitor getStationaryVisitor() {
+        return stationaryVisitor;
+    }
+
+    public SpatialGrid.Visitor getMobileVisitor() {
+        return mobileVisitor;
     }
 
     public @NotNull Vector getDirection() {

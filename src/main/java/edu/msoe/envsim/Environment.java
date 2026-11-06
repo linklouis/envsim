@@ -777,11 +777,12 @@ public class Environment extends Canvas {
      * @param maxDistSquared {@code maxDistance * maxDistance}, passed in so callers can cache it.
      */
     public void visitEntitiesInRange(@NotNull Entity self, double maxDistance, double maxDistSquared,
-                                     @NotNull SpatialGrid.Visitor visitor) {
+                                     @NotNull SpatialGrid.Visitor stationaryVisitor,
+                                     @NotNull SpatialGrid.Visitor mobileVisitor) {
         double px = self.x();
         double py = self.y();
-        staticGrid.forEachInRange(self, px, py, maxDistance, maxDistSquared, visitor);
-        agentGrid.forEachInRange(self, px, py, maxDistance, maxDistSquared, visitor);
+        staticGrid.forEachInRange(self, px, py, maxDistance, maxDistSquared, stationaryVisitor);
+        agentGrid.forEachInRange(self, px, py, maxDistance, maxDistSquared, mobileVisitor);
     }
 
     /**
