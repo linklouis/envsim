@@ -77,7 +77,7 @@ public class Agent extends MobileEntity {
     /**
      * TODO
      */
-    private static final double TURN_COST = 6;
+    private static final double TURN_COST = 3;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
@@ -106,7 +106,7 @@ public class Agent extends MobileEntity {
 
     // ARCHITECTURE PARAMETERS
     private static final int NUM_RAYS = 11;
-    private static final int NUM_INPUTS = 9 + NUM_RAYS * 6;
+    private static final int NUM_INPUTS = 3 + NUM_RAYS * 6;
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
@@ -194,26 +194,15 @@ public class Agent extends MobileEntity {
     private Food lastEatenFood;
     private boolean alive = true;
 
-    private Food bestFood;
-    private Agent bestPrey;
-    private Agent worstThreat;
-
-    private float maxFoodValue;
-    private float maxPreyValue;
-    private float maxThreatValue;
-
     private AgentDecision decision;
     private String priority = "WANDER";
 
     // COLLISION HANDLING
     private final List<Entity> collisions = new ArrayList<>();
     private static final BiPredicate<Entity, Entity> STILL_PRESENT = (_, other) -> other.getRadius() > 0;
-    /** Created once so {@link #getInput()} doesn't allocate a method reference every tick. */
-    private final SpatialGrid.Visitor entityEvaluator = this::evaluateEntity;
 
     // CACHES
     private TerrainType cachedTerrain;
-    private double[] rayDirections;
     private final RayCaster[] rayCasters;
     private final Map<Long, Double> genomeComparisonCache = new HashMap<>();
     private final long[] genomeComparisonIds = new long[256];     // ids start at 1, so 0 = empty
@@ -236,7 +225,7 @@ public class Agent extends MobileEntity {
                 Math.random(),
                 Math.random() * 10,
                 Math.random() * 5,
-                Math.random() * Math.PI,
+                Math.random() * (Math.PI - 0.5) + 0.5,
                 newBrain(),
                 newFoodEvaluator(),
                 newAgentEvaluator(),
@@ -533,7 +522,7 @@ public class Agent extends MobileEntity {
     }
 
     private static @NotNull NeuralNetwork newBrain() {
-        return new NeuralNetwork(new int[] {NUM_INPUTS, (int) (NUM_INPUTS * 0.4), 5});    // TODO: Probably make the hidden layer a little bigger
+        return new NeuralNetwork(new int[] {NUM_INPUTS, (int) (NUM_INPUTS * 0.4), 6});
     }
 
     private static @NotNull NeuralNetwork newFoodEvaluator() {
@@ -574,19 +563,11 @@ public class Agent extends MobileEntity {
      */
     @Contract(" -> new")
     private float @NotNull [] getInput() {
-        resetEntityEvaluation();
-        environment.visitEntitiesInRange(this, visionRadius, visionRadiusSquared, entityEvaluator);
         float[] inputs = new float[NUM_INPUTS];
 
         inputs[0] = (float) (energy / calculateCloneThreshold());
         inputs[1] = (float) (getRadius() / size);
-        inputs[2] = maxFoodValue;
-        inputs[3] = maxPreyValue;
-        inputs[4] = maxThreatValue;
-        inputs[5] = calculateNormalizedRelativeAngle(bestFood);
-        inputs[6] = calculateNormalizedRelativeAngle(bestPrey);
-        inputs[7] = calculateNormalizedRelativeAngle(worstThreat);
-        inputs[8] = cachedTerrain.ordinal();
+        inputs[2] = cachedTerrain.ordinal();
 
         RayCaster.RayData[] rayData = doRaycasts();
         for (int i = 0; i < NUM_RAYS * 6; i += 6) {
@@ -612,12 +593,12 @@ public class Agent extends MobileEntity {
                 }
             }
 
-            inputs[9 + i] = sizeRatio;
-            inputs[10 + i] = distance;
-            inputs[11 + i] = attackDefenseRatio;
-            inputs[12 + i] = defenseAttackRatio;
-            inputs[13 + i] = ray.terrain().ordinal();
-            inputs[14 + i] = entityType;    // TODO: Maybe make two, one for isAgent, one for isFood?
+            inputs[3 + i] = sizeRatio;
+            inputs[4 + i] = distance;
+            inputs[5 + i] = attackDefenseRatio;
+            inputs[6 + i] = defenseAttackRatio;
+            inputs[7 + i] = ray.terrain().ordinal();
+            inputs[8 + i] = entityType;    // TODO: Maybe make two, one for isAgent, one for isFood?
         }
         return inputs;
     }
@@ -658,106 +639,16 @@ public class Agent extends MobileEntity {
         return (float) (relativeAngle / Math.PI);
     }
 
-    public void resetEntityEvaluation() {
-        maxFoodValue = 0;
-        bestFood = null;
-        maxPreyValue = 0;
-        bestPrey = null;
-        maxThreatValue = 0;
-        worstThreat = null;
-    }
-
-    public void evaluateEntity(@NotNull Entity entity, double distanceSquared) {
-        // TODO: HAVING THE PREFERENCE FOR FOOD/PREY ON ONE TERRAIN TYPE MIGHT MAKE EVOLVING OUT/INTO THE WATER MUCH HARDER
-        if (entity instanceof Food food) {
-            if (food.getRadius() <= 0 || food == lastEatenFood) return;
-
-            float sizeRatio = (float) (entity.getRadius() / this.getRadius());
-            float distance = (float) (distanceSquared / visionRadiusSquared);
-            float directionTo = calculateNormalizedRelativeAngle(entity);
-
-//            float foodValue = evaluateFood(food);
-            float foodValue = foodEvaluator.predict4x3x1(sizeRatio, distance, food.getTerrainType().ordinal(), directionTo);
-            if (foodValue > maxFoodValue) {
-                maxFoodValue = foodValue;
-                bestFood = food;
-            }
-        } else if (entity instanceof Agent agent) {
-            float genomeComparison = (float) getGenomeComparison(agent);
-            if (genomeComparison < SPECIES_MAX_DIFFERENCE) return;
-
-            float sizeRatio = (float) (entity.getRadius() / this.getRadius());
-            float distance = (float) (distanceSquared / visionRadiusSquared);
-            float directionTo = calculateNormalizedRelativeAngle(entity);
-            float attackDefenseRatio = (float) (this.attack / agent.defense);
-            float defenseAttackRatio = (float) (this.defense / agent.attack);
-
-            float preyValue = preyEvaluator.predict7x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal(), attackDefenseRatio, defenseAttackRatio, directionTo);
-            if (preyValue > maxPreyValue) {
-                maxPreyValue = preyValue;
-                bestPrey = agent;
-            }
-
-            // TODO: Do we even need the terrain type here?
-            float threatValue = predatorEvaluator.predict7x3x1(sizeRatio, distance, genomeComparison, agent.getTerrainType().ordinal(), attackDefenseRatio, defenseAttackRatio, directionTo);
-            if (threatValue > maxThreatValue) {
-                maxThreatValue = threatValue;
-                worstThreat = agent;
-            }
-        }
-    }
-
-    /**
-     * TODO: ACTUALLY HAVE THIS BE A NN, AND HAVE IT ALSO GET WHETHER THE FOOD IS IN THE WATER OR ON LAND, THAT WAY WE DON'T NEED RAYCASTS
-     * @param food The {@link Food} object to evaluate
-     * @return The calculated value score for the {@link Food}.
-     */
-    private float evaluateFood(@NotNull Food food) {
-        return (float) (food.getRadius() / this.distance(food));
-    }
-
     @Override
     public void getDecision() {
         // TODO: Update the brain to take in the direction to the best food and the best prey and worst threat, as well as the value of each. Allow the brain to decide how to turn as a value -1 - 1, instead of only allowing it to pick which one to face towards.
         // TODO: When passing the direction to the above things, have it be relative to the Agent's direction, not the map.
         // TODO: ADD OUTPUT FOR AGENTS TO DECIDE HOW MUCH RANDOMNESS TO ADD TO THEIR DIRECTION EACH STEP.
         float[] inputs = getInput();
-//        System.out.println(Arrays.toString(inputs));
-//        float[] output = brain.predict9x10x5(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);   // TODO: ADD BY-HAND METHOD
-
-//        double targetFood = bestFood == null ? 0 : output[1];
-//        double targetPrey = bestPrey == null ? 0 : output[2];
-//        double runFromThreat = worstThreat == null ? 0 :output[3];
-//
-//        double turn;
-//        boolean desiresPredation;
-
-//        if (targetFood > targetPrey && targetFood > runFromThreat && targetFood > BOOLEAN_DECISION_THRESHOLD) {
-//            turn = (output[4] * 2 - 1) * turnSpeed;
-//            desiresPredation = false;
-//            priority = "FORAGE";
-//        } else if (targetPrey > targetFood && targetPrey > runFromThreat && targetPrey > BOOLEAN_DECISION_THRESHOLD) {
-//            desiresPredation = true;
-//            turn = (output[4] * 2 - 1) * turnSpeed;
-//            priority = "HUNT";
-//        } else if (runFromThreat > targetFood && runFromThreat > targetPrey && runFromThreat > BOOLEAN_DECISION_THRESHOLD) {
-//
-//            turn = (output[4] * 2 - 1) * turnSpeed;
-//            desiresPredation = false;
-//            priority = "ESCAPE";
-//        } else {
-//            double brainTurn = (output[4] * 2 - 1) * turnSpeed;
-//            double jitter = ThreadLocalRandom.current().nextDouble(-1, 1) * WANDER_JITTER_DEGREES;
-//            turn = brainTurn * 0.25 + jitter;
-//            desiresPredation = false;
-//            priority = "WANDER";
-//        }
-
         float[] output = brain.predict(inputs);
 
-        double targetPrey = bestPrey == null ? 0 : output[1];
+        double targetPrey = output[1];
 
-        double turn;
         boolean desiresPredation;
 
         if (targetPrey > BOOLEAN_DECISION_THRESHOLD) {
@@ -767,7 +658,7 @@ public class Agent extends MobileEntity {
             desiresPredation = false;
             priority = "WANDER";
         }
-        turn = (output[2] * 2 - 1) * turnSpeed;
+        double turn = (output[2] * 2 - 1) * turnSpeed;
 
         turn = Math.clamp(turn, -maxTurnPerTick(), maxTurnPerTick());
 
@@ -781,11 +672,6 @@ public class Agent extends MobileEntity {
     /** Max turn per tick, in degrees. */
     private double maxTurnPerTick() {
         return turnSpeed / getRadius();
-    }
-
-    private double getTurnToTarget(@NotNull Vector target) {
-        double rawChange = target.angle() - direction.angle(); // radians
-        return Math.toDegrees(Math.atan2(Math.sin(rawChange), Math.cos(rawChange)));
     }
 
 
