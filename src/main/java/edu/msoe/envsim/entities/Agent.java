@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Agent extends MobileEntity {
+    public static final double MIN_SIZE = 1;
     /**
      * The minimum portion of its max health an agent must have to be eligible for reproduction.
      */

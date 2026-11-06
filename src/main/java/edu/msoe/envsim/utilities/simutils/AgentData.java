@@ -1,5 +1,6 @@
 package edu.msoe.envsim.utilities.simutils;
 
+import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.utilities.NeuralNetwork;
 import edu.msoe.envsim.utilities.Vector;
 import javafx.scene.paint.Color;
@@ -31,7 +32,7 @@ public record AgentData(Vector position, Color color, double energy, double spee
                 energy, // TODO: Children should actually get the cost subtracted from each parent's health (What did I mean by this?)
                 mutateAttribute(speed),
                 mutateAttribute(turnSpeed),
-                mutateAttribute(size),
+                Math.max(mutateAttribute(size), Agent.MIN_SIZE),
                 mutateAttribute(visionRadius),
                 mutateAttribute(healthRegenSpeed),
                 Math.clamp(mutateAttribute(swimSkill), 0, 1),
