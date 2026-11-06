@@ -44,8 +44,17 @@ public class Food extends Entity {
         return getRadius() * RADIUS_VALUE_SCALE;
     }
 
-    public void getEaten(double consumptionSize) {
-        setRadius(getRadius() -  getRadius() * consumptionSize);
+    /**
+     * Source: Google Gemini
+     * @param targetConsumptionFraction
+     */
+    public void getEaten(double targetConsumptionFraction) {
+        double currentRadius = getRadius();
+        double radiusRemoved = currentRadius * Math.min(1.0, targetConsumptionFraction);
+
+        double newRadius = currentRadius - radiusRemoved;
+        setRadius(Math.max(0, newRadius));
+
         if (getRadius() <= 0) {
             regrowthTimer = REGROWTH_TIME;
         }

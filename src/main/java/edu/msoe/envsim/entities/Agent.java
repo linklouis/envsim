@@ -450,9 +450,13 @@ public class Agent extends MobileEntity {
 
     private void eat(@NotNull Food food) {
         if (food == lastEatenFood) return;
-        double consumptionSize = getRadius() * MAX_BITE_SIZE / food.getRadius();//Math.min(1, getRadius() * MAX_RAD_RATIO_FOR_PREDATION / food.getRadius());    // TODO: Does this make any sense? The idea is for agents to not be able to eat an entire food if they are smaller than it. They should only be able to eat MAX_DIF... % of their  // TODO: Maybe switch to max energy once it relies on radius?
-        energy += consumptionSize * food.getValue();
-        food.getEaten(consumptionSize);
+        double desiredFraction = (getRadius() * MAX_BITE_SIZE) / food.getRadius();
+        double actualFraction = Math.min(1.0, desiredFraction);
+
+        double energyGained = actualFraction * food.getValue();
+        energy += energyGained;
+
+        food.getEaten(desiredFraction);
         lastEatenFood = food;
     }
 
