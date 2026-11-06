@@ -7,6 +7,7 @@ import edu.msoe.envsim.entities.MobileEntity;
 import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.apputils.Clock;
 import edu.msoe.envsim.utilities.apputils.DebugMessage;
+import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.simutils.RayCaster;
 import edu.msoe.envsim.utilities.simutils.SpatialGrid;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
@@ -238,6 +239,44 @@ public class Environment extends Canvas {
             isPainting = false;
             lastTerrainX = -1;
             lastTerrainY = -1;
+        });
+
+        setOnDragOver(e -> {
+            if (e.getDragboard().hasString()) {
+                e.acceptTransferModes(javafx.scene.input.TransferMode.COPY);
+            }
+            e.consume();
+        });
+
+        setOnDragDropped(e -> {
+            javafx.scene.input.Dragboard db = e.getDragboard();
+            boolean success = false;
+            if (db.hasString()) {
+                File file = new File(db.getString());
+                if (file.exists()) {
+                    try {
+                        AgentData data = AgentData.loadFromFile(file);
+
+                        // Convert scene/screen drop coordinates to world coordinates based on current zoom and camera pan
+                        double worldX = (e.getX() - translateX) / scale;
+                        double worldY = (e.getY() - translateY) / scale;
+
+                        // Recreate agent at the exact dropped world coordinates
+                        AgentData spawnedData = new AgentData(
+                                new Vector(worldX, worldY), data.color(), data.energy(), data.speed(),
+                                data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
+                                data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
+                                data.brain(), data.foodEvaluator(), data.preyEvaluator(), data.predatorEvaluator(), data.generation()
+                        );
+                        new Agent(spawnedData, this);
+                        success = true;
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+            e.setDropCompleted(success);
+            e.consume();
         });
 
         // Zooming controls

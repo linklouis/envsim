@@ -3,13 +3,18 @@ package edu.msoe.envsim.utilities.apputils;
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import javafx.geometry.Insets;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
 
 /**
  * Source: Google Gemini
@@ -32,6 +37,7 @@ public class AgentInspectorPane extends VBox {
     private final Label fovLabel = new Label();
 
     private final Runnable onCloseCallback;
+    private Agent currentAgent;
 
     public AgentInspectorPane(@Nullable Runnable onCloseCallback) {
         super(10);
@@ -73,13 +79,19 @@ public class AgentInspectorPane extends VBox {
         addStandardRow(grid, row++, "Defense:", defenseLabel);
         addStandardRow(grid, row++, "FOV:", fovLabel);
 
+        Button saveButton = new Button("Save Agent");
+        saveButton.setStyle("-fx-background-color: #3b5998; -fx-text-fill: white; -fx-cursor: hand;");
+        saveButton.setFocusTraversable(false);
+        saveButton.setOnAction(_ -> saveCurrentAgent());
 
         Button closeButton = new Button("Close");
         closeButton.setOnAction(_ -> hide());
         closeButton.setStyle("-fx-background-color: #444; -fx-text-fill: white; -fx-cursor: hand;");
         closeButton.setFocusTraversable(false);
 
-        getChildren().addAll(title, grid, closeButton);
+        HBox actionButtons = new HBox(10, saveButton, closeButton);
+
+        getChildren().addAll(title, grid, new Separator(), actionButtons);
     }
 
     private void addStandardRow(@NotNull GridPane grid, int row, String labelText, @NotNull Label valLabel) {
@@ -93,6 +105,7 @@ public class AgentInspectorPane extends VBox {
     }
 
     public void showAgent(@NotNull Agent agent) {
+        this.currentAgent = agent;
         AgentData data = agent.getAgentData();
 
         // %6.2f ensures the first value reserves a fixed 6-character width, right-aligned with spaces
@@ -102,7 +115,6 @@ public class AgentInspectorPane extends VBox {
         predationLabel.setText(agent.desiresPredation() ? "True" : "False");
         actionLabel.setText(agent.getPriority());
         jitterLabel.setText(String.format("%.2f", agent.getJitterRequested()));
-
 
         speedLabel.setText(String.format("%.2f", data.speed()));
         turnSpeedLabel.setText(String.format("%.2f", data.turnSpeed()));
@@ -116,8 +128,37 @@ public class AgentInspectorPane extends VBox {
         setVisible(true);
     }
 
+    private void saveCurrentAgent() {
+        if (currentAgent == null) return;
+
+        File dir = new File("agents");
+        if (!dir.exists()) dir.mkdirs();
+
+        javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog("agent_gen" + currentAgent.getAgentData().generation());
+        dialog.setTitle("Save Agent");
+        dialog.setHeaderText("Save Agent to Library");
+        dialog.setContentText("Enter agent name:");
+
+        java.util.Optional<String> result = dialog.showAndWait();
+        result.ifPresent(name -> {
+            if (!name.trim().isEmpty()) {
+                File targetFile = new File(dir, name.trim() + ".agent");
+                try {
+                    currentAgent.getAgentData().saveToFile(targetFile);
+                } catch (Exception e) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Save Failed");
+                    alert.setHeaderText("Could not save agent");
+                    alert.setContentText(e.getMessage());
+                    alert.showAndWait();
+                }
+            }
+        });
+    }
+
     public void hide() {
         if (isVisible()) {
+            currentAgent = null;
             setVisible(false);
             if (onCloseCallback != null) {
                 onCloseCallback.run();

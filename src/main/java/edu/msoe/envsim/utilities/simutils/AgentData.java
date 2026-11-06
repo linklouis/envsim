@@ -7,6 +7,7 @@ import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 
@@ -45,5 +46,76 @@ public record AgentData(Vector position, Color color, double energy, double spee
                 this.predatorEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
                 generation + 1
         );
+    }
+
+    /**
+     * Source: Google Gemini
+     * @param file
+     * @throws IOException
+     */
+    public void saveToFile(@NotNull File file) throws IOException {
+        try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)))) {
+            out.writeDouble(position.x());
+            out.writeDouble(position.y());
+
+            out.writeDouble(color.getRed());
+            out.writeDouble(color.getGreen());
+            out.writeDouble(color.getBlue());
+            out.writeDouble(color.getOpacity());
+
+            out.writeDouble(energy);
+            out.writeDouble(speed);
+            out.writeDouble(turnSpeed);
+            out.writeDouble(size);
+            out.writeDouble(visionRadius);
+            out.writeDouble(healthRegenSpeed);
+            out.writeDouble(swimSkill);
+            out.writeDouble(attack);
+            out.writeDouble(defense);
+            out.writeDouble(fieldOfView);
+            out.writeInt(generation);
+
+            // Serialize Neural Networks
+            brain.save(out);
+            foodEvaluator.save(out);
+            preyEvaluator.save(out);
+            predatorEvaluator.save(out);
+        }
+    }
+
+    /**
+     * Source: Google Gemini
+     * @param file
+     * @return
+     * @throws IOException
+     */
+    public static @NotNull AgentData loadFromFile(@NotNull File file) throws IOException {
+        try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
+            double px = in.readDouble();
+            double py = in.readDouble();
+
+            Color color = new Color(in.readDouble(), in.readDouble(), in.readDouble(), in.readDouble());
+
+            double energy = in.readDouble();
+            double speed = in.readDouble();
+            double turnSpeed = in.readDouble();
+            double size = in.readDouble();
+            double visionRadius = in.readDouble();
+            double healthRegenSpeed = in.readDouble();
+            double swimSkill = in.readDouble();
+            double attack = in.readDouble();
+            double defense = in.readDouble();
+            double fieldOfView = in.readDouble();
+            int generation = in.readInt();
+
+            NeuralNetwork brain = NeuralNetwork.load(in);
+            NeuralNetwork foodEvaluator = NeuralNetwork.load(in);
+            NeuralNetwork preyEvaluator = NeuralNetwork.load(in);
+            NeuralNetwork predatorEvaluator = NeuralNetwork.load(in);
+
+            return new AgentData(new Vector(px, py), color, energy, speed, turnSpeed, size,
+                    visionRadius, healthRegenSpeed, swimSkill, attack, defense, fieldOfView,
+                    brain, foodEvaluator, preyEvaluator, predatorEvaluator, generation);
+        }
     }
 }

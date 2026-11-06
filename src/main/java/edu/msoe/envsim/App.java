@@ -4,6 +4,7 @@ import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.utilities.apputils.AgentInspectorPane;
 import edu.msoe.envsim.utilities.apputils.DebugMessage;
+import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import edu.msoe.envsim.utilities.Vector;
 import javafx.application.Application;
@@ -84,6 +85,7 @@ public class App extends Application {
         // Layer Controls over Canvas using StackPane
         StackPane gamePane = new StackPane();
         VBox menuLayer = setupMenu(stage, gamePane);
+        VBox agentSidebarLayer = setupAgentSidebar(stage, gamePane);
 
         // Populate Entities
         for (int i = 0; i < 2000; i++) {
@@ -99,7 +101,7 @@ public class App extends Application {
 
         environment.startSimulation();
 
-        gamePane.getChildren().addAll(environment, menuLayer, inspectorPane);
+        gamePane.getChildren().addAll(environment, menuLayer, agentSidebarLayer, inspectorPane);
 
         setupDebugPane();
 
@@ -391,6 +393,105 @@ public class App extends Application {
         StackPane.setMargin(menuLayer, new Insets(15));
 
         return menuLayer;
+    }
+
+    private @NotNull VBox setupAgentSidebar(Stage stage, StackPane gamePane) {
+        Label title = new Label("Saved Agents");
+        title.setStyle(TITLE_STYLE);
+
+        TilePane agentTilePane = new TilePane();
+        agentTilePane.setHgap(10);
+        agentTilePane.setVgap(10);
+        agentTilePane.setPrefColumns(1);
+        agentTilePane.setAlignment(Pos.TOP_CENTER);
+
+        Runnable refreshAgentCards = () -> {
+            agentTilePane.getChildren().clear();
+            File dir = new File("agents");
+            if (dir.exists() && dir.isDirectory()) {
+                File[] files = dir.listFiles((_, name) -> name.endsWith(".agent"));
+                if (files != null) {
+                    Arrays.sort(files);
+                    for (File file : files) {
+                        String name = file.getName().replace(".agent", "");
+
+                        Label nameLabel = new Label(name);
+                        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;");
+
+                        Button spawnBtn = new Button("Spawn in Sim");
+                        spawnBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 11px;");
+                        spawnBtn.setFocusTraversable(false);
+                        spawnBtn.setOnAction(_ -> {
+                            try {
+                                AgentData data = AgentData.loadFromFile(file);
+                                // Spawn at center of current view or random position
+                                // TODO: Do we ant to be mutating?
+                                new Agent(data.mutate(), environment);
+                            } catch (Exception ex) {
+                                showErrorPopup("Spawn Failed", "Could not load agent '" + name + "'.", ex.getMessage());
+                            }
+                        });
+
+                        VBox card = new VBox(6, nameLabel, spawnBtn);
+                        card.setAlignment(Pos.CENTER);
+                        card.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 6; -fx-padding: 8; -fx-border-color: #555; -fx-border-radius: 6;");
+
+                        // --- Drag and Drop Setup ---
+                        card.setOnDragDetected(event -> {
+                            javafx.scene.input.Dragboard db = card.startDragAndDrop(javafx.scene.input.TransferMode.COPY);
+                            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+                            content.putString(file.getAbsolutePath());
+                            db.setContent(content);
+                            event.consume();
+                        });
+
+                        agentTilePane.getChildren().add(card);
+                    }
+                }
+            }
+        };
+
+        refreshAgentCards.run();
+
+        Button refreshBtn = new Button("Refresh List");
+        refreshBtn.setStyle(BUTTON_STYLE);
+        refreshBtn.setFocusTraversable(false);
+        refreshBtn.setMaxWidth(Double.MAX_VALUE);
+        refreshBtn.setOnAction(_ -> refreshAgentCards.run());
+
+        ScrollPane scrollPane = new ScrollPane(agentTilePane);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        scrollPane.setPrefHeight(400);
+
+        VBox sidebarPanel = new VBox(10, title, refreshBtn, scrollPane);
+        sidebarPanel.setPadding(new Insets(15));
+        sidebarPanel.setPrefWidth(220);
+        sidebarPanel.setStyle(PANEL_STYLE);
+        sidebarPanel.setVisible(false);
+        sidebarPanel.setManaged(false);
+
+        // Toggle button on the right edge or next to menu
+        Button toggleSidebarBtn = new Button("Agents");
+        toggleSidebarBtn.setStyle(BUTTON_STYLE);
+        toggleSidebarBtn.setFocusTraversable(false);
+        toggleSidebarBtn.setOnAction(_ -> {
+            boolean isOpen = sidebarPanel.isVisible();
+            sidebarPanel.setVisible(!isOpen);
+            sidebarPanel.setManaged(!isOpen);
+            if (!isOpen) refreshAgentCards.run();
+        });
+
+        VBox container = new VBox(8, toggleSidebarBtn, sidebarPanel);
+        container.setAlignment(Pos.TOP_RIGHT);
+        container.setMaxWidth(USE_PREF_SIZE);
+        container.setMaxHeight(USE_PREF_SIZE);
+        container.setPickOnBounds(false);
+
+        StackPane.setAlignment(container, Pos.TOP_RIGHT);
+        StackPane.setMargin(container, new Insets(15));
+
+        return container;
     }
 
     private void showErrorPopup(String titleText, String headerText, String contentText) {

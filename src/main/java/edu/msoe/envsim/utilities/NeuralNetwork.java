@@ -240,6 +240,31 @@ public class NeuralNetwork implements Serializable {
         return new NeuralNetwork(layerSizes, childWeights);
     }
 
+    public void save(@NotNull java.io.DataOutputStream out) throws java.io.IOException {
+        out.writeInt(layerSizes.length);
+        for (int size : layerSizes) {
+            out.writeInt(size);
+        }
+        out.writeInt(weights.length);
+        for (float weight : weights) {
+            out.writeFloat(weight);
+        }
+    }
+
+    public static @NotNull NeuralNetwork load(@NotNull java.io.DataInputStream in) throws java.io.IOException {
+        int length = in.readInt();
+        int[] layerSizes = new int[length];
+        for (int i = 0; i < length; i++) {
+            layerSizes[i] = in.readInt();
+        }
+        int weightsLength = in.readInt();
+        float[] weights = new float[weightsLength];
+        for (int i = 0; i < weightsLength; i++) {
+            weights[i] = in.readFloat();
+        }
+        return new NeuralNetwork(layerSizes, weights);
+    }
+
 
     /*
      * Getters and Setters:
