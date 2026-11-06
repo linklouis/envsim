@@ -266,7 +266,10 @@ public class App extends Application {
         Button resetCamera =  new Button("Reset Cam");
         resetCamera.setStyle(BUTTON_STYLE);
         resetCamera.setFocusTraversable(false);
-        resetCamera.setOnAction(_ -> environment.resetCamera(stage.getWidth()));
+        resetCamera.setOnAction(_ -> {
+            environment.resetCamera(stage.getWidth());
+            setMenuOpen(false);
+        });
 
         // --- File management controls (always in the menu) ---
         Label envManagementLabel = new Label("Environments");
