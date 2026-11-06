@@ -68,7 +68,7 @@ public class Agent extends MobileEntity {
     private static final double PASSIVE_SIZE_COST = 0.01;
     private static final double PASSIVE_SIZE_EXPONENT = 2.5;
     public static final double PASSIVE_LIFE_COST = 0.01;
-    public static final double PASSIVE_TURN_SPEED_COST = 0.003;
+    public static final double PASSIVE_TURN_SPEED_COST = 0.004;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
@@ -99,7 +99,7 @@ public class Agent extends MobileEntity {
      * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
      * Prevents looping.
      */
-    private static final double WANDER_JITTER_DEGREES = 20;
+    private static final double WANDER_JITTER_FACTOR = 0.8;
 
     private static final AtomicLong NEXT_ID = new AtomicLong(1);
 
@@ -196,6 +196,7 @@ public class Agent extends MobileEntity {
 
     private AgentDecision decision;
     private String priority = "WANDER";
+    private double jitterRequested = 0;
 
     // COLLISION HANDLING
     private final List<Entity> collisions = new ArrayList<>();
@@ -527,7 +528,7 @@ public class Agent extends MobileEntity {
     }
 
     private static @NotNull NeuralNetwork newBrain() {
-        return new NeuralNetwork(new int[] {NUM_INPUTS, (int) (NUM_INPUTS * 0.4), 6});
+        return new NeuralNetwork(new int[] {NUM_INPUTS, (int) (NUM_INPUTS * 0.4), 4});
     }
 
     private static @NotNull NeuralNetwork newFoodEvaluator() {
@@ -646,16 +647,11 @@ public class Agent extends MobileEntity {
 
     @Override
     public void getDecision() {
-        // TODO: Update the brain to take in the direction to the best food and the best prey and worst threat, as well as the value of each. Allow the brain to decide how to turn as a value -1 - 1, instead of only allowing it to pick which one to face towards.
-        // TODO: When passing the direction to the above things, have it be relative to the Agent's direction, not the map.
-        // TODO: ADD OUTPUT FOR AGENTS TO DECIDE HOW MUCH RANDOMNESS TO ADD TO THEIR DIRECTION EACH STEP.
         float[] inputs = getInput();
         float[] output = brain.predict(inputs);
 
         double targetPrey = output[1];
-
         boolean desiresPredation;
-
         if (targetPrey > BOOLEAN_DECISION_THRESHOLD) {
             desiresPredation = true;
             priority = "HUNT";
@@ -663,15 +659,13 @@ public class Agent extends MobileEntity {
             desiresPredation = false;
             priority = "WANDER";
         }
-        double turn = (output[2] * 2 - 1) * turnSpeed;
 
+        jitterRequested = output[3];
+        double turn = (output[2] * 2 - 1) * turnSpeed;
+        turn += ThreadLocalRandom.current().nextDouble(-WANDER_JITTER_FACTOR, WANDER_JITTER_FACTOR) * maxTurnPerTick() * jitterRequested;
         turn = Math.clamp(turn, -maxTurnPerTick(), maxTurnPerTick());
 
-        this.decision =  new AgentDecision(
-                output[0],
-                turn,
-                desiresPredation
-        );
+        this.decision = new AgentDecision(output[0], turn, desiresPredation);
     }
 
     /** Max turn per tick, in degrees. */
@@ -801,5 +795,9 @@ public class Agent extends MobileEntity {
         if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
             GLOBAL_ENERGY_LOSS_FACTOR += GLOBAL_ENERGY_LOSS_ANNEALING_RATE;
         }
+    }
+
+    public double getJitterRequested() {
+        return jitterRequested;
     }
 }

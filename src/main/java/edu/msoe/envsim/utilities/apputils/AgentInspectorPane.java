@@ -20,6 +20,7 @@ public class AgentInspectorPane extends VBox {
     private final Label terrainLabel = new Label();
     private final Label predationLabel = new Label();
     private final Label actionLabel = new Label();
+    private final Label jitterLabel = new Label();
 
     private final Label speedLabel = new Label();
     private final Label turnSpeedLabel = new Label();
@@ -61,6 +62,7 @@ public class AgentInspectorPane extends VBox {
         addStandardRow(grid, row++, "Terrain:", terrainLabel);
         addStandardRow(grid, row++, "Desires Predation:", predationLabel);
         addStandardRow(grid, row++, "Current Priority:", actionLabel);
+        addStandardRow(grid, row++, "Random Turn Requested:", jitterLabel);
         grid.add(new Separator(), 0, row++);
         addStandardRow(grid, row++, "Max Speed:", speedLabel);
         addStandardRow(grid, row++, "Turn Speed:", turnSpeedLabel);
@@ -99,6 +101,8 @@ public class AgentInspectorPane extends VBox {
         terrainLabel.setText(agent.getTerrainType().name());
         predationLabel.setText(agent.desiresPredation() ? "True" : "False");
         actionLabel.setText(agent.getPriority());
+        jitterLabel.setText(String.format("%.2f", agent.getJitterRequested()));
+
 
         speedLabel.setText(String.format("%.2f", data.speed()));
         turnSpeedLabel.setText(String.format("%.2f", data.turnSpeed()));
