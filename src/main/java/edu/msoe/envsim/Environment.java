@@ -902,8 +902,7 @@ public class Environment extends Canvas {
         return numPredations;
     }
 
-    private Set<Entity> allEntities() {
-        return Stream.concat(mobileEntities.stream(), stationaryEntities.stream())
-                .collect(Collectors.toSet());
+    public Agent getSelectedAgent() {
+        return selectedAgent;
     }
 }

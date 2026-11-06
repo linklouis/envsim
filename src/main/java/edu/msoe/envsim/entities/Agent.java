@@ -9,14 +9,11 @@ import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiPredicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Agent extends MobileEntity {
     public static final double MIN_SIZE = 1;
@@ -68,7 +65,7 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.014;
+    private static final double PASSIVE_SIZE_COST = 0.01;
     private static final double PASSIVE_SIZE_EXPONENT = 2.5;
     public static final double PASSIVE_LIFE_COST = 0.01;
     public static final double PASSIVE_TURN_SPEED_COST = 0.003;
@@ -95,8 +92,8 @@ public class Agent extends MobileEntity {
      * Allows for overall simulation difficulty control without messing with other parameters
      */
     private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.000001;
-    private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.004;
-    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 3000000;
+    private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.0045;
+    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 4000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     /**
      * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
@@ -536,7 +533,7 @@ public class Agent extends MobileEntity {
     }
 
     private static @NotNull NeuralNetwork newBrain() {
-        return new NeuralNetwork(new int[] {NUM_INPUTS, 10, 5});    // TODO: Probably make the hidden layer a little bigger
+        return new NeuralNetwork(new int[] {NUM_INPUTS, (int) (NUM_INPUTS * 0.4), 5});    // TODO: Probably make the hidden layer a little bigger
     }
 
     private static @NotNull NeuralNetwork newFoodEvaluator() {
@@ -723,6 +720,7 @@ public class Agent extends MobileEntity {
     public void getDecision() {
         // TODO: Update the brain to take in the direction to the best food and the best prey and worst threat, as well as the value of each. Allow the brain to decide how to turn as a value -1 - 1, instead of only allowing it to pick which one to face towards.
         // TODO: When passing the direction to the above things, have it be relative to the Agent's direction, not the map.
+        // TODO: ADD OUTPUT FOR AGENTS TO DECIDE HOW MUCH RANDOMNESS TO ADD TO THEIR DIRECTION EACH STEP.
         float[] inputs = getInput();
 //        System.out.println(Arrays.toString(inputs));
 //        float[] output = brain.predict9x10x5(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7], inputs[8]);   // TODO: ADD BY-HAND METHOD
@@ -803,8 +801,10 @@ public class Agent extends MobileEntity {
         if (drawVisionRadius) {
             gc.setLineWidth(1);
             gc.strokeOval(x() - visionRadius, y() - visionRadius, visionRadius * 2, visionRadius * 2);
+        }
 
-            gc.setLineWidth(3);
+        if (this == environment.getSelectedAgent()) {
+            gc.setLineWidth(7);
             for (RaySnapshot ray : raySnapshots) {
                 if (ray == null) continue;
                 Vector start = getPosition();
