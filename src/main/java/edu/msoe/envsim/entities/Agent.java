@@ -194,7 +194,7 @@ public class Agent extends MobileEntity {
     private Food lastEatenFood; // TODO: Probably don't need this anymore with raycasts
     private boolean alive = true;
 
-    private AgentDecision decision;
+    private AgentDecision decision = new AgentDecision(0, 0, false);
     private String priority = "WANDER";
     private double jitterRequested = 0;
 
@@ -421,7 +421,7 @@ public class Agent extends MobileEntity {
             }
         }
 
-        if (!collidedAgent && decision.desiresPredation()) {
+        if (!collidedAgent && desiresPredation()) {
             energy -= FALSE_PREDATION_PUNISHMENT_FACTOR * getRadius();
         }
 
@@ -465,7 +465,7 @@ public class Agent extends MobileEntity {
     private void interact(Agent other) {
         if (!this.alive || !other.alive) return;
 
-        if (decision.desiresPredation()) {
+        if (desiresPredation()) {
             attemptPredation(other);
         }
     }
@@ -485,7 +485,7 @@ public class Agent extends MobileEntity {
         double selfAttack = this.attack / prey.defense;
 
         double otherAttack = 0;
-        if (prey.decision.desiresPredation()) {
+        if (prey.desiresPredation()) {
             prey.changeEnergy(prey.getPredationCost(this));
             otherAttack = prey.attack / this.defense;
         }
@@ -497,7 +497,7 @@ public class Agent extends MobileEntity {
             die();
             prey.die();
         } else if (selfHealth <= 0) {
-            if (otherHealth > 0 && prey.decision.desiresPredation()) {
+            if (otherHealth > 0 && prey.desiresPredation()) {
                 prey.succeedPredation(this);
             }
             die();
@@ -774,7 +774,7 @@ public class Agent extends MobileEntity {
     }
 
     public boolean desiresPredation() {
-        return decision.desiresPredation();
+        return decision != null && decision.desiresPredation();
     }
 
     public String getPriority() {

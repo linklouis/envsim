@@ -256,19 +256,19 @@ public class Environment extends Canvas {
                 if (file.exists()) {
                     try {
                         AgentData data = AgentData.loadFromFile(file);
-
-                        // Convert scene/screen drop coordinates to world coordinates based on current zoom and camera pan
                         double worldX = (e.getX() - translateX) / scale;
                         double worldY = (e.getY() - translateY) / scale;
 
-                        // Recreate agent at the exact dropped world coordinates
                         AgentData spawnedData = new AgentData(
                                 new Vector(worldX, worldY), data.color(), data.energy(), data.speed(),
                                 data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
                                 data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
                                 data.brain(), data.foodEvaluator(), data.preyEvaluator(), data.predatorEvaluator(), data.generation()
                         );
-                        new Agent(spawnedData, this);
+                        Agent agent = new Agent(spawnedData, this);
+                        flushPendingMobileEntities();
+                        selectedAgent = agent;
+                        resetCanvas();
                         success = true;
                     } catch (Exception ex) {
                         ex.printStackTrace();
@@ -493,32 +493,34 @@ public class Environment extends Canvas {
     private void simulationStep() {
         long t0 = System.nanoTime();
 
-        if (staticGridDirty) {
-            staticGridDirty = false;
-            staticGrid.rebuild(stationaryEntities);
-        }
-
-        // Flush newly created entities into main list before iterating
-        if (!pendingMobileEntities.isEmpty()) {
-            for (Entity entity : pendingMobileEntities) {
-                entity.onRegistered(); // TODO: Can I modify the add function of the collection to do the registration?
+        synchronized (pauseLock) {
+            if (staticGridDirty) {
+                staticGridDirty = false;
+                staticGrid.rebuild(stationaryEntities);
             }
-            mobileEntities.addAll(pendingMobileEntities);
-            pendingMobileEntities.clear();
-            agentGridCurrent = false;
-        }
 
-        if (!mobileEntitiesToRemove.isEmpty()) {
-            mobileEntities.removeAll(mobileEntitiesToRemove);
-            mobileEntitiesToRemove.clear();
-            agentGridCurrent = false;
-        }
+            // Flush newly created entities into main list before iterating
+            if (!pendingMobileEntities.isEmpty()) {
+                for (Entity entity : pendingMobileEntities) {
+                    entity.onRegistered();
+                }
+                mobileEntities.addAll(pendingMobileEntities);
+                pendingMobileEntities.clear();
+                agentGridCurrent = false;
+            }
 
-        // Positions only change in the move pass, and the grid is rebuilt right after it,
-        // so the grid is still valid here unless agents were added or removed above.
-        if (!agentGridCurrent) {
-            agentGrid.rebuild(mobileEntities);
-            agentGridCurrent = true;
+            if (!mobileEntitiesToRemove.isEmpty()) {
+                mobileEntities.removeAll(mobileEntitiesToRemove);
+                mobileEntitiesToRemove.clear();
+                agentGridCurrent = false;
+            }
+
+            // Positions only change in the move pass, and the grid is rebuilt right after it,
+            // so the grid is still valid here unless agents were added or removed above.
+            if (!agentGridCurrent) {
+                agentGrid.rebuild(mobileEntities);
+                agentGridCurrent = true;
+            }
         }
         long t1 = System.nanoTime();
 
@@ -944,5 +946,27 @@ public class Environment extends Canvas {
 
     public Agent getSelectedAgent() {
         return selectedAgent;
+    }
+
+    public void setSelectedAgent(Agent agent) {
+        this.selectedAgent = agent;
+    }
+
+    public void flushPendingMobileEntities() {
+        synchronized (pauseLock) {
+            if (!pendingMobileEntities.isEmpty()) {
+                for (Entity entity : pendingMobileEntities) {
+                    entity.onRegistered();
+                }
+                mobileEntities.addAll(pendingMobileEntities);
+                pendingMobileEntities.clear();
+            }
+            if (staticGridDirty) {
+                staticGridDirty = false;
+                staticGrid.rebuild(stationaryEntities);
+            }
+            agentGrid.rebuild(mobileEntities);
+            agentGridCurrent = true;
+        }
     }
 }

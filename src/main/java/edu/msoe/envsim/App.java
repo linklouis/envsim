@@ -14,7 +14,6 @@ import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
@@ -69,6 +68,10 @@ public class App extends Application {
     // Menu pieces
     private VBox menuPanel;
     private VBox editorSection;
+    private VBox agentSection;
+    private Button toggleAgentMgrBtn;
+    private TilePane agentTilePane;
+    private Runnable refreshAgentCards;
 
     @Override
     public void start(@NotNull Stage stage) {
@@ -85,7 +88,6 @@ public class App extends Application {
         // Layer Controls over Canvas using StackPane
         StackPane gamePane = new StackPane();
         VBox menuLayer = setupMenu(stage, gamePane);
-        VBox agentSidebarLayer = setupAgentSidebar(stage, gamePane);
 
         // Populate Entities
         for (int i = 0; i < 2000; i++) {
@@ -101,7 +103,7 @@ public class App extends Application {
 
         environment.startSimulation();
 
-        gamePane.getChildren().addAll(environment, menuLayer, agentSidebarLayer, inspectorPane);
+        gamePane.getChildren().addAll(environment, menuLayer, inspectorPane);
 
         setupDebugPane();
 
@@ -185,17 +187,27 @@ public class App extends Application {
     }
 
     private void setupKeyboardInputs(@NotNull Scene scene, Environment environment) {
-        scene.setOnKeyPressed(event -> {
+        scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
             switch (event.getCode()) {
-                case KeyCode.HOME -> toggleDebugMode();
-                case KeyCode.SPACE -> environment.toggleSimulation();
-                case KeyCode.E -> environment.toggleEditMode();
+                case KeyCode.HOME -> {
+                    toggleDebugMode();
+                    event.consume();
+                }
+                case KeyCode.SPACE -> {
+                    environment.toggleSimulation();
+                    event.consume();
+                }
+                case KeyCode.E -> {
+                    environment.toggleEditMode();
+                    event.consume();
+                }
                 case KeyCode.R -> {
                     if (simSpeed.getValue() == 60) {
                         simSpeed.setValue(Double.MAX_VALUE);
                     } else {
                         simSpeed.setValue(60);
                     }
+                    event.consume();
                 }
             }
         });
@@ -367,8 +379,101 @@ public class App extends Application {
         );
         setEditorSectionVisible(false);
 
+        // --- Agent Manager Section (Appends to the bottom of the menu) ---
+        Label agentMenuLabel = new Label("Agents");
+        agentMenuLabel.setStyle(CAPTION_STYLE);
+
+        toggleAgentMgrBtn = new Button("Show Saved Agents");
+        toggleAgentMgrBtn.setStyle(BUTTON_STYLE);
+        toggleAgentMgrBtn.setFocusTraversable(false);
+        toggleAgentMgrBtn.setMaxWidth(Double.MAX_VALUE);
+
+        agentTilePane = new TilePane();
+        agentTilePane.setHgap(8);
+        agentTilePane.setVgap(8);
+        agentTilePane.setPrefColumns(1);
+        agentTilePane.setAlignment(Pos.TOP_CENTER);
+
+        refreshAgentCards = () -> {
+            agentTilePane.getChildren().clear();
+            File dir = new File("agents");
+            if (dir.exists() && dir.isDirectory()) {
+                File[] files = dir.listFiles((_, name) -> name.endsWith(".agent"));
+                if (files != null) {
+                    Arrays.sort(files);
+                    for (File file : files) {
+                        String name = file.getName().replace(".agent", "");
+
+                        Label nameLabel = new Label(name);
+                        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+                        Button spawnBtn = new Button("Spawn Randomly");
+                        spawnBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 10px;");
+                        spawnBtn.setFocusTraversable(false);
+                        spawnBtn.setOnAction(_ -> {
+                            try {
+                                AgentData data = AgentData.loadFromFile(file);
+                                Vector randomPos = Vector.random(Vector.ZERO, environment.getSize());
+                                AgentData spawnedData = new AgentData(
+                                        randomPos, data.color(), data.energy(), data.speed(),
+                                        data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
+                                        data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
+                                        data.brain(), data.foodEvaluator(), data.preyEvaluator(), data.predatorEvaluator(), data.generation()
+                                );
+                                Agent agent = new Agent(spawnedData, environment);
+                                environment.flushPendingMobileEntities();
+                                environment.setSelectedAgent(agent);
+                                environment.resetCanvas();
+                            } catch (Exception ex) {
+                                showErrorPopup("Spawn Failed", "Could not load agent '" + name + "'.", ex.getMessage());
+                            }
+                        });
+
+                        VBox card = new VBox(4, nameLabel, spawnBtn);
+                        card.setAlignment(Pos.CENTER);
+                        card.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 6; -fx-padding: 8; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 6;");
+                        card.setMaxWidth(Double.MAX_VALUE);
+
+                        card.setOnDragDetected(event -> {
+                            javafx.scene.input.Dragboard db = card.startDragAndDrop(javafx.scene.input.TransferMode.COPY);
+                            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+                            content.putString(file.getAbsolutePath());
+                            db.setContent(content);
+                            event.consume();
+                        });
+
+                        agentTilePane.getChildren().add(card);
+                    }
+                }
+            }
+        };
+
+        refreshAgentCards.run();
+
+        ScrollPane agentScrollPane = new ScrollPane(agentTilePane);
+        agentScrollPane.setFitToWidth(true);
+        agentScrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        agentScrollPane.setPrefHeight(180);
+        agentScrollPane.vbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+
+        agentSection = new VBox(8, agentScrollPane);
+        agentSection.setVisible(false);
+        agentSection.setManaged(false);
+
+        toggleAgentMgrBtn.setOnAction(_ -> {
+            boolean show = !agentSection.isVisible();
+            agentSection.setVisible(show);
+            agentSection.setManaged(show);
+            toggleAgentMgrBtn.setText(show ? "Hide Saved Agents" : "Show Saved Agents");
+            if (show && refreshAgentCards != null) {
+                refreshAgentCards.run();
+            }
+        });
+
+        VBox agentMenuEntry = new VBox(8, new Separator(), agentMenuLabel, toggleAgentMgrBtn);
+
         // ---- Panel ----
-        menuPanel = new VBox(10, title, simSpeedLabel, simSpeed, resetCamera, new Separator(), envManagementLabel, fileIoOptions, editorSection);
+        menuPanel = new VBox(10, title, simSpeedLabel, simSpeed, resetCamera, new Separator(), envManagementLabel, fileIoOptions, agentMenuEntry, agentSection, editorSection);
         menuPanel.setPadding(new Insets(15));
         menuPanel.setPrefWidth(240);
         menuPanel.setMaxWidth(USE_PREF_SIZE);
@@ -393,105 +498,6 @@ public class App extends Application {
         StackPane.setMargin(menuLayer, new Insets(15));
 
         return menuLayer;
-    }
-
-    private @NotNull VBox setupAgentSidebar(Stage stage, StackPane gamePane) {
-        Label title = new Label("Saved Agents");
-        title.setStyle(TITLE_STYLE);
-
-        TilePane agentTilePane = new TilePane();
-        agentTilePane.setHgap(10);
-        agentTilePane.setVgap(10);
-        agentTilePane.setPrefColumns(1);
-        agentTilePane.setAlignment(Pos.TOP_CENTER);
-
-        Runnable refreshAgentCards = () -> {
-            agentTilePane.getChildren().clear();
-            File dir = new File("agents");
-            if (dir.exists() && dir.isDirectory()) {
-                File[] files = dir.listFiles((_, name) -> name.endsWith(".agent"));
-                if (files != null) {
-                    Arrays.sort(files);
-                    for (File file : files) {
-                        String name = file.getName().replace(".agent", "");
-
-                        Label nameLabel = new Label(name);
-                        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;");
-
-                        Button spawnBtn = new Button("Spawn in Sim");
-                        spawnBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 11px;");
-                        spawnBtn.setFocusTraversable(false);
-                        spawnBtn.setOnAction(_ -> {
-                            try {
-                                AgentData data = AgentData.loadFromFile(file);
-                                // Spawn at center of current view or random position
-                                // TODO: Do we ant to be mutating?
-                                new Agent(data.mutate(), environment);
-                            } catch (Exception ex) {
-                                showErrorPopup("Spawn Failed", "Could not load agent '" + name + "'.", ex.getMessage());
-                            }
-                        });
-
-                        VBox card = new VBox(6, nameLabel, spawnBtn);
-                        card.setAlignment(Pos.CENTER);
-                        card.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 6; -fx-padding: 8; -fx-border-color: #555; -fx-border-radius: 6;");
-
-                        // --- Drag and Drop Setup ---
-                        card.setOnDragDetected(event -> {
-                            javafx.scene.input.Dragboard db = card.startDragAndDrop(javafx.scene.input.TransferMode.COPY);
-                            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
-                            content.putString(file.getAbsolutePath());
-                            db.setContent(content);
-                            event.consume();
-                        });
-
-                        agentTilePane.getChildren().add(card);
-                    }
-                }
-            }
-        };
-
-        refreshAgentCards.run();
-
-        Button refreshBtn = new Button("Refresh List");
-        refreshBtn.setStyle(BUTTON_STYLE);
-        refreshBtn.setFocusTraversable(false);
-        refreshBtn.setMaxWidth(Double.MAX_VALUE);
-        refreshBtn.setOnAction(_ -> refreshAgentCards.run());
-
-        ScrollPane scrollPane = new ScrollPane(agentTilePane);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        scrollPane.setPrefHeight(400);
-
-        VBox sidebarPanel = new VBox(10, title, refreshBtn, scrollPane);
-        sidebarPanel.setPadding(new Insets(15));
-        sidebarPanel.setPrefWidth(220);
-        sidebarPanel.setStyle(PANEL_STYLE);
-        sidebarPanel.setVisible(false);
-        sidebarPanel.setManaged(false);
-
-        // Toggle button on the right edge or next to menu
-        Button toggleSidebarBtn = new Button("Agents");
-        toggleSidebarBtn.setStyle(BUTTON_STYLE);
-        toggleSidebarBtn.setFocusTraversable(false);
-        toggleSidebarBtn.setOnAction(_ -> {
-            boolean isOpen = sidebarPanel.isVisible();
-            sidebarPanel.setVisible(!isOpen);
-            sidebarPanel.setManaged(!isOpen);
-            if (!isOpen) refreshAgentCards.run();
-        });
-
-        VBox container = new VBox(8, toggleSidebarBtn, sidebarPanel);
-        container.setAlignment(Pos.TOP_RIGHT);
-        container.setMaxWidth(USE_PREF_SIZE);
-        container.setMaxHeight(USE_PREF_SIZE);
-        container.setPickOnBounds(false);
-
-        StackPane.setAlignment(container, Pos.TOP_RIGHT);
-        StackPane.setMargin(container, new Insets(15));
-
-        return container;
     }
 
     private void showErrorPopup(String titleText, String headerText, String contentText) {
@@ -730,18 +736,18 @@ public class App extends Application {
     private void setMenuOpen(boolean open) {
         menuPanel.setVisible(open);
         menuPanel.setManaged(open);
+        if (!open && agentSection != null) {
+            agentSection.setVisible(false);
+            agentSection.setManaged(false);
+            if (toggleAgentMgrBtn != null) {
+                toggleAgentMgrBtn.setText("Show Saved Agents");
+            }
+        }
     }
 
     private void setEditorSectionVisible(boolean visible) {
         editorSection.setVisible(visible);
         editorSection.setManaged(visible);
-    }
-
-    private void drawRandomShapes(@NotNull GraphicsContext gc) {
-        gc.setFill(Color.hsb(Math.random() * 360, 0.8, 0.9, 0.7));
-        double x = Math.random() * (gc.getCanvas().getWidth() - 50);
-        double y = Math.random() * (gc.getCanvas().getHeight() - 50);
-        gc.fillOval(x, y, 40, 40);
     }
 
     private void toggleDebugMode() {
