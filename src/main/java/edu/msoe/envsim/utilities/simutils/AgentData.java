@@ -13,10 +13,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public record AgentData(Vector position, Color color, double energy, double speed, double turnSpeed, double size,
                         double visionRadius, double healthRegenSpeed, double swimSkill, double attack, double defense,
-                        double fieldOfView,
-                        NeuralNetwork brain, NeuralNetwork foodEvaluator,
-                        NeuralNetwork preyEvaluator, NeuralNetwork predatorEvaluator,
-                        int generation) {
+                        double fieldOfView, NeuralNetwork brain, int generation) {
     public static final double MUTATION_CHANCE = 0.1;
     public static final double NEURON_MUTATION_SIZE = 0.02;
     public static final double ATTRIBUTE_MUTATION_SIZE = 0.2;
@@ -41,9 +38,6 @@ public record AgentData(Vector position, Color color, double energy, double spee
                 mutateAttribute(defense),
                 mutateAttribute(fieldOfView),
                 this.brain.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
-                this.foodEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
-                this.preyEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
-                this.predatorEvaluator.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
                 generation + 1
         );
     }
@@ -77,9 +71,6 @@ public record AgentData(Vector position, Color color, double energy, double spee
 
             // Serialize Neural Networks
             brain.save(out);
-            foodEvaluator.save(out);
-            preyEvaluator.save(out);
-            predatorEvaluator.save(out);
         }
     }
 
@@ -109,13 +100,10 @@ public record AgentData(Vector position, Color color, double energy, double spee
             int generation = in.readInt();
 
             NeuralNetwork brain = NeuralNetwork.load(in);
-            NeuralNetwork foodEvaluator = NeuralNetwork.load(in);
-            NeuralNetwork preyEvaluator = NeuralNetwork.load(in);
-            NeuralNetwork predatorEvaluator = NeuralNetwork.load(in);
 
             return new AgentData(new Vector(px, py), color, energy, speed, turnSpeed, size,
                     visionRadius, healthRegenSpeed, swimSkill, attack, defense, fieldOfView,
-                    brain, foodEvaluator, preyEvaluator, predatorEvaluator, generation);
+                    brain, generation);
         }
     }
 }

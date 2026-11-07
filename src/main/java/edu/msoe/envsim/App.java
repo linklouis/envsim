@@ -429,7 +429,7 @@ public class App extends Application {
                                         randomPos, data.color(), data.energy(), data.speed(),
                                         data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
                                         data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
-                                        data.brain(), data.foodEvaluator(), data.preyEvaluator(), data.predatorEvaluator(), data.generation()
+                                        data.brain(), data.generation()
                                 );
                                 Agent agent = new Agent(spawnedData, environment);
                                 environment.flushPendingMobileEntities();

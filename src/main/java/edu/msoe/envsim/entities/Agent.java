@@ -156,17 +156,6 @@ public class Agent extends MobileEntity {
     private final double fieldOfView;
 
     private final @NotNull NeuralNetwork brain;
-    /**
-     * Inputs: food size, distance
-     * Output: value
-     */
-    private final @NotNull NeuralNetwork foodEvaluator;
-    /**
-     * Inputs: self size, agent size, distance // TODO: In the future, maybe add what direction it's moving in?
-     * Outputs: Value (1 = invaluable, 0 = useless, -1 = deadly threat)
-     */
-    private final @NotNull NeuralNetwork preyEvaluator;
-    private final @NotNull NeuralNetwork predatorEvaluator;
 
     private final float[] genome;
     private final float genomeNormSq;
@@ -182,11 +171,6 @@ public class Agent extends MobileEntity {
      * Can be replenished by eating.
      */
     private double energy;
-    /**
-     * TODO: Can get rid of if we keep only cloning
-     * TODO: Actually maybe don't so carnivores don't keep eating their kids?
-     */
-    private double timeSinceReproduction = 100000;
     private Food lastEatenFood; // TODO: Probably don't need this anymore with raycasts
     private boolean alive = true;
 
@@ -224,9 +208,6 @@ public class Agent extends MobileEntity {
                 Math.random() * 5,
                 Math.random() * (Math.PI - 0.5) + 0.5,
                 newBrain(),
-                newFoodEvaluator(),
-                newAgentEvaluator(),
-                newAgentEvaluator(),
                 0
         );
 
@@ -253,9 +234,6 @@ public class Agent extends MobileEntity {
         defense = agentData.defense();
         fieldOfView = agentData.fieldOfView();
         brain =  agentData.brain();
-        foodEvaluator = agentData.foodEvaluator();
-        preyEvaluator = agentData.preyEvaluator();
-        predatorEvaluator = agentData.predatorEvaluator();
 
         generation = agentData.generation();
 
@@ -288,9 +266,6 @@ public class Agent extends MobileEntity {
         traits.add((float) fieldOfView);
 
         traits.addAll(brain.getWeights());
-        traits.addAll(foodEvaluator.getWeights());
-        traits.addAll(preyEvaluator.getWeights());
-        traits.addAll(predatorEvaluator.getWeights());
 
         float[] genome = new float[traits.size()];
         for (int i = 0; i < traits.size(); i++) {
@@ -379,7 +354,6 @@ public class Agent extends MobileEntity {
         move(decision.turn(), decision.speed() * maxSpeed);
         changeEnergy(-getPassiveEnergyCost());
 
-        timeSinceReproduction++;
         //if (reproductionDesire > 0.6 && energy > 80) {
         if (energy > calculateCloneThreshold() && getRadius() / size > MIN_HEALTH_FOR_REPRODUCTION) {
             reproduce();
@@ -520,23 +494,10 @@ public class Agent extends MobileEntity {
     private void reproduce() {
         energy = Math.min(energy, calculateCloneThreshold() * MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT) / 2;
         new Agent(getAgentData().mutate(), environment);
-        timeSinceReproduction = 0;
     }
 
     private static @NotNull NeuralNetwork newBrain() {
         return new NeuralNetwork(new int[] {NUM_INPUTS, (int) (NUM_INPUTS * 0.4), 4});
-    }
-
-    private static @NotNull NeuralNetwork newFoodEvaluator() {
-        return new NeuralNetwork(new int[] {4, 3, 1});
-    }
-
-    /**
-     * TODO: consider velocity/direction?
-     * TODO: Add attack and defense
-     */
-    private static @NotNull NeuralNetwork newAgentEvaluator() {
-        return new NeuralNetwork(new int[] {7, 3, 1});
     }
 
 
@@ -603,42 +564,6 @@ public class Agent extends MobileEntity {
             inputs[8 + i] = entityType;    // TODO: Maybe make two, one for isAgent, one for isFood?
         }
         return inputs;
-    }
-
-    /**
-     * Computes the relative angle between the agent's facing direction and a target entity,
-     * normalized directly into the [-1.0, 1.0] range.
-     * Returns 0.0 if target is null or at the exact same location.
-     * Source: Google Gemini
-     */
-    private float calculateNormalizedRelativeAngle(Entity target) {
-        if (target == null) {
-            return 0f;
-        }
-
-        // Direct manual vector difference (Target Position - Agent Position)
-        double tx = target.x() - x();
-        double ty = target.y() - y();
-
-        double distSq = tx * tx + ty * ty;
-        if (distSq < 1e-12) {
-            return 0f;
-        }
-
-        double invDist = 1.0 / Math.sqrt(distSq);
-        tx *= invDist;
-        ty *= invDist;
-
-        double dirX = direction.x();
-        double dirY = direction.y();
-
-        // 2D Vector Cross product (sin of relative angle) & Dot product (cos of relative angle)
-        // cross = dirX * ty - dirY * tx
-        // dot   = dirX * tx + dirY * ty
-        double relativeAngle = Math.atan2(dirX * ty - dirY * tx, dirX * tx + dirY * ty);
-
-        // Normalize [-PI, PI] range into [-1, 1]
-        return (float) (relativeAngle / Math.PI);
     }
 
     @Override
@@ -750,9 +675,6 @@ public class Agent extends MobileEntity {
                 this.defense,
                 this.fieldOfView,
                 this.brain,
-                this.foodEvaluator,
-                this.preyEvaluator,
-                this.predatorEvaluator,
                 this.generation
         );
     }
