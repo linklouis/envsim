@@ -47,6 +47,7 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import static javafx.scene.control.PopupControl.USE_PREF_SIZE;
 
@@ -422,22 +423,29 @@ public class App extends Application {
                         spawnBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 9px; -fx-padding: 3 6;");
                         spawnBtn.setFocusTraversable(false);
                         spawnBtn.setOnAction(_ -> {
-                            try {
-                                AgentData data = AgentData.loadFromFile(file);
-                                Vector randomPos = Vector.random(Vector.ZERO, environment.getSize());
-                                AgentData spawnedData = new AgentData(
-                                        randomPos, data.color(), data.energy(), data.speed(),
-                                        data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
-                                        data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
-                                        data.brain(), data.generation()
-                                );
-                                Agent agent = new Agent(spawnedData, environment);
-                                environment.flushPendingMobileEntities();
-                                environment.setSelectedAgent(agent);
-                                environment.resetCanvas();
-                            } catch (Exception ex) {
-                                showErrorPopup("Spawn Failed", "Could not load agent '" + name + "'.", ex.getMessage());
-                            }
+                            CompletableFuture.supplyAsync(() -> {
+                                try {
+                                    return AgentData.loadFromFile(file);
+                                } catch (Exception ex) {
+                                    throw new RuntimeException(ex);
+                                }
+                            }).thenAcceptAsync(data -> {
+                                try {
+                                    Vector randomPos = Vector.random(Vector.ZERO, environment.getSize());
+                                    AgentData spawnedData = new AgentData(
+                                            randomPos, data.color(), data.energy(), data.speed(),
+                                            data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
+                                            data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
+                                            data.brain(), data.generation()
+                                    );
+                                    Agent agent = new Agent(spawnedData, environment);
+                                    environment.flushPendingMobileEntities();
+                                    environment.setSelectedAgent(agent);
+                                    environment.resetCanvas();
+                                } catch (Exception ex) {
+                                    showErrorPopup("Spawn Failed", "Could not spawn agent.", ex.getMessage());
+                                }
+                            }, Platform::runLater);
                         });
 
                         VBox cardDetails = new VBox(2, nameLabel, spawnBtn);
