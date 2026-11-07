@@ -14,6 +14,8 @@ import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
@@ -24,6 +26,7 @@ import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.ImageView;
+import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
@@ -389,8 +392,8 @@ public class App extends Application {
         toggleAgentMgrBtn.setMaxWidth(Double.MAX_VALUE);
 
         agentTilePane = new TilePane();
-        agentTilePane.setHgap(8);
-        agentTilePane.setVgap(8);
+        agentTilePane.setHgap(6);
+        agentTilePane.setVgap(6);
         agentTilePane.setPrefColumns(1);
         agentTilePane.setAlignment(Pos.TOP_CENTER);
 
@@ -404,11 +407,19 @@ public class App extends Application {
                     for (File file : files) {
                         String name = file.getName().replace(".agent", "");
 
+                        // Compact thumbnail sized to fit within menu width cleanly
+                        WritableImage thumb = loadAgentThumbnail(file, 90, 45);
+                        ImageView imageView = new ImageView(thumb);
+                        imageView.setFitWidth(90);
+                        imageView.setFitHeight(45);
+                        imageView.setPreserveRatio(true);
+
                         Label nameLabel = new Label(name);
-                        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+                        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+                        nameLabel.setMaxWidth(100);
 
                         Button spawnBtn = new Button("Spawn Randomly");
-                        spawnBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 10px;");
+                        spawnBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 9px; -fx-padding: 3 6;");
                         spawnBtn.setFocusTraversable(false);
                         spawnBtn.setOnAction(_ -> {
                             try {
@@ -429,9 +440,13 @@ public class App extends Application {
                             }
                         });
 
-                        VBox card = new VBox(4, nameLabel, spawnBtn);
-                        card.setAlignment(Pos.CENTER);
-                        card.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 6; -fx-padding: 8; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 6;");
+                        VBox cardDetails = new VBox(2, nameLabel, spawnBtn);
+                        cardDetails.setAlignment(Pos.CENTER_LEFT);
+                        HBox.setHgrow(cardDetails, Priority.ALWAYS);
+
+                        HBox card = new HBox(8, imageView, cardDetails);
+                        card.setAlignment(Pos.CENTER_LEFT);
+                        card.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 6; -fx-padding: 5 8; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 6;");
                         card.setMaxWidth(Double.MAX_VALUE);
 
                         card.setOnDragDetected(event -> {
@@ -453,12 +468,15 @@ public class App extends Application {
         ScrollPane agentScrollPane = new ScrollPane(agentTilePane);
         agentScrollPane.setFitToWidth(true);
         agentScrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        agentScrollPane.setPrefHeight(180);
+        agentScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); // Prevent horizontal scrollbars
         agentScrollPane.vbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        agentScrollPane.setPrefHeight(160); // Default preferred height when expanded
+        VBox.setVgrow(agentScrollPane, Priority.ALWAYS);
 
-        agentSection = new VBox(8, agentScrollPane);
+        agentSection = new VBox(6, agentScrollPane);
         agentSection.setVisible(false);
         agentSection.setManaged(false);
+        VBox.setVgrow(agentSection, Priority.ALWAYS);
 
         toggleAgentMgrBtn.setOnAction(_ -> {
             boolean show = !agentSection.isVisible();
@@ -478,6 +496,8 @@ public class App extends Application {
         menuPanel.setPrefWidth(240);
         menuPanel.setMaxWidth(USE_PREF_SIZE);
         menuPanel.setMaxHeight(USE_PREF_SIZE);
+        // Limit maximum height to the window height so it stays onscreen and scrolls when expanded
+        menuPanel.maxHeightProperty().bind(stage.heightProperty().subtract(40));
         menuPanel.setStyle(PANEL_STYLE);
         menuPanel.setFocusTraversable(false);
         setMenuOpen(false);
@@ -759,5 +779,39 @@ public class App extends Application {
         environment.setDebugMode(debugMode);
         debugBox.setVisible(debugMode);
         debugBox.setManaged(debugMode);
+    }
+
+    private @NotNull WritableImage loadAgentThumbnail(File file, int thumbW, int thumbH) {
+        try {
+            AgentData data = AgentData.loadFromFile(file);
+            WritableImage img = new WritableImage(thumbW, thumbH);
+            Canvas canvas = new Canvas(thumbW, thumbH);
+            GraphicsContext gc = canvas.getGraphicsContext2D();
+
+            gc.setFill(Color.web("#1e1e1e"));
+            gc.fillRect(0, 0, thumbW, thumbH);
+
+            double cx = thumbW / 2.0;
+            double cy = thumbH / 2.0;
+            double radius = Math.clamp(data.size(), 3.0, Math.min(thumbW, thumbH) * 0.35);
+
+            gc.setFill(data.color() != null ? data.color() : Color.WHITE);
+            gc.fillOval(cx - radius, cy - radius, radius * 2, radius * 2);
+
+            gc.setStroke(Color.WHITE);
+            gc.setLineWidth(1.5);
+            gc.strokeOval(cx - radius, cy - radius, radius * 2, radius * 2);
+
+            return canvas.snapshot(null, img);
+        } catch (Exception e) {
+            WritableImage fallback = new WritableImage(thumbW, thumbH);
+            PixelWriter writer = fallback.getPixelWriter();
+            for (int x = 0; x < thumbW; x++) {
+                for (int y = 0; y < thumbH; y++) {
+                    writer.setColor(x, y, Color.DARKGRAY);
+                }
+            }
+            return fallback;
+        }
     }
 }

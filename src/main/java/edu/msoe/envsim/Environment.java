@@ -521,24 +521,24 @@ public class Environment extends Canvas {
                 agentGrid.rebuild(mobileEntities);
                 agentGridCurrent = true;
             }
+            long t1 = System.nanoTime();
+
+            mobileEntities.parallelStream().forEach(MobileEntity::getDecision);
+            long t2 = System.nanoTime();
+            Stream.concat(mobileEntities.stream(), stationaryEntities.stream())
+                    .parallel().forEach(Entity::parallelStep);
+            agentGrid.rebuild(mobileEntities);   // positions just changed; collision queries need the new ones
+            mobileEntities.parallelStream().forEach(MobileEntity::findCollisions);
+
+            numPredationsCounter = 0;
+            for (MobileEntity e : mobileEntities) e.step();
+            numPredations = numPredationsCounter;
+
+            long t3 = System.nanoTime();
+            listMs = listMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
+            decideMs   = decideMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
+            stepMs = stepMs * 0.99 + (t3 - t2) / 1e6 * 0.01;
         }
-        long t1 = System.nanoTime();
-
-        mobileEntities.parallelStream().forEach(MobileEntity::getDecision);
-        long t2 = System.nanoTime();
-        Stream.concat(mobileEntities.stream(), stationaryEntities.stream())
-                .parallel().forEach(Entity::parallelStep);
-        agentGrid.rebuild(mobileEntities);   // positions just changed; collision queries need the new ones
-        mobileEntities.parallelStream().forEach(MobileEntity::findCollisions);
-
-        numPredationsCounter = 0;
-        for (MobileEntity e : mobileEntities) e.step();
-        numPredations = numPredationsCounter;
-
-        long t3 = System.nanoTime();
-        listMs = listMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
-        decideMs   = decideMs   * 0.99 + (t2 - t1) / 1e6 * 0.01;
-        stepMs = stepMs * 0.99 + (t3 - t2) / 1e6 * 0.01;
 
         Agent.updateDifficulty();
         simClock.update();
