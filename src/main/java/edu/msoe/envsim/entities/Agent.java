@@ -432,6 +432,10 @@ public class Agent extends MobileEntity {
         lastEatenFood = food;
     }
 
+    /**
+     * TODO: NOT PREVENTING CANNIBALISM ANYMORE
+     * @param other
+     */
     private void interact(Agent other) {
         if (!this.alive || !other.alive) return;
 
@@ -582,8 +586,9 @@ public class Agent extends MobileEntity {
         }
 
         jitterRequested = output[3];
-        double turn = (output[2] * 2 - 1) * turnSpeed;
-        turn += ThreadLocalRandom.current().nextDouble(-WANDER_JITTER_FACTOR, WANDER_JITTER_FACTOR) * maxTurnPerTick() * jitterRequested;
+        double turn = (output[2] * 2 - 1) * maxTurnPerTick();
+        double jitter = ThreadLocalRandom.current().nextDouble(-WANDER_JITTER_FACTOR, WANDER_JITTER_FACTOR) * maxTurnPerTick();
+        turn = turn * (1 - jitterRequested) + jitter * jitterRequested;
         turn = Math.clamp(turn, -maxTurnPerTick(), maxTurnPerTick());
 
         this.decision = new AgentDecision(output[0], turn, desiresPredation);
