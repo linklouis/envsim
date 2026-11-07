@@ -142,7 +142,6 @@ public class Agent extends MobileEntity {
     /**
      * How close an entity must be for the Agent to see it.
      * Higher values consume more {@link #energy} each time step.
-     * TODO: Should the agent be able to see obstacles? (Probably not) [Why did I say probably not? (Cuz it's slow?)]
      */
     private final double visionRadius;
     /**
@@ -150,9 +149,6 @@ public class Agent extends MobileEntity {
      */
     private final double visionRadiusSquared;
     private final double healthRegenSpeed;
-    /**
-     * TODO: IS THIS EVEN REALLY DOING ANYTHING?
-     */
     private final double turnSpeed;
     private final double swimSkill;
     private final double attack;
@@ -447,7 +443,7 @@ public class Agent extends MobileEntity {
      * @return 1 if the {@link Agent} is on a land tile, otherwise 0.
      */
     private int isOnLand() {
-        return cachedTerrain == TerrainType.STANDARD ? 1 : 0; // TODO
+        return cachedTerrain == TerrainType.STANDARD ? 1 : 0;
     }
 
     private void eat(@NotNull Food food) {
@@ -766,7 +762,7 @@ public class Agent extends MobileEntity {
     }
 
     private static double calculateCloneThreshold(double radius) {
-        return CLONE_THRESHOLD * Math.pow(radius, CLONE_THRESHOLD_EXPONENT); // TODO: Make the exponent a constant
+        return CLONE_THRESHOLD * Math.pow(radius, CLONE_THRESHOLD_EXPONENT);
     }
 
     public double calculateCloneThreshold() {
