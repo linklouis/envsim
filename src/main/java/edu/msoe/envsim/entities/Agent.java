@@ -271,7 +271,9 @@ public class Agent extends MobileEntity {
         for (int i = 0; i < traits.size(); i++) {
             genome[i] = traits.get(i);
         }
-        return genome;
+
+//        System.out.println(SpeciesGenomeMapper.getGenomeProjection(genome).length);
+        return SpeciesGenomeMapper.getGenomeProjection(genome);
     }
 
     /**
@@ -501,7 +503,7 @@ public class Agent extends MobileEntity {
     }
 
     private static @NotNull NeuralNetwork newBrain() {
-        return new NeuralNetwork(new int[] {NUM_INPUTS, (int) (NUM_INPUTS * 0.4), 4});
+        return new NeuralNetwork(new int[] {NUM_INPUTS, 16, 4});
     }
 
 
