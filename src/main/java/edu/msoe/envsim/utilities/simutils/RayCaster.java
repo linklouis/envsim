@@ -52,9 +52,9 @@ public class RayCaster {
 
     public void visitMobile(@NotNull Entity entity, double centerDistance) {
         // TODO: Not seeing members of your species could prevent more complex social behavior, but I'm not expecting that for now anyway. Might have to find a way around it at some point.
-        if (entity instanceof Agent agent && speciesResolver.apply(agent)) return;  // Don't see other members of species. Allows grouping without getting in each other's way.
         double distance = getCircleCollisionDistance(origin, direction, entity.getPosition(), entity.getRadius());
         if (distance > 0 && distance <= closestIntersection) {
+            if (entity instanceof Agent agent && speciesResolver.apply(agent)) return;  // Don't see other members of species. Allows grouping without getting in each other's way.
             closestIntersection = distance;
             closestEntity = entity;
         }

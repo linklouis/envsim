@@ -281,7 +281,7 @@ public class Agent extends MobileEntity {
      * @param other The other {@link Agent} to compare genomes with.
      * @return The Root Mean Squared proportional difference between the genes of the two {@link Agent}s.
      */
-    private double compareGenome(@NotNull Agent other) {
+    private double compareGenomeNormalized(@NotNull Agent other) {
         // TODO: This was updated to make each gene matter equally, which makes sense for the species check,
         //  but less sense for the color. I think physical traits should probably matter more for that.
         double totalRelativeDiff = 0;
@@ -303,7 +303,7 @@ public class Agent extends MobileEntity {
      * @param other The other {@link Agent} to compare genomes with.
      * @return A `double` representing the similarity score between the genetics of the two {@link Agent}s.
      */
-    private double compareGenomeOld(@NotNull Agent other) {
+    private double compareGenome(@NotNull Agent other) {
         float[] g1 = this.genome;
         float[] g2 = other.genome;
 
@@ -329,7 +329,7 @@ public class Agent extends MobileEntity {
      * @param other
      * @return
      */
-    private double getGenomeComparisonOld(@NotNull Agent other) {
+    private double getGenomeComparison(@NotNull Agent other) {
         Double cached = genomeComparisonCache.get(other.id);
         if (cached != null) return cached;
 
@@ -339,7 +339,7 @@ public class Agent extends MobileEntity {
         return comparison;
     }
 
-    private double getGenomeComparison(@NotNull Agent other) {
+    private double getGenomeComparisonNew(@NotNull Agent other) {
         int slot = (int) (other.id & 255);
         if (genomeComparisonIds[slot] == other.id) {
             return genomeComparisonValues[slot];
