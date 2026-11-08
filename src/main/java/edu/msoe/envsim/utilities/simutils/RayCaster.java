@@ -10,7 +10,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.Function;
 
 public class RayCaster {
-    // TODO: Update this to hold arrays for each and only visit each entity once.
     public record RayData(double distance, @Nullable Entity entity, TerrainType terrain) {
     }
 
@@ -74,82 +73,52 @@ public class RayCaster {
     public void visitStationary(@NotNull Entity entity, double centerDistance) {
         if (entity.getRadius() <= 0) return;
 
-        // Explicitly unrolled for numRays = 11
-        double d0 = getCircleCollisionDistance(origin, directions[0], entity.getPosition(), entity.getRadius());
-        if (d0 > 0 && d0 <= closestIntersections[0]) { closestIntersections[0] = d0; closestEntities[0] = entity; }
+        doOneStationaryRay(0, entity);
+        doOneStationaryRay(1, entity);
+        doOneStationaryRay(2, entity);
+        doOneStationaryRay(3, entity);
+        doOneStationaryRay(4, entity);
+        doOneStationaryRay(5, entity);
+        doOneStationaryRay(6, entity);
+        doOneStationaryRay(7, entity);
+        doOneStationaryRay(8, entity);
+        doOneStationaryRay(9, entity);
+        doOneStationaryRay(10, entity);
+    }
 
-        double d1 = getCircleCollisionDistance(origin, directions[1], entity.getPosition(), entity.getRadius());
-        if (d1 > 0 && d1 <= closestIntersections[1]) { closestIntersections[1] = d1; closestEntities[1] = entity; }
-
-        double d2 = getCircleCollisionDistance(origin, directions[2], entity.getPosition(), entity.getRadius());
-        if (d2 > 0 && d2 <= closestIntersections[2]) { closestIntersections[2] = d2; closestEntities[2] = entity; }
-
-        double d3 = getCircleCollisionDistance(origin, directions[3], entity.getPosition(), entity.getRadius());
-        if (d3 > 0 && d3 <= closestIntersections[3]) { closestIntersections[3] = d3; closestEntities[3] = entity; }
-
-        double d4 = getCircleCollisionDistance(origin, directions[4], entity.getPosition(), entity.getRadius());
-        if (d4 > 0 && d4 <= closestIntersections[4]) { closestIntersections[4] = d4; closestEntities[4] = entity; }
-
-        double d5 = getCircleCollisionDistance(origin, directions[5], entity.getPosition(), entity.getRadius());
-        if (d5 > 0 && d5 <= closestIntersections[5]) { closestIntersections[5] = d5; closestEntities[5] = entity; }
-
-        double d6 = getCircleCollisionDistance(origin, directions[6], entity.getPosition(), entity.getRadius());
-        if (d6 > 0 && d6 <= closestIntersections[6]) { closestIntersections[6] = d6; closestEntities[6] = entity; }
-
-        double d7 = getCircleCollisionDistance(origin, directions[7], entity.getPosition(), entity.getRadius());
-        if (d7 > 0 && d7 <= closestIntersections[7]) { closestIntersections[7] = d7; closestEntities[7] = entity; }
-
-        double d8 = getCircleCollisionDistance(origin, directions[8], entity.getPosition(), entity.getRadius());
-        if (d8 > 0 && d8 <= closestIntersections[8]) { closestIntersections[8] = d8; closestEntities[8] = entity; }
-
-        double d9 = getCircleCollisionDistance(origin, directions[9], entity.getPosition(), entity.getRadius());
-        if (d9 > 0 && d9 <= closestIntersections[9]) { closestIntersections[9] = d9; closestEntities[9] = entity; }
-
-        double d10 = getCircleCollisionDistance(origin, directions[10], entity.getPosition(), entity.getRadius());
-        if (d10 > 0 && d10 <= closestIntersections[10]) { closestIntersections[10] = d10; closestEntities[10] = entity; }
+    private void doOneStationaryRay(int index, @NotNull Entity entity) {
+        double dist = getCircleCollisionDistance(origin, directions[index], entity.getPosition(), entity.getRadius());
+        if (dist > 0 && dist <= closestIntersections[index]) {
+            closestIntersections[index] = dist;
+            closestEntities[index] = entity;
+        }
     }
 
     public void visitMobile(@NotNull Entity entity, double centerDistance) {
         if (entity.getRadius() <= 0) return;
 
-        // TODO: Not seeing members of your species could prevent more complex social behavior, but I'm not expecting that for now anyway. Might have to find a way around it at some point.
-        if (entity instanceof Agent agent && speciesResolver.apply(agent)) {
-            return;
+        if (doOneMobileRay(0, entity)) return;
+        if (doOneMobileRay(1, entity)) return;
+        if (doOneMobileRay(2, entity)) return;
+        if (doOneMobileRay(3, entity)) return;
+        if (doOneMobileRay(4, entity)) return;
+        if (doOneMobileRay(5, entity)) return;
+        if (doOneMobileRay(6, entity)) return;
+        if (doOneMobileRay(7, entity)) return;
+        if (doOneMobileRay(8, entity)) return;
+        if (doOneMobileRay(9, entity)) return;
+        doOneMobileRay(10, entity);
+    }
+
+    private boolean doOneMobileRay(int index, @NotNull Entity entity) {
+        double dist = getCircleCollisionDistance(origin, directions[index], entity.getPosition(), entity.getRadius());
+        if (dist > 0 && dist <= closestIntersections[index]) {
+            // TODO: Not seeing members of your species could prevent more complex social behavior, but I'm not expecting that for now anyway. Might have to find a way around it at some point.
+            if (speciesResolver.apply((Agent) entity)) return true; // Species resolution is slow. Only do it on Agents we know we care about.
+            closestIntersections[index] = dist;
+            closestEntities[index] = entity;
         }
-
-        // Explicitly unrolled for numRays = 11
-        double d0 = getCircleCollisionDistance(origin, directions[0], entity.getPosition(), entity.getRadius());
-        if (d0 > 0 && d0 <= closestIntersections[0]) { closestIntersections[0] = d0; closestEntities[0] = entity; }
-
-        double d1 = getCircleCollisionDistance(origin, directions[1], entity.getPosition(), entity.getRadius());
-        if (d1 > 0 && d1 <= closestIntersections[1]) { closestIntersections[1] = d1; closestEntities[1] = entity; }
-
-        double d2 = getCircleCollisionDistance(origin, directions[2], entity.getPosition(), entity.getRadius());
-        if (d2 > 0 && d2 <= closestIntersections[2]) { closestIntersections[2] = d2; closestEntities[2] = entity; }
-
-        double d3 = getCircleCollisionDistance(origin, directions[3], entity.getPosition(), entity.getRadius());
-        if (d3 > 0 && d3 <= closestIntersections[3]) { closestIntersections[3] = d3; closestEntities[3] = entity; }
-
-        double d4 = getCircleCollisionDistance(origin, directions[4], entity.getPosition(), entity.getRadius());
-        if (d4 > 0 && d4 <= closestIntersections[4]) { closestIntersections[4] = d4; closestEntities[4] = entity; }
-
-        double d5 = getCircleCollisionDistance(origin, directions[5], entity.getPosition(), entity.getRadius());
-        if (d5 > 0 && d5 <= closestIntersections[5]) { closestIntersections[5] = d5; closestEntities[5] = entity; }
-
-        double d6 = getCircleCollisionDistance(origin, directions[6], entity.getPosition(), entity.getRadius());
-        if (d6 > 0 && d6 <= closestIntersections[6]) { closestIntersections[6] = d6; closestEntities[6] = entity; }
-
-        double d7 = getCircleCollisionDistance(origin, directions[7], entity.getPosition(), entity.getRadius());
-        if (d7 > 0 && d7 <= closestIntersections[7]) { closestIntersections[7] = d7; closestEntities[7] = entity; }
-
-        double d8 = getCircleCollisionDistance(origin, directions[8], entity.getPosition(), entity.getRadius());
-        if (d8 > 0 && d8 <= closestIntersections[8]) { closestIntersections[8] = d8; closestEntities[8] = entity; }
-
-        double d9 = getCircleCollisionDistance(origin, directions[9], entity.getPosition(), entity.getRadius());
-        if (d9 > 0 && d9 <= closestIntersections[9]) { closestIntersections[9] = d9; closestEntities[9] = entity; }
-
-        double d10 = getCircleCollisionDistance(origin, directions[10], entity.getPosition(), entity.getRadius());
-        if (d10 > 0 && d10 <= closestIntersections[10]) { closestIntersections[10] = d10; closestEntities[10] = entity; }
+        return false;
     }
 
     public RayData[] getRayData() {
@@ -168,12 +137,25 @@ public class RayCaster {
     }
 
     public void reset(Vector position, double direction) {
-        for  (int i = 0; i < numRays; i++) {
-            closestIntersections[i] = maxDistance;
-            closestEntities[i] = null;
-            directions[i].setAngle(direction + relativeDirections[i]);
-        }
+        resetIndex(0, direction);
+        resetIndex(1, direction);
+        resetIndex(2, direction);
+        resetIndex(3, direction);
+        resetIndex(4, direction);
+        resetIndex(5, direction);
+        resetIndex(6, direction);
+        resetIndex(7, direction);
+        resetIndex(8, direction);
+        resetIndex(9, direction);
+        resetIndex(10, direction);
+
         origin = position;
+    }
+
+    private void resetIndex(int index, double direction) {
+        closestIntersections[index] = maxDistance;
+        closestEntities[index] = null;
+        directions[index].setAngle(direction + relativeDirections[index]);
     }
 
     /**
