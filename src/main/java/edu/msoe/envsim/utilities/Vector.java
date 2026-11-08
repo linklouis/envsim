@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * @param y The Y component of the vector
  */
 //@SuppressWarnings("unused")
-public record Vector(double x, double y) {
+public record Vector(double x, double y) implements VectorBlueprint {
     public static final @NotNull Vector ZERO = new Vector(0, 0);
     public static final @NotNull Vector I = new Vector(1, 0);
     public static final @NotNull Vector J = new Vector(0, 1);
@@ -80,6 +80,12 @@ public record Vector(double x, double y) {
                 Math.clamp(x, min.x(), max.x()),
                 Math.clamp(y, min.y(), max.y())
         );
+    }
+
+    public @NotNull Vector addScaled(@NotNull VectorBlueprint other, double scale) {
+        double x = x() + other.x() * scale;
+        double y = y() + other.y() * scale;
+        return new Vector(x, y);
     }
 
     @Contract(pure = true)

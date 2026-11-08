@@ -8,7 +8,6 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -65,7 +64,7 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.01;
+    private static final double PASSIVE_SIZE_COST = 0.0065;
     private static final double PASSIVE_SIZE_EXPONENT = 2.5;
     public static final double PASSIVE_LIFE_COST = 0.01;
     public static final double PASSIVE_TURN_SPEED_COST = 0.004;
@@ -93,7 +92,7 @@ public class Agent extends MobileEntity {
      */
     private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.0000005;
     private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.0045;
-    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 2000000;
+    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 1000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     /**
      * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
@@ -112,7 +111,7 @@ public class Agent extends MobileEntity {
      */
     private static final double BOOLEAN_DECISION_THRESHOLD = 0.32;
     private static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
-    private static final double SPECIES_SIMILARITY_THRESHOLD = 0.95;
+    private static final double SPECIES_SIMILARITY_THRESHOLD = 0.999;
     private static final double SPECIES_MAX_DIFFERENCE = Math.sqrt(-Math.log(SPECIES_SIMILARITY_THRESHOLD) / SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR);
 
 
@@ -121,9 +120,6 @@ public class Agent extends MobileEntity {
     private final Color baseColor;
     private final int generation;
     private final long id;
-
-    public record RaySnapshot(Vector direction, double distance, @Nullable Entity entity, TerrainType terrain) {}
-    private final RaySnapshot[] raySnapshots = new RaySnapshot[NUM_RAYS];
 
 
     // GENETIC ATTRIBUTES
@@ -184,7 +180,7 @@ public class Agent extends MobileEntity {
 
     // CACHES
     private TerrainType cachedTerrain;
-    private final RayCaster[] rayCasters;
+    private final RayCaster rayCaster;
     private final Map<Long, Double> genomeComparisonCache = new HashMap<>();
     private final long[] genomeComparisonIds = new long[256];     // ids start at 1, so 0 = empty
     private final double[] genomeComparisonValues = new double[256];
@@ -240,7 +236,7 @@ public class Agent extends MobileEntity {
         direction = Vector.random(1);
 
 //        rayDirections = RayCaster.calculateRayDirections(fieldOfView, NUM_RAYS);
-        rayCasters = RayCaster.getCasters(fieldOfView, NUM_RAYS, getPosition(), visionRadius, direction.angle(),
+        rayCaster = new RayCaster(getPosition(), fieldOfView, NUM_RAYS, visionRadius, direction.angle(),
                 environment::getTerrainType, a -> getGenomeComparison(a) < SPECIES_MAX_DIFFERENCE);
 
         genome = extractGenome();
@@ -508,22 +504,10 @@ public class Agent extends MobileEntity {
 
 
     private RayCaster.RayData @NotNull [] doRaycasts() {
-        RayCaster.RayData[] rayData = new RayCaster.RayData[NUM_RAYS];
-        double angle = this.direction.angle();
+        rayCaster.reset(getPosition(), this.direction.angle());
+        environment.visitEntitiesInRange(this, visionRadius, visionRadiusSquared, rayCaster.getStationaryVisitor(), rayCaster.getMobileVisitor());
 
-        int i = 0;
-        for (RayCaster caster: rayCasters) {
-            caster.reset(getPosition(), angle);
-            environment.visitEntitiesInRange(this, visionRadius, visionRadiusSquared, caster.getStationaryVisitor(), caster.getMobileVisitor());
-            RayCaster.RayData data = caster.getRayData();
-            rayData[i] = data;
-
-            // Capture a thread-safe snapshot for the rendering thread
-            raySnapshots[i] = new RaySnapshot(caster.getDirection(), data.distance(), data.entity(), data.terrain());
-            i++;
-        }
-
-        return rayData;
+        return rayCaster.getRayData();
     }
 
     /**
@@ -618,7 +602,7 @@ public class Agent extends MobileEntity {
 
         if (this == environment.getSelectedAgent()) {
             gc.setLineWidth(7);
-            for (RaySnapshot ray : raySnapshots) {
+            for (RayCaster.RaySnapshot ray : rayCaster.getRaySnapshots()) {
                 if (ray == null) continue;
                 Vector start = getPosition();
                 Vector end = start.add(ray.direction().scale(ray.distance()));
