@@ -171,6 +171,13 @@ public record Vector(double x, double y) implements VectorBlueprint {
         );
     }
 
+    double distanceSquaredToLine(@NotNull Vector origin, @NotNull Vector direction, double distToClosestPt) {
+        double distX = x() - (origin.x() + direction.x() * distToClosestPt);
+        double distY = y() - (origin.y() + direction.y() * distToClosestPt);
+        return (distX * distX) + (distY * distY);
+    }
+
+
 
     /**
      * @return The angle of the {@link Vector} in radians.

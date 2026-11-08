@@ -128,18 +128,15 @@ public class RayCaster {
      * @return
      */
     private double getCircleCollisionDistance(@NotNull Vector origin, @NotNull MutableVector direction, @NotNull Vector center, double radius) {
-        Vector toCenter = center.subtract(origin);
-
         /* TODO: We can use the distance to the closest point as the distance to the Entity.
          *  This would mean it's more based on the center of the entity rather than the outside edge.
          *  This could mean we don't see larger agents as soon as we should, but it avoids the sqrt.
          */
-        double distToClosestPt = direction.dot(toCenter);
+        double distToClosestPt = direction.dotSubtracted(center, origin);
 
-        // TODO: Manually do these calculations for speed
-        Vector closestPointOnRay = origin.addScaled(direction, distToClosestPt);
-        Vector dist = center.subtract(closestPointOnRay);
-        double distSq = dist.magnitudeSquared();
+        double distX = center.x() - (origin.x() + direction.x() * distToClosestPt);
+        double distY = center.y() - (origin.y() + direction.y() * distToClosestPt);
+        double distSq = distX * distX + distY * distY;
 
         double radiusSq = radius * radius;
         if (distSq > radiusSq) return -1;

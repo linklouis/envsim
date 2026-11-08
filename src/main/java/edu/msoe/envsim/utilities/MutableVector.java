@@ -53,6 +53,10 @@ public class MutableVector implements VectorBlueprint {
         return x() * other.x() + y() * other.y();
     }
 
+    public double dotSubtracted(@NotNull VectorBlueprint minuend, @NotNull VectorBlueprint subtrahend) {
+        return x() * (minuend.x() - subtrahend.x()) + y() * (minuend.y() - subtrahend.y());
+    }
+
 
     /*
      * Getters:
