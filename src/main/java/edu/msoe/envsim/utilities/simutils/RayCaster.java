@@ -73,52 +73,28 @@ public class RayCaster {
     public void visitStationary(@NotNull Entity entity, double centerDistance) {
         if (entity.getRadius() <= 0) return;
 
-        doOneStationaryRay(0, entity);
-        doOneStationaryRay(1, entity);
-        doOneStationaryRay(2, entity);
-        doOneStationaryRay(3, entity);
-        doOneStationaryRay(4, entity);
-        doOneStationaryRay(5, entity);
-        doOneStationaryRay(6, entity);
-        doOneStationaryRay(7, entity);
-        doOneStationaryRay(8, entity);
-        doOneStationaryRay(9, entity);
-        doOneStationaryRay(10, entity);
-    }
-
-    private void doOneStationaryRay(int index, @NotNull Entity entity) {
-        double dist = getCircleCollisionDistance(origin, directions[index], entity.getPosition(), entity.getRadius());
-        if (dist > 0 && dist <= closestIntersections[index]) {
-            closestIntersections[index] = dist;
-            closestEntities[index] = entity;
+        for (int i = 0; i < numRays; i++) {
+            double dist = getCircleCollisionDistance(origin, directions[i], entity.getPosition(), entity.getRadius());
+            if (dist > 0 && dist <= closestIntersections[i]) {
+                closestIntersections[i] = dist;
+                closestEntities[i] = entity;
+            }
         }
     }
 
     public void visitMobile(@NotNull Entity entity, double centerDistance) {
         if (entity.getRadius() <= 0) return;
 
-        if (doOneMobileRay(0, entity)) return;
-        if (doOneMobileRay(1, entity)) return;
-        if (doOneMobileRay(2, entity)) return;
-        if (doOneMobileRay(3, entity)) return;
-        if (doOneMobileRay(4, entity)) return;
-        if (doOneMobileRay(5, entity)) return;
-        if (doOneMobileRay(6, entity)) return;
-        if (doOneMobileRay(7, entity)) return;
-        if (doOneMobileRay(8, entity)) return;
-        if (doOneMobileRay(9, entity)) return;
-        doOneMobileRay(10, entity);
-    }
-
-    private boolean doOneMobileRay(int index, @NotNull Entity entity) {
-        double dist = getCircleCollisionDistance(origin, directions[index], entity.getPosition(), entity.getRadius());
-        if (dist > 0 && dist <= closestIntersections[index]) {
-            // TODO: Not seeing members of your species could prevent more complex social behavior, but I'm not expecting that for now anyway. Might have to find a way around it at some point.
-            if (speciesResolver.apply((Agent) entity)) return true; // Species resolution is slow. Only do it on Agents we know we care about.
-            closestIntersections[index] = dist;
-            closestEntities[index] = entity;
+        for (int i = 0; i < numRays; i++) {
+            double dist = getCircleCollisionDistance(origin, directions[i], entity.getPosition(), entity.getRadius());
+            if (dist > 0 && dist <= closestIntersections[i]) {
+                // TODO: Not seeing members of your species could prevent more complex social behavior, but I'm not expecting that for now anyway. Might have to find a way around it at some point.
+                if (speciesResolver.apply((Agent) entity))
+                    return; // Species resolution is slow. Only do it on Agents we know we care about.
+                closestIntersections[i] = dist;
+                closestEntities[i] = entity;
+            }
         }
-        return false;
     }
 
     public RayData[] getRayData() {
@@ -137,25 +113,13 @@ public class RayCaster {
     }
 
     public void reset(Vector position, double direction) {
-        resetIndex(0, direction);
-        resetIndex(1, direction);
-        resetIndex(2, direction);
-        resetIndex(3, direction);
-        resetIndex(4, direction);
-        resetIndex(5, direction);
-        resetIndex(6, direction);
-        resetIndex(7, direction);
-        resetIndex(8, direction);
-        resetIndex(9, direction);
-        resetIndex(10, direction);
+        for (int i = 0; i < numRays; i++) {
+            closestIntersections[i] = maxDistance;
+            closestEntities[i] = null;
+            directions[i].setAngle(direction + relativeDirections[i]);
+        }
 
         origin = position;
-    }
-
-    private void resetIndex(int index, double direction) {
-        closestIntersections[index] = maxDistance;
-        closestEntities[index] = null;
-        directions[index].setAngle(direction + relativeDirections[index]);
     }
 
     /**

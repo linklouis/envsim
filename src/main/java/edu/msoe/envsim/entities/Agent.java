@@ -326,7 +326,7 @@ public class Agent extends MobileEntity {
      * @param other
      * @return
      */
-    private double getGenomeComparison(@NotNull Agent other) {
+    private double getGenomeComparisonOld(@NotNull Agent other) {
         Double cached = genomeComparisonCache.get(other.id);
         if (cached != null) return cached;
 
@@ -336,7 +336,7 @@ public class Agent extends MobileEntity {
         return comparison;
     }
 
-    private double getGenomeComparisonNew(@NotNull Agent other) {
+    private double getGenomeComparison(@NotNull Agent other) {
         int slot = (int) (other.id & 255);
         if (genomeComparisonIds[slot] == other.id) {
             return genomeComparisonValues[slot];
