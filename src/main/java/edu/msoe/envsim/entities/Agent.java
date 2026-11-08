@@ -184,6 +184,7 @@ public class Agent extends MobileEntity {
     private final Map<Long, Double> genomeComparisonCache = new HashMap<>();
     private final long[] genomeComparisonIds = new long[256];     // ids start at 1, so 0 = empty
     private final double[] genomeComparisonValues = new double[256];
+    private final float[] inputBuffer = new float[NUM_INPUTS];
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -516,11 +517,9 @@ public class Agent extends MobileEntity {
      */
     @Contract(" -> new")
     private float @NotNull [] getInput() {
-        float[] inputs = new float[NUM_INPUTS];
-
-        inputs[0] = (float) (energy / calculateCloneThreshold());
-        inputs[1] = (float) (getRadius() / size);
-        inputs[2] = cachedTerrain.ordinal();
+        inputBuffer[0] = (float) (energy / calculateCloneThreshold());
+        inputBuffer[1] = (float) (getRadius() / size);
+        inputBuffer[2] = cachedTerrain.ordinal();
 
         RayCaster.RayData[] rayData = doRaycasts();
         for (int i = 0; i < NUM_RAYS * 6; i += 6) {
@@ -546,20 +545,20 @@ public class Agent extends MobileEntity {
                 }
             }
 
-            inputs[3 + i] = sizeRatio;
-            inputs[4 + i] = distance;
-            inputs[5 + i] = attackDefenseRatio;
-            inputs[6 + i] = defenseAttackRatio;
-            inputs[7 + i] = ray.terrain().ordinal();
-            inputs[8 + i] = entityType;    // TODO: Maybe make two, one for isAgent, one for isFood?
+            inputBuffer[3 + i] = sizeRatio;
+            inputBuffer[4 + i] = distance;
+            inputBuffer[5 + i] = attackDefenseRatio;
+            inputBuffer[6 + i] = defenseAttackRatio;
+            inputBuffer[7 + i] = ray.terrain().ordinal();
+            inputBuffer[8 + i] = entityType;    // TODO: Maybe make two, one for isAgent, one for isFood?
         }
-        return inputs;
+        return inputBuffer;
     }
 
     @Override
     public void getDecision() {
         float[] inputs = getInput();
-        float[] output = brain.predict(inputs);
+        float[] output = brain.predict69x16x4(inputs);
 
         double targetPrey = output[1];
         boolean desiresPredation;
