@@ -73,6 +73,8 @@ public class Agent extends MobileEntity {
      */
     private static final double SPEED_COST = 0.07;
     private static final int EFFORT_COST_EXPONENT = 2;
+    private static final int TURN_COST_EXPONENT = 2;
+    public static final int SIZE_SPEED_EXPONENT = 2;
     /**
      * TODO
      */
@@ -394,21 +396,20 @@ public class Agent extends MobileEntity {
             energy -= FALSE_PREDATION_PUNISHMENT_FACTOR * getRadius();
         }
 
-        if (energy <= 0 || getRadius() <= 0) die();
+//        if (energy <= 0 || getRadius() <= 0) die();
     }
 
-    private void move(double turn, double speed) {
+    private void move(double turn, double effort) {
         // TODO: Also add acceleration so larger ones start slower?
-        direction = direction.turn(turn);
-        double speedModifier = Math.pow(getRadius() * cachedTerrain.getSpeedSizeCostFactor(), 2) + 1;
-        double effort = speed / speedModifier;
-        double cost = SPEED_COST * Math.pow(effort, EFFORT_COST_EXPONENT) + TURN_COST * turn * turn; // TODO: Have moving in your non-preferred terrain cost more energy?
+        double cost = SPEED_COST * Math.pow(effort, EFFORT_COST_EXPONENT) + TURN_COST * Math.pow(turn, TURN_COST_EXPONENT);
+        changeEnergy(-cost);
 
-        if (energy >= cost) {
-            double functionalSpeed = effort * Math.abs(isOnLand() - swimSkill);
-            Vector next = getPosition().addScaledInBounds(direction, Vector.ZERO, getBounds(), functionalSpeed);
+        if (alive) {
+            direction = direction.turn(turn);
+            double sizeModifier = Math.pow(getRadius() * cachedTerrain.getSpeedSizeCostFactor(), SIZE_SPEED_EXPONENT) + 1;
+            double speed = effort / sizeModifier * Math.abs(isOnLand() - swimSkill);
+            Vector next = getPosition().addScaledInBounds(direction, Vector.ZERO, getBounds(), speed);
             setPosition(next);
-            changeEnergy(-cost);
         }
     }
 
@@ -453,6 +454,7 @@ public class Agent extends MobileEntity {
      */
     private void attemptPredation(@NotNull Agent prey) {
 //        if (this.parent == prey || prey.parent == this) return;  // Should be covered by the genome comparison
+        if (isSameSpecies(prey)) return;
 
         changeEnergy(getPredationCost(prey));
         double selfAttack = this.attack / prey.defense;
@@ -637,6 +639,12 @@ public class Agent extends MobileEntity {
         return super.getPosition();
     }
 
+    @Override
+    public void setRadius(double radius) {
+        super.setRadius(radius);
+        if (getRadius() <= 0) die(); // TODO: Could this cause issues with parallel stuff?
+    }
+
     private Vector getBounds() {
         return environment.getSize();
     }
@@ -671,6 +679,7 @@ public class Agent extends MobileEntity {
 
     private void changeEnergy(double change) {
         energy += change * GLOBAL_ENERGY_LOSS_FACTOR;
+        if (energy <= 0) die(); // TODO: Could this cause issues with parallel stuff?
     }
 
     private static double calculateCloneThreshold(double radius) {
