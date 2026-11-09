@@ -64,7 +64,7 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.0065;
+    private static final double PASSIVE_SIZE_COST = 0.002;
     private static final double PASSIVE_SIZE_EXPONENT = 2.5;
     public static final double PASSIVE_LIFE_COST = 0.01;
     public static final double PASSIVE_TURN_SPEED_COST = 0.004;

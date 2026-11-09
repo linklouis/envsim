@@ -19,6 +19,7 @@ public class RayCaster {
     private final int numRays;
     private final double @NotNull [] relativeDirections;
     private final double maxDistance;
+    private final double maxDistanceSq;
     private final @NotNull Function<Vector, TerrainType> terrainTypeResolver;
     private final @NotNull Function<Agent, Boolean> speciesResolver;
     private @NotNull Vector origin;
@@ -39,6 +40,7 @@ public class RayCaster {
         this.numRays = numRays;
         this.relativeDirections = getDirections(fieldOfView, numRays);
         this.maxDistance = maxDistance;
+        this.maxDistanceSq = maxDistance * maxDistance;
         this.terrainTypeResolver = terrainTypeResolver;
         this.speciesResolver = speciesResolver;
         this.closestIntersections = new double[numRays];
@@ -61,7 +63,7 @@ public class RayCaster {
         if (numRays % 2 == 0) throw new  IllegalArgumentException("numRays must be odd");
         double[] relativeDirections = new double[numRays];
 
-        double change = fieldOfView / numRays;
+        double change = fieldOfView / (numRays - 1);
         double start = -fieldOfView / 2;
         for (int i = 0; i < numRays; i++) {
             relativeDirections[i] = start + change * i;
@@ -70,8 +72,8 @@ public class RayCaster {
         return relativeDirections;
     }
 
-    public void visitStationary(@NotNull Entity entity, double centerDistance) {
-        if (entity.getRadius() <= 0) return;
+    public void visitStationary(@NotNull Entity entity, double centerDistanceSq) {
+        if (entity.getRadius() <= 0 || centerDistanceSq - entity.getRadius() * entity.getRadius() > maxDistanceSq) return;
 
         for (int i = 0; i < numRays; i++) {
             double dist = getCircleCollisionDistance(origin, directions[i], entity.getPosition(), entity.getRadius());
@@ -82,8 +84,8 @@ public class RayCaster {
         }
     }
 
-    public void visitMobile(@NotNull Entity entity, double centerDistance) {
-        if (entity.getRadius() <= 0) return;
+    public void visitMobile(@NotNull Entity entity, double centerDistanceSq) {
+        if (entity.getRadius() <= 0 || centerDistanceSq - entity.getRadius() * entity.getRadius() > maxDistanceSq) return;
 
         for (int i = 0; i < numRays; i++) {
             double dist = getCircleCollisionDistance(origin, directions[i], entity.getPosition(), entity.getRadius());
@@ -113,6 +115,7 @@ public class RayCaster {
     }
 
     public void reset(Vector position, double direction) {
+        // TODO: Why is this so expensive???
         for (int i = 0; i < numRays; i++) {
             closestIntersections[i] = maxDistance;
             closestEntities[i] = null;
