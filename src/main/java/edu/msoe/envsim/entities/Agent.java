@@ -240,7 +240,7 @@ public class Agent extends MobileEntity {
 
 //        rayDirections = RayCaster.calculateRayDirections(fieldOfView, NUM_RAYS);
         rayCaster = new RayCaster(getPosition(), fieldOfView, NUM_RAYS, visionRadius, direction.angle(),
-                environment::getTerrainType, a -> getGenomeComparison(a) < SPECIES_MAX_DIFFERENCE);
+                environment::getTerrainType, this::isSameSpecies);
 
         genome = extractGenome();
         float norm = 0;
@@ -347,6 +347,10 @@ public class Agent extends MobileEntity {
         genomeComparisonIds[slot] = other.id;
         genomeComparisonValues[slot] = comparison;
         return comparison;
+    }
+
+    private boolean isSameSpecies(@NotNull Agent other) {
+        return getGenomeComparison(other) < SPECIES_MAX_DIFFERENCE;
     }
 
     public void parallelStep() {
