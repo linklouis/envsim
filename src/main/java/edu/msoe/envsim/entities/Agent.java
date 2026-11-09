@@ -243,7 +243,7 @@ public class Agent extends MobileEntity {
 
 //        rayDirections = RayCaster.calculateRayDirections(fieldOfView, NUM_RAYS);
         rayCaster = new RayCaster(getPosition(), fieldOfView, NUM_RAYS, visionRadius, direction.angle(),
-                environment::getTerrainType, this::isSameSpecies);
+                environment::getTerrainType, this::isSameSpecies, environment.getSize());
 
         genome = extractGenome();
         float norm = 0;

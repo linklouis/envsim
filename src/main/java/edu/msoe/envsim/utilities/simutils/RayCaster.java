@@ -17,6 +17,7 @@ public class RayCaster {
     private final RaySnapshot[] raySnapshots;
 
     private final int numRays;
+    private final Vector worldSize;
     private final double @NotNull [] relativeDirections;
     private final double maxDistance;
     private final double maxDistanceSq;
@@ -32,12 +33,13 @@ public class RayCaster {
 
     public RayCaster(@NotNull Vector origin, double fieldOfView, int numRays, double maxDistance, double direction,
                      @NotNull Function<Vector, TerrainType> terrainTypeResolver,
-                     @NotNull Function<Agent, Boolean> speciesResolver) {
+                     @NotNull Function<Agent, Boolean> speciesResolver, Vector worldSize) {
         if (maxDistance < 0) throw new IllegalArgumentException("maxDistance is negative");
 
         this.raySnapshots = new RaySnapshot[numRays];
 
         this.numRays = numRays;
+        this.worldSize  = worldSize;
         this.relativeDirections = getDirections(fieldOfView, numRays);
         this.maxDistance = maxDistance;
         this.maxDistanceSq = maxDistance * maxDistance;
@@ -117,14 +119,46 @@ public class RayCaster {
     }
 
     public void reset(Vector position, double direction) {
+        origin = position;
+
         // TODO: Why is this so expensive???
         for (int i = 0; i < numRays; i++) {
-            closestIntersections[i] = maxDistance;
             closestEntities[i] = null;
             directions[i].setAngle(direction + relativeDirections[i]);
+
+            double dx = directions[i].x();
+            double dy = directions[i].y();
+
+            double outDist = getOutDist(dx, dy);
+
+            closestIntersections[i] = Math.min(outDist, maxDistance);
+        }
+    }
+
+    /**
+     * Source: Google Gemini, based on code from me
+     * @param dx
+     * @param dy
+     * @return
+     */
+    private double getOutDist(double dx, double dy) {
+        // Default to infinity if the ray is parallel to the walls
+        double xOutDist = Double.POSITIVE_INFINITY;
+        double yOutDist = Double.POSITIVE_INFINITY;
+
+        if (dx != 0) {
+            xOutDist = (dx > 0 ? worldSize.x() - origin.x() : -origin.x()) / dx;
         }
 
-        origin = position;
+        if (dy != 0) {
+            yOutDist = (dy > 0 ? worldSize.y() - origin.y() : -origin.y()) / dy;
+        }
+
+        // We only care about positive intersection distances (walls ahead of us)
+        double outDist = Double.POSITIVE_INFINITY;
+        if (xOutDist > 0) outDist = xOutDist;
+        if (yOutDist > 0 && yOutDist < outDist) outDist = yOutDist;
+        return outDist;
     }
 
     /**
