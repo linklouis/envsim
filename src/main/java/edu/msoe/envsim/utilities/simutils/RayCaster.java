@@ -73,7 +73,8 @@ public class RayCaster {
     }
 
     public void visitStationary(@NotNull Entity entity, double centerDistanceSq) {
-        if (entity.getRadius() <= 0 || centerDistanceSq - entity.getRadius() * entity.getRadius() > maxDistanceSq) return;
+        double maxReach = maxDistance + entity.getRadius();
+        if (entity.getRadius() <= 0 || centerDistanceSq > maxReach * maxReach) return;
 
         for (int i = 0; i < numRays; i++) {
             double dist = getCircleCollisionDistance(origin, directions[i], entity.getPosition(), entity.getRadius());
@@ -85,7 +86,8 @@ public class RayCaster {
     }
 
     public void visitMobile(@NotNull Entity entity, double centerDistanceSq) {
-        if (entity.getRadius() <= 0 || centerDistanceSq - entity.getRadius() * entity.getRadius() > maxDistanceSq) return;
+        double maxReach = maxDistance + entity.getRadius();
+        if (entity.getRadius() <= 0 || centerDistanceSq > maxReach * maxReach) return;
 
         for (int i = 0; i < numRays; i++) {
             double dist = getCircleCollisionDistance(origin, directions[i], entity.getPosition(), entity.getRadius());
