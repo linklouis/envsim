@@ -64,7 +64,7 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.002;
+    private static final double PASSIVE_SIZE_COST = 0.001;
     private static final double PASSIVE_SIZE_EXPONENT = 2.5;
     public static final double PASSIVE_LIFE_COST = 0.01;
     public static final double PASSIVE_TURN_SPEED_COST = 0.004;
@@ -74,7 +74,7 @@ public class Agent extends MobileEntity {
     private static final double SPEED_COST = 0.07;
     private static final int EFFORT_COST_EXPONENT = 2;
     private static final int TURN_COST_EXPONENT = 2;
-    public static final int SIZE_SPEED_EXPONENT = 2;
+    private static final int SIZE_SPEED_EXPONENT = 2;
     /**
      * TODO
      */
@@ -461,14 +461,31 @@ public class Agent extends MobileEntity {
 //        if (this.parent == prey || prey.parent == this) return;  // Should be covered by the genome comparison
         if (isSameSpecies(prey)) return;
 
-        changeEnergy(getPredationCost(prey));
-        double selfAttack = this.attack / prey.defense;
+        double selfCost = getPredationCost(prey);
+        double selfAttack = this.attack / prey.defense * Math.pow(this.getRadius() / prey.getRadius(), 0.5);
 
         double otherAttack = 0;
         if (prey.desiresPredation()) {
-            prey.changeEnergy(prey.getPredationCost(this));
-            otherAttack = prey.attack / this.defense;
+            if (wouldThisEnergyCostKillMe(selfCost)) {
+                // If the other wants to eat me, and the energy cost of attempting predation kills me,
+                // the other gets the food without spending energy, since I'm already dead.
+                prey.succeedPredation(this);
+                die();
+                return;
+            }
+            double preyCost = prey.getPredationCost(this);
+            if (prey.wouldThisEnergyCostKillMe(preyCost)) {
+                // If the energy cost of fighting back killed the prey,
+                // I get the food for free, since the prey is already dead.
+                this.succeedPredation(prey);
+                prey.die();
+                return;
+            }
+            prey.changeEnergy(preyCost);
+            otherAttack = prey.attack / this.defense * Math.pow(prey.getRadius() / this.getRadius(), 0.5);
         }
+
+        changeEnergy(selfCost);
 
         double selfHealth = this.getRadius() - otherAttack;
         double otherHealth = prey.getRadius() - selfAttack;
@@ -685,8 +702,16 @@ public class Agent extends MobileEntity {
         );
     }
 
+    private boolean wouldThisEnergyCostKillMe(double cost) {
+        return calculateEffectiveEnergyCost(cost) >= energy;
+    }
+
+    private double calculateEffectiveEnergyCost(double cost) {
+        return cost * GLOBAL_ENERGY_LOSS_FACTOR;
+    }
+
     private void changeEnergy(double change) {
-        energy += change * GLOBAL_ENERGY_LOSS_FACTOR;
+        energy += calculateEffectiveEnergyCost(change);
         if (energy <= 0) die(); // TODO: Could this cause issues with parallel stuff?
     }
 
@@ -694,6 +719,10 @@ public class Agent extends MobileEntity {
         return CLONE_THRESHOLD * Math.pow(radius, CLONE_THRESHOLD_EXPONENT);
     }
 
+    /**
+     * @return The amount of energy at which an Agent will automatically clone.
+     * Can also be thought of as the "maximum possible energy."
+     */
     public double calculateCloneThreshold() {
         return calculateCloneThreshold(getRadius());
     }
