@@ -178,6 +178,7 @@ public class Agent extends MobileEntity {
 
     // COLLISION HANDLING
     private final List<Entity> collisions = new ArrayList<>();
+    // TODO: Do we need this? What is it doing?
     private static final BiPredicate<Entity, Entity> STILL_PRESENT = (_, other) -> other.getRadius() > 0;
 
     // CACHES
@@ -367,11 +368,9 @@ public class Agent extends MobileEntity {
         // TODO: Health regen could instead be something the NN can decide to consume energy to do.
         if (energy > HEALTH_REGENERATION_THRESHOLD * calculateCloneThreshold() && getRadius() < size) {
             // TODO: Have passive health regen speed be partially based on how low health is?
-            setRadius(getRadius() + (ThreadLocalRandom.current().nextDouble() * healthRegenSpeed));
+            double newRadius = getRadius() + (ThreadLocalRandom.current().nextDouble() * healthRegenSpeed); // TODO: Should this really even be random?
+            setRadius(Math.min(newRadius, size));
             changeEnergy(-(HEALTH_REGEN_COST * healthRegenSpeed)); // TODO: Have the cost be based on how successful the regen was?
-            if (getRadius() > size) {
-                setRadius(size);
-            }
         }
     }
 
