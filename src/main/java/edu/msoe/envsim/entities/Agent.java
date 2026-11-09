@@ -97,10 +97,11 @@ public class Agent extends MobileEntity {
     private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 1000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     /**
-     * The maximum number of degrees that an Agent's direction can be randomly changed by each tick when wandering.
+     * The maximum number of degrees that an Agent's wander offset can be randomly changed by each tick.
      * Prevents looping.
      */
-    private static final double WANDER_JITTER_FACTOR = 0.8;
+    private static final double RANDOM_WANDER_CHANGE_SPEED = 0.15;
+
 
     private static final AtomicLong NEXT_ID = new AtomicLong(1);
 
@@ -175,6 +176,7 @@ public class Agent extends MobileEntity {
     private AgentDecision decision = new AgentDecision(0, 0, false);
     private String priority = "WANDER";
     private double jitterRequested = 0;
+    private double currentWanderOffset = 0;
 
     // COLLISION HANDLING
     private final List<Entity> collisions = new ArrayList<>();
@@ -575,10 +577,13 @@ public class Agent extends MobileEntity {
             priority = "WANDER";
         }
 
+        currentWanderOffset += ThreadLocalRandom.current().nextDouble(-RANDOM_WANDER_CHANGE_SPEED, RANDOM_WANDER_CHANGE_SPEED);
+        currentWanderOffset = Math.clamp(currentWanderOffset, -1.0, 1.0);
+
+        double nnTurn = (output[2] * 2 - 1) * maxTurnPerTick();
+
         jitterRequested = output[3];
-        double turn = (output[2] * 2 - 1) * maxTurnPerTick();
-        double jitter = ThreadLocalRandom.current().nextDouble(-WANDER_JITTER_FACTOR, WANDER_JITTER_FACTOR) * maxTurnPerTick();
-        turn = turn * (1 - jitterRequested) + jitter * jitterRequested;
+        double turn = nnTurn * (1 - jitterRequested) + (currentWanderOffset * maxTurnPerTick()) * jitterRequested;
         turn = Math.clamp(turn, -maxTurnPerTick(), maxTurnPerTick());
 
         this.decision = new AgentDecision(output[0], turn, desiresPredation);
