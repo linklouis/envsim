@@ -66,19 +66,19 @@ public class Agent extends MobileEntity {
      */
     private static final double PASSIVE_SIZE_COST = 0.001;
     private static final double PASSIVE_SIZE_EXPONENT = 2.5;
-    public static final double PASSIVE_LIFE_COST = 0.01;
+    public static final double PASSIVE_LIFE_COST = 0.015;
     public static final double PASSIVE_TURN_SPEED_COST = 0.004;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
-    private static final double SPEED_COST = 0.07;
+    private static final double SPEED_COST = 0.09;
     private static final int EFFORT_COST_EXPONENT = 2;
     private static final int TURN_COST_EXPONENT = 2;
     private static final int SIZE_SPEED_EXPONENT = 2;
     /**
      * TODO
      */
-    private static final double TURN_COST = 3;
+    private static final double TURN_COST = 2.25;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
