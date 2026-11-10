@@ -3,26 +3,22 @@ package edu.msoe.envsim.utilities.simutils;
 import javafx.scene.paint.Color;
 
 public enum TerrainType {
-    // TODO: The terrain speedSizeCostFactor now doesn't actually have anything to do with the size, and is just applied universally to the speed.
-    STANDARD(new Color(0.1, 0.45, 0.2, 1), 1.0/35),
-    WATER(new Color(0.004, 0.329, 0.6, 1), 1.0/55);
+    STANDARD(new Color(0.1, 0.45, 0.2, 1), 0.05),
+    WATER(new Color(0.004, 0.329, 0.6, 1), 0.02);
 
     private final Color color;
-    /**
-     * How the factor to multiply radius by when calculating how much size should affect speed.
-     */
-    private final double speedSizeCostFactor;
+    private final double terrainResistance;
 
-    TerrainType(Color color,  double speedSizeCostFactor) {
+    TerrainType(Color color, double terrainResistance) {
         this.color = color;
-        this.speedSizeCostFactor = speedSizeCostFactor;
+        this.terrainResistance = terrainResistance;
+    }
+
+    public double getTerrainResistance() {
+        return terrainResistance;
     }
 
     public Color getColor() {
         return color;
-    }
-
-    public double getSpeedSizeCostFactor() {
-        return speedSizeCostFactor;
     }
 }

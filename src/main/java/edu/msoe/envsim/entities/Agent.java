@@ -180,6 +180,9 @@ public class Agent extends MobileEntity {
 
 
     // STATE
+    /**
+     * Should always be a unit vector
+     */
     private Vector direction;
     /**
      * The amount of energy the Agent currently has.
@@ -430,9 +433,10 @@ public class Agent extends MobileEntity {
 
         if (alive) {
             direction = direction.turn(turn);
-            // TODO: The terrain speedSizeCostFactor now doesn't actually have anything to do with the size, and is just applied universally to the speed.
-            double sizeModifier = Math.pow(getRadius() * cachedTerrain.getSpeedSizeCostFactor(), SIZE_SPEED_EXPONENT) + 1;
-            double speed = effort / sizeModifier * Math.abs(isOnLand() - swimSkill);
+            // Add 1 to the size modifier so that the divisor can never be < 1, so agents can never go faster than their max speed.
+            double sizeModifier = Math.pow(getRadius(), SIZE_SPEED_EXPONENT) * cachedTerrain.getTerrainResistance() + 1;
+            double terrainModifier = Math.abs(isOnLand() - swimSkill);
+            double speed = effort * terrainModifier / sizeModifier;
             Vector next = getPosition().addScaledInBounds(direction, Vector.ZERO, getBounds(), speed);
             setPosition(next);
         }
