@@ -124,6 +124,7 @@ public class AgentInspectorPane extends VBox {
         attackLabel.setText(String.format("%.2f", data.attack()));
         defenseLabel.setText(String.format("%.2f", data.defense()));
         fovLabel.setText(String.format("%.2f", data.fieldOfView()));
+        // TODO: Add line for actual max speed and current speed
 
         setVisible(true);
     }

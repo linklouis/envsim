@@ -25,6 +25,11 @@ public class Agent extends MobileEntity {
      * The actual threshold is calculated using this and radius.
      */
     private static final int CLONE_THRESHOLD = 20;
+    /**
+     * In the real world, this should likely be proportional to mass, so this should be 3.
+     * However, reproduction and mutation happen significantly faster here, and having this be any value above 1 causes
+     * the smaller agents to reproduce, and therefore evolve, much faster than the large ones, giving them a significant advantage.
+     */
     private static final double CLONE_THRESHOLD_EXPONENT = 0.8;
     /**
      * The size of bite an Agent can take relative to its radius.
@@ -65,7 +70,12 @@ public class Agent extends MobileEntity {
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
     private static final double PASSIVE_SIZE_COST = 0.001;
-    private static final double PASSIVE_SIZE_EXPONENT = 2.5;
+    /**
+     * Kleiber's Law dictates that basal metabolic rate scales with mass to the 3/4 power.
+     * In 3D, mass scales with R^3.
+     * So basal metabolic rate should scale to R^{9/4} = R^2.25
+     */
+    private static final double PASSIVE_SIZE_EXPONENT = 2.25;
     public static final double PASSIVE_LIFE_COST = 0.015;
     public static final double PASSIVE_TURN_SPEED_COST = 0.004;
     /**
@@ -74,7 +84,16 @@ public class Agent extends MobileEntity {
     private static final double SPEED_COST = 0.09;
     private static final int EFFORT_COST_EXPONENT = 2;
     private static final int TURN_COST_EXPONENT = 2;
-    private static final int SIZE_SPEED_EXPONENT = 2;
+    /**
+     * The exponent controlling how an agent's size penalizes its movement speed relative to effort.
+     * <p>
+     * Propulsion force scales with cross-sectional area (r^2),
+     * while mass scales with volume (r^3). By Newton's second law (F = ma), Acceleration
+     * (or here, max speed) = Force/Mass, which scales proportionally to r^2/r^3 = 1/r
+     * </p>
+     * <p>This value determines the exponent on that bottom r.</p>
+     */
+    private static final int SIZE_SPEED_EXPONENT = 1;
     /**
      * TODO
      */
@@ -411,6 +430,7 @@ public class Agent extends MobileEntity {
 
         if (alive) {
             direction = direction.turn(turn);
+            // TODO: The terrain speedSizeCostFactor now doesn't actually have anything to do with the size, and is just applied universally to the speed.
             double sizeModifier = Math.pow(getRadius() * cachedTerrain.getSpeedSizeCostFactor(), SIZE_SPEED_EXPONENT) + 1;
             double speed = effort / sizeModifier * Math.abs(isOnLand() - swimSkill);
             Vector next = getPosition().addScaledInBounds(direction, Vector.ZERO, getBounds(), speed);
