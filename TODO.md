@@ -7,6 +7,7 @@
 
 ### Agent Spawner
 - [ ] Make it wide enough to fit the whole names
+- [ ] Allow user to click on an agent to get details before spawning
 
 ### Agent Saving
 - [ ] Make the window match the style of everything else
