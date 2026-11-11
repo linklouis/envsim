@@ -2,24 +2,21 @@ package edu.msoe.envsim.entities;
 
 import edu.msoe.envsim.Environment;
 import edu.msoe.envsim.utilities.Vector;
-import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
 
-public class Food extends Entity {
+public class Food extends StationaryEntity {
     private final static double RADIUS_VALUE_SCALE = 2;
     private static final double GROWTH_SPEED = 0.002;
     private static final int REGROWTH_TIME = 100;
 
     private final double maxSize;
     private int regrowthTimer = 0;
-    private TerrainType terrainType;
 
     public Food(Vector position, double maxSize, @NotNull Environment env) {
         super(position, maxSize, Color.YELLOW, env);
         this.maxSize = maxSize;
-        terrainType = env.getTerrainType(getPosition());
     }
 
     @Override
@@ -46,7 +43,7 @@ public class Food extends Entity {
 
     /**
      * Source: Google Gemini
-     * @param targetConsumptionFraction
+     * @param targetConsumptionFraction The amount of the Food intended to be eaten as a portion of its current size
      */
     public void getEaten(double targetConsumptionFraction) {
         double currentRadius = getRadius();
@@ -58,14 +55,5 @@ public class Food extends Entity {
         if (getRadius() <= 0) {
             regrowthTimer = REGROWTH_TIME;
         }
-    }
-
-    @Override
-    public TerrainType getTerrainType() {
-        return terrainType;
-    }
-
-    public void setTerrainType(TerrainType terrainType) {
-        this.terrainType = terrainType;
     }
 }

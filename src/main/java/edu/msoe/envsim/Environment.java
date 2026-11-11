@@ -1,9 +1,6 @@
 package edu.msoe.envsim;
 
-import edu.msoe.envsim.entities.Agent;
-import edu.msoe.envsim.entities.Entity;
-import edu.msoe.envsim.entities.Food;
-import edu.msoe.envsim.entities.MobileEntity;
+import edu.msoe.envsim.entities.*;
 import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.apputils.Clock;
 import edu.msoe.envsim.utilities.apputils.DebugMessage;
@@ -60,7 +57,7 @@ public class Environment extends Canvas {
     private final Queue<MobileEntity> pendingMobileEntities = new ConcurrentLinkedQueue<>();
     private final Queue<MobileEntity> mobileEntitiesToRemove = new ConcurrentLinkedQueue<>();
 
-    private final List<Entity> stationaryEntities = new ArrayList<>();
+    private final List<StationaryEntity> stationaryEntities = new ArrayList<>();
 
     private final List<DebugMessage> debugMessages = new ArrayList<>();
     private boolean debugMode;
@@ -259,6 +256,7 @@ public class Environment extends Canvas {
                         double worldX = (e.getX() - translateX) / scale;
                         double worldY = (e.getY() - translateY) / scale;
 
+                        // TODO: MAKE SURE WE ONLY SHOW VALID AGENTS IN THE SPAWNING SCREEN, OR SHOW INVALID ONES AS RED
                         AgentData spawnedData = new AgentData(
                                 new Vector(worldX, worldY), data.color(), data.energy(), data.speed(),
                                 data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
@@ -377,6 +375,8 @@ public class Environment extends Canvas {
             startSimulation();
         }
         onSimModeStart.run();
+
+        updateStationaryEntityStates();
     }
 
     public void editMode() {
@@ -666,12 +666,6 @@ public class Environment extends Canvas {
             }
         }
         resetCanvas();
-
-        for (Entity entity : stationaryEntities) {
-            if (entity instanceof Food food) {
-                food.setTerrainType(getTerrainType(food.getPosition()));
-            }
-        }
     }
 
     public static void createDefaultEnvironments(int worldWidth, int worldHeight) {
@@ -777,6 +771,12 @@ public class Environment extends Canvas {
         translateY = 0;
     }
 
+    private void updateStationaryEntityStates() {
+        for (StationaryEntity entity : stationaryEntities) {
+            entity.updateWorldState();
+        }
+    }
+
 
     public void clearSelectedAgent() {
         selectedAgent = null;
@@ -785,8 +785,8 @@ public class Environment extends Canvas {
     public void addEntity(Entity entity) {
         if (entity instanceof MobileEntity mEntity) {
             pendingMobileEntities.add(mEntity);
-        } else {
-            stationaryEntities.add(entity);
+        } else if (entity instanceof StationaryEntity sEntity) {
+            stationaryEntities.add(sEntity);
             entity.onRegistered();
             staticGridDirty = true;
         }
