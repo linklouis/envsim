@@ -5,6 +5,7 @@
 - [ ] Remove desires predation
 - [ ] Dropdowns?
 - [ ] "Go To Agent" button
+- [ ] Add a radar chart for food preference?
 
 ### Agent Spawner
 - [ ] Make it wide enough to fit the whole names
@@ -31,3 +32,6 @@
 
 ### MISC.
 - [ ] Change the max zoom factor based on the world size
+
+## MISC.
+- [ ] Add pixel to meter scale to size energy cost calculation

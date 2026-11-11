@@ -1,6 +1,7 @@
 package edu.msoe.envsim.utilities.simutils;
 
 import edu.msoe.envsim.entities.Agent;
+import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.utilities.NeuralNetwork;
 import edu.msoe.envsim.utilities.Vector;
 import javafx.scene.paint.Color;
@@ -13,7 +14,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public record AgentData(Vector position, Color color, double energy, double speed, double turnSpeed, double size,
                         double visionRadius, double healthRegenSpeed, double swimSkill, double attack, double defense,
-                        double fieldOfView, NeuralNetwork brain, int generation) {
+                        double fieldOfView, Food.FoodPreference foodPreference, NeuralNetwork brain, int generation) {
     public static final double MUTATION_CHANCE = 0.1;
     public static final double NEURON_MUTATION_SIZE = 0.02;
     public static final double ATTRIBUTE_MUTATION_SIZE = 0.2;
@@ -26,7 +27,7 @@ public record AgentData(Vector position, Color color, double energy, double spee
         this(position, data.color(), data.energy(), data.speed(),
                 data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
                 data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
-                data.brain(), data.generation());
+                data.foodPreference(), data.brain(), data.generation());
     }
 
     @Contract(" -> new")
@@ -44,6 +45,7 @@ public record AgentData(Vector position, Color color, double energy, double spee
                 mutateAttribute(attack),
                 mutateAttribute(defense),
                 mutateAttribute(fieldOfView),
+                foodPreference.mutate(ATTRIBUTE_MUTATION_SIZE),
                 this.brain.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
                 generation + 1
         );
@@ -74,6 +76,7 @@ public record AgentData(Vector position, Color color, double energy, double spee
             out.writeDouble(attack);
             out.writeDouble(defense);
             out.writeDouble(fieldOfView);
+            foodPreference.writeValues(out);
             out.writeInt(generation);
 
             // Serialize Neural Networks
@@ -104,13 +107,14 @@ public record AgentData(Vector position, Color color, double energy, double spee
             double attack = in.readDouble();
             double defense = in.readDouble();
             double fieldOfView = in.readDouble();
+            Food.FoodPreference foodPreference = new Food.FoodPreference(in.readDouble(), in.readDouble(), in.readDouble());
             int generation = in.readInt();
 
             NeuralNetwork brain = NeuralNetwork.load(in);
 
             return new AgentData(new Vector(px, py), color, energy, speed, turnSpeed, size,
                     visionRadius, healthRegenSpeed, swimSkill, attack, defense, fieldOfView,
-                    brain, generation);
+                    foodPreference, brain, generation);
         }
     }
 }

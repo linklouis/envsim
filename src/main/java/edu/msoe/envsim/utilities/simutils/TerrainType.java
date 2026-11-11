@@ -7,7 +7,7 @@ import static edu.msoe.envsim.entities.Agent.WATER_DENSITY;
 
 public enum TerrainType {
     // Turning resistance has to be >= 1 because the division by radius already takes so much away from the turn.
-    DESERT(new Color(0.65, 0.54, 0.30, 1), 1.2, 0.8, 0.01, 0.0, AIR_DENSITY, 0.5),
+    DESERT(new Color(0.6, 0.54, 0.30, 1), 1.2, 0.8, 0.01, 0.0, AIR_DENSITY, 0.5),
     STANDARD(new Color(0.1, 0.45, 0.2, 1), 1.5, 0.9, 0.01, 0.0, AIR_DENSITY, 1.0),
     MARSH(new Color(0.22, 0.28, 0.14, 1), 1.8, 1.0, 0.08, 0.1, AIR_DENSITY, 1.3),
     WATER(new Color(0.004, 0.329, 0.6, 1), 1.0, 0.0, 0.0, 1.0, WATER_DENSITY, 1.1);

@@ -113,6 +113,10 @@ public class Agent extends MobileEntity {
     public static final double PASSIVE_LIFE_COST = 0.015;
     public static final double PASSIVE_TURN_SPEED_COST = 0.0004;
     /**
+     * The cost per tick of having a 100% preference for a single food type.
+     */
+    private static final double PASSIVE_FOOD_PREFERENCE_COST = 0.01;
+    /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
     private static final double SPEED_COST = 0.09;
@@ -131,13 +135,15 @@ public class Agent extends MobileEntity {
      * TODO: make better name
      */
     private static final int MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT = 3;
+
+
     /**
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
-    private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.0000000001;
+    private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.00000000001;
     private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.0045;
-    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 1000000;
+    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 1200000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     /**
      * The maximum number of degrees that an Agent's wander offset can be randomly changed by each tick.
@@ -151,7 +157,7 @@ public class Agent extends MobileEntity {
 
     // ARCHITECTURE PARAMETERS
     private static final int NUM_RAYS = 11;
-    private static final int NUM_INPUTS = 3 + NUM_RAYS * 6;
+    private static final int NUM_INPUTS = 4 + NUM_RAYS * 7;
     /**
      * The smallest value the NN can output that's still considered true for a boolean output
      */
@@ -196,6 +202,7 @@ public class Agent extends MobileEntity {
     private final double attack;
     private final double defense;
     private final double fieldOfView;
+    private final Food.FoodPreference foodPreference;
 
     private final @NotNull NeuralNetwork brain;
 
@@ -238,6 +245,7 @@ public class Agent extends MobileEntity {
     private final long[] genomeComparisonIds = new long[256];     // ids start at 1, so 0 = empty
     private final double[] genomeComparisonValues = new double[256];
     private final float[] inputBuffer = new float[NUM_INPUTS];
+    private final double perTickFoodPreferenceCost;
 
     // INSPECTOR VALUES
     private double mass = 0;
@@ -262,6 +270,7 @@ public class Agent extends MobileEntity {
                 Math.random() * 10,
                 Math.random() * 5,
                 Math.random() * (Math.PI - 0.5) + 0.5,
+                Food.FoodPreference.random(),
                 newBrain(),
                 0
         );
@@ -288,7 +297,10 @@ public class Agent extends MobileEntity {
         attack = agentData.attack();
         defense = agentData.defense();
         fieldOfView = agentData.fieldOfView();
+        foodPreference = agentData.foodPreference();
         brain =  agentData.brain();
+
+        perTickFoodPreferenceCost = foodPreference.calculatePerTickCost(PASSIVE_FOOD_PREFERENCE_COST);
 
         generation = agentData.generation();
 
@@ -519,7 +531,7 @@ public class Agent extends MobileEntity {
         double desiredFraction = (getRadius() * MAX_BITE_SIZE) / food.getRadius();
         double actualFraction = Math.min(1.0, desiredFraction);
 
-        double energyGained = actualFraction * food.getValue();
+        double energyGained = actualFraction * food.getValue(foodPreference);
         energy += energyGained;
 
         food.getEaten(desiredFraction);
@@ -629,11 +641,11 @@ public class Agent extends MobileEntity {
         inputBuffer[0] = (float) (energy / calculateCloneThreshold());
         inputBuffer[1] = (float) (getRadius() / size);
         inputBuffer[2] = cachedTerrain.ordinal();
-        // TODO: Add current speed
+        inputBuffer[3] = (float) speed;
 
         RayCaster.RayData[] rayData = doRaycasts();
-        for (int i = 0; i < NUM_RAYS * 6; i += 6) {
-            RayCaster.RayData ray = rayData[i/6];
+        for (int i = 0; i < NUM_RAYS * 7; i += 7) {
+            RayCaster.RayData ray = rayData[i/7];
             Entity entity = ray.entity();
 
             float sizeRatio = 0;
@@ -641,6 +653,7 @@ public class Agent extends MobileEntity {
             float attackDefenseRatio = 0;
             float defenseAttackRatio = 0;
             int entityType = 0;
+            float foodType = -1;
 
             if (entity != null) {
                 sizeRatio = (float) (entity.getRadius() / this.getRadius());
@@ -650,17 +663,21 @@ public class Agent extends MobileEntity {
                     attackDefenseRatio = (float) (this.attack / agent.defense);
                     defenseAttackRatio = (float) (this.defense / agent.attack);
                     entityType = 1;
+                } else if (entity instanceof Food food) {
+                    foodType = food.getFoodType();
+                    // entityType = 0
                 } else {
                     entityType = -1;
                 }
             }
 
-            inputBuffer[3 + i] = sizeRatio;
-            inputBuffer[4 + i] = distance;
-            inputBuffer[5 + i] = attackDefenseRatio;
-            inputBuffer[6 + i] = defenseAttackRatio;
-            inputBuffer[7 + i] = ray.terrain().ordinal();
-            inputBuffer[8 + i] = entityType;    // TODO: Maybe make two, one for isAgent, one for isFood?
+            inputBuffer[4 + i] = sizeRatio;
+            inputBuffer[5 + i] = distance;
+            inputBuffer[6 + i] = attackDefenseRatio;
+            inputBuffer[7 + i] = defenseAttackRatio;
+            inputBuffer[8 + i] = ray.terrain().ordinal();
+            inputBuffer[9 + i] = entityType;    // TODO: Maybe make two, one for isAgent, one for isFood?
+            inputBuffer[10 + i] = foodType;
         }
         return inputBuffer;
     }
@@ -760,7 +777,8 @@ public class Agent extends MobileEntity {
                 + turnSpeed * getRadius() * PASSIVE_TURN_SPEED_COST
                 + visionRadius * PASSIVE_VISION_QUALITY_COST
                 + Math.pow(getRadius(), PASSIVE_SIZE_EXPONENT) * PASSIVE_SIZE_COST
-                + defense * PASSIVE_DEFENSE_COST;
+                + defense * PASSIVE_DEFENSE_COST
+                + perTickFoodPreferenceCost;
     }
 
     @Contract(" -> new")
@@ -778,6 +796,7 @@ public class Agent extends MobileEntity {
                 this.attack,
                 this.defense,
                 this.fieldOfView,
+                this.foodPreference,
                 this.brain,
                 this.generation
         );
