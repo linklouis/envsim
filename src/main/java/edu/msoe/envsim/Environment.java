@@ -40,7 +40,7 @@ public class Environment extends Canvas {
      * The number of screen pixels per terrain pixel on each axis.
      */
     public static final int TERRAIN_RESOLUTION_RATIO = 20;
-    private static final String DEFAULT_ENVIRONMENT = "environments/ocean-with-lake-2.terrain";
+    private static final String DEFAULT_ENVIRONMENT = "environments/ocean-with-lake-huge.terrain";
 
     /**
      * Food and any other entity that never moves. Rebuilt only when something is added.
@@ -282,7 +282,7 @@ public class Environment extends Canvas {
         // Zooming controls
         setOnScroll(e -> {
             double rawZoomFactor = e.getDeltaY() > 0 ? 1.05 : 1 / 1.05;
-            double newScale = Math.clamp(scale * rawZoomFactor, 0.07, 10.0);
+            double newScale = Math.clamp(scale * rawZoomFactor, 0.03, 10.0);
             double actualZoomFactor = newScale / scale;
 
             double mouseX = e.getX();

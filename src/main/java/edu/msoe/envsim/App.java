@@ -94,13 +94,13 @@ public class App extends Application {
         VBox menuLayer = setupMenu(stage, gamePane);
 
         // Populate Entities
-        for (int i = 0; i < 2000; i++) {
+        for (int i = 0; i < 6000; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
 
             new Agent(Math.random() * 30 + 3, randomColor, environment);
         }
 
-        for (int i = 0; i < 3000; i++) {
+        for (int i = 0; i < 9000; i++) {
             Vector position = Vector.random(Vector.ZERO, environment.getSize());
             new Food(position, Math.pow(Math.random(), 4) * 40 + 5, environment);
         }
@@ -220,7 +220,7 @@ public class App extends Application {
     private void setupEnvironment(@NotNull Stage stage, int viewWidth, int viewHeight, AgentInspectorPane inspectorPane) {
         Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
         double aspectRatio = screenBounds.getHeight() / screenBounds.getWidth();
-        int worldWidth = (int) (7000 * 3.0);
+        int worldWidth = (int) (7000 * 9.0);
         int worldHeight = (int) (worldWidth * aspectRatio);
         double zoom = screenBounds.getWidth() / worldWidth;
 
@@ -359,7 +359,7 @@ public class App extends Application {
         Label brushSizeLabel = new Label("Brush Size: 5");
         brushSizeLabel.setStyle(CAPTION_STYLE);
 
-        Slider brushSize = new Slider(1, 10, 5);
+        Slider brushSize = new Slider(1, 20, 5);
         brushSize.setMajorTickUnit(1);
         brushSize.setMinorTickCount(0);
         brushSize.setSnapToTicks(true);
