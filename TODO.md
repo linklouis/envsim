@@ -4,6 +4,7 @@
 - [ ] Move the generation
 - [ ] Remove desires predation
 - [ ] Dropdowns?
+- [ ] "Go To Agent" button
 
 ### Agent Spawner
 - [ ] Make it wide enough to fit the whole names

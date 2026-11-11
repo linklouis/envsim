@@ -94,7 +94,7 @@ public class App extends Application {
         VBox menuLayer = setupMenu(stage, gamePane);
 
         // Populate Entities
-        for (int i = 0; i < 6000; i++) {
+        for (int i = 0; i < 12000; i++) {
             Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
 
             new Agent(Math.random() * 30 + 3, randomColor, environment);

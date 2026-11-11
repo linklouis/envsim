@@ -15,6 +15,40 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiPredicate;
 
 public class Agent extends MobileEntity {
+    // PHYSICS PARAMETERS
+    /**
+     * TODO: The density constants make more sense in TerrainType, but there's no good way to include them there.
+     */
+    public static final double AIR_DENSITY = 1.225 / Math.pow(Agent.PIXELS_PER_METER, 3);
+    /**
+     * Also used as the average mass of an Agent's body per pixel
+     */
+    public static final double WATER_DENSITY = 1025 / Math.pow(Agent.PIXELS_PER_METER, 3);
+    /**
+     * 1px = 0.05m
+     */
+    public static final double PIXELS_PER_METER = 20;
+    /**
+     * Body length divided by body width. Scales the sideways reference area relative to the frontal area.
+     * TODO: This could probably be an evolved trait, where the higher it is, the harder it is to accelerate on land, but the easier it is to maintain momentum in the water.
+     *  Could be from 1 - 6
+     *  I could even change the shape of the agent based on this?? (probably just the displayed shape... That could get complicated.)
+     */
+    private static final double BODY_ELONGATION = 2.0;
+    /**
+     * Drag coefficient for fluid flowing along the body (streamlined).
+     */
+    private static final double FORWARD_DRAG_COEFFICIENT = calculateForwardDragCoefficient(BODY_ELONGATION);
+    /**
+     * Drag coefficient for fluid hitting the side of the body (blunt, like a cylinder broadside).
+     */
+    private static final double SIDEWAYS_DRAG_COEFFICIENT = calculateSidewaysDragCoefficient(BODY_ELONGATION);
+
+    private static final double SPHERE_DRAG_COEFFICIENT = 0.47;
+    private static final double BROADSIDE_CYLINDER_DRAG_COEFFICIENT = 1.2;
+
+
+    // WEIGHT PARAMETERS
     public static final double MIN_SIZE = 1;
     /**
      * The minimum portion of its max health an agent must have to be eligible for reproduction.
@@ -85,16 +119,6 @@ public class Agent extends MobileEntity {
     private static final int EFFORT_COST_EXPONENT = 2;
     private static final int TURN_COST_EXPONENT = 2;
     /**
-     * The exponent controlling how an agent's size penalizes its movement speed relative to effort.
-     * <p>
-     * Propulsion force scales with cross-sectional area (r^2),
-     * while mass scales with volume (r^3). By Newton's second law (F = ma), Acceleration
-     * (or here, max speed) = Force/Mass, which scales proportionally to r^2/r^3 = 1/r
-     * </p>
-     * <p>This value determines the exponent on that bottom r.</p>
-     */
-    private static final int SIZE_SPEED_EXPONENT = 1;
-    /**
      * TODO
      */
     private static final double TURN_COST = 1;
@@ -135,25 +159,6 @@ public class Agent extends MobileEntity {
     private static final double SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR = 2;
     private static final double SPECIES_SIMILARITY_THRESHOLD = 0.999;
     private static final double SPECIES_MAX_DIFFERENCE = Math.sqrt(-Math.log(SPECIES_SIMILARITY_THRESHOLD) / SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR);
-
-
-    // PHYSICS PARAMETERS
-    /**
-     * 1px = 0.05m
-     */
-    private static final double PIXELS_PER_METER = 20;
-
-    private static final double AIR_DENSITY = 1.225 / Math.pow(PIXELS_PER_METER, 3);
-    /**
-     * Also used as the average mass of an Agent's body per pixel
-     */
-    private static final double WATER_DENSITY = 1025 / Math.pow(PIXELS_PER_METER, 3);
-    /**
-     * TODO: This could probably be an evolved trait, where the lower it is, the harder it is to accelerate on land, but the easier it is to maintain momentum in the water.
-     *  Could be from 0.002 - 1.2
-     *  I could even change the shape of the agent based on this?? (probably just the displayed shape... That could get complicated.)
-     */
-    private static final double DRAG_COEFF = 0.3;
 
 
     // MISC VALUES
@@ -498,13 +503,37 @@ public class Agent extends MobileEntity {
 //        Vector nextPosition = getPosition().addInBounds(velocity, Vector.ZERO, getBounds());
 //        setPosition(nextPosition);
 //    }
+//
+//    /**
+//     * @param agentMass The mass of this {@link Agent}.
+//     * @return The coefficient k such that drag deceleration = k * speed^2 in the current terrain.
+//     * Only valid while every drag term is proportional to speed^2.
+//     */
+//    private double calculateQuadraticDragCoefficient(double agentMass) {
+//        double dragForcePerUnitSpeedSquared;
+//        if (cachedTerrain == TerrainType.STANDARD) {
+//            dragForcePerUnitSpeedSquared = calculateDragPerUnitSpeedSquared(AIR_DENSITY, getRadius())
+//                    + Math.pow(getRadius(), SIZE_SPEED_EXPONENT);   // TODO: the land term isn't physically accurate
+//        } else {
+//            dragForcePerUnitSpeedSquared = calculateDragPerUnitSpeedSquared(WATER_DENSITY, getRadius());
+//        }
+//        return dragForcePerUnitSpeedSquared / agentMass;
+//    }
+//
+//    private static double calculateDragPerUnitSpeedSquared(double fluidDensity, double radius) {
+//        double referenceArea = Math.PI * Math.pow(radius * 2, 2) / 4;
+//        return DRAG_COEFF * fluidDensity * referenceArea / 2;
+//    }
 
-    /**
-     * The portion of sideways velocity (relative to the direction the agent is facing) removed each tick.
-     * 1 = perfect traction, so the agent can only move the way it faces. 0 = frictionless sideways drift.
-     */
-    private static final double LAND_LATERAL_GRIP = 1.0;
-    private static final double WATER_LATERAL_GRIP = 0.0;
+    private static double calculateForwardDragCoefficient(double bodyElongation) {
+        return SPHERE_DRAG_COEFFICIENT / Math.sqrt(bodyElongation);
+    }
+
+    private static double calculateSidewaysDragCoefficient(double bodyElongation) {
+        double portionOfBodyThatIsBlunt = 1.0 - 1.0 / bodyElongation;
+        return SPHERE_DRAG_COEFFICIENT
+                + (BROADSIDE_CYLINDER_DRAG_COEFFICIENT - SPHERE_DRAG_COEFFICIENT) * portionOfBodyThatIsBlunt;
+    }
 
     private void move(double turnAmount, double thrustEffort) {
         double energyCostOfMoving = SPEED_COST * Math.pow(thrustEffort, EFFORT_COST_EXPONENT)
@@ -513,63 +542,43 @@ public class Agent extends MobileEntity {
 
         if (!alive) return;
 
-        boolean isStandingOnLand = cachedTerrain == TerrainType.STANDARD;
-
         double bodyVolume = (4.0 / 3.0) * Math.PI * Math.pow(getRadius(), 3);
         mass = bodyVolume * WATER_DENSITY;
 
-        double terrainThrustModifier = Math.abs(isOnLand() - swimSkill);
+        double terrainThrustModifier = 1.0 - Math.abs(cachedTerrain.getSwimSkillRequired() - swimSkill);
         double thrustAcceleration = thrustEffort * Math.pow(getRadius(), 2) * terrainThrustModifier / mass;
         acceleration = Math.abs(thrustAcceleration);
 
-        // Water turning is slower for big agents (rotational inertia). On land the legs grip, so turning is direct.
-        double effectiveTurnAmount = isStandingOnLand ? turnAmount : turnAmount / getRadius();
+        double effectiveTurnAmount = turnAmount * cachedTerrain.getTurningResistance() / getRadius();
         direction = direction.turn(effectiveTurnAmount);
 
-        // Thrust along the new heading, then drag on the whole velocity vector.
         velocity = velocity.add(direction.scale(thrustAcceleration));
-        double dragCoefficient = calculateQuadraticDragCoefficient(mass);
-        velocity = velocity.scale(1.0 / (1 + dragCoefficient * velocity.magnitude()));
 
-        // Split velocity into the part along the heading and the part sideways to it, then let the terrain's grip remove some of the sideways part.
+        // Anisotropic drag: the fluid resists sideways motion more than forward motion.
+        // TODO: Some redundant math can be removed in the future
+        double frontalArea = Math.PI * Math.pow(getRadius(), 2);
+        double sidewaysArea = frontalArea * BODY_ELONGATION;
+        double forwardDragPerSpeed = 0.5 * cachedTerrain.getFluidDensity() * FORWARD_DRAG_COEFFICIENT * frontalArea / mass;
+        double sidewaysDragPerSpeed = 0.5 * cachedTerrain.getFluidDensity() * SIDEWAYS_DRAG_COEFFICIENT * sidewaysArea / mass;
+        double walkingDragPerSpeed = cachedTerrain.getWalkingResistance();
+        forwardDragPerSpeed += walkingDragPerSpeed;
+
+        double totalSpeed = velocity.magnitude();
         double forwardSpeed = velocity.dot(direction);
         Vector forwardVelocity = direction.scale(forwardSpeed);
         Vector sidewaysVelocity = velocity.subtract(forwardVelocity);
-        double lateralGrip = isStandingOnLand ? LAND_LATERAL_GRIP : WATER_LATERAL_GRIP;
-        velocity = forwardVelocity.add(sidewaysVelocity.scale(1.0 - lateralGrip));
 
-        speed = forwardSpeed;   // Only used for display now
+        double forwardSpeedAfterDrag = forwardSpeed / (1 + forwardDragPerSpeed * totalSpeed);
+        forwardVelocity = direction.scale(forwardSpeedAfterDrag);
+        sidewaysVelocity = sidewaysVelocity.scale(1.0 / (1 + sidewaysDragPerSpeed * totalSpeed));
+
+        sidewaysVelocity = sidewaysVelocity.scale(1.0 - cachedTerrain.getLateralGrip());
+
+        velocity = forwardVelocity.add(sidewaysVelocity);
+        speed = forwardSpeedAfterDrag;   // Only used for display now
 
         Vector nextPosition = getPosition().addInBounds(velocity, Vector.ZERO, getBounds());
         setPosition(nextPosition);
-    }
-
-    /**
-     * @param agentMass The mass of this {@link Agent}.
-     * @return The coefficient k such that drag deceleration = k * speed^2 in the current terrain.
-     * Only valid while every drag term is proportional to speed^2.
-     */
-    private double calculateQuadraticDragCoefficient(double agentMass) {
-        double dragForcePerUnitSpeedSquared;
-        if (cachedTerrain == TerrainType.STANDARD) {
-            dragForcePerUnitSpeedSquared = calculateDragPerUnitSpeedSquared(AIR_DENSITY, getRadius())
-                    + Math.pow(getRadius(), SIZE_SPEED_EXPONENT);   // TODO: the land term isn't physically accurate
-        } else {
-            dragForcePerUnitSpeedSquared = calculateDragPerUnitSpeedSquared(WATER_DENSITY, getRadius());
-        }
-        return dragForcePerUnitSpeedSquared / agentMass;
-    }
-
-    private static double calculateDragPerUnitSpeedSquared(double fluidDensity, double radius) {
-        double referenceArea = Math.PI * Math.pow(radius * 2, 2) / 4;
-        return DRAG_COEFF * fluidDensity * referenceArea / 2;
-    }
-
-    /**
-     * @return 1 if the {@link Agent} is on a land tile, otherwise 0.
-     */
-    private int isOnLand() {
-        return cachedTerrain == TerrainType.STANDARD ? 1 : 0;
     }
 
     private void eat(@NotNull Food food) {
@@ -584,10 +593,6 @@ public class Agent extends MobileEntity {
         lastEatenFood = food;
     }
 
-    /**
-     * TODO: NOT PREVENTING CANNIBALISM ANYMORE
-     * @param other
-     */
     private void interact(Agent other) {
         if (!this.alive || !other.alive) return;
 

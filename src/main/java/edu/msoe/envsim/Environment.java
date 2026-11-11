@@ -265,7 +265,7 @@ public class Environment extends Canvas {
         // Zooming controls
         setOnScroll(e -> {
             double rawZoomFactor = e.getDeltaY() > 0 ? 1.05 : 1 / 1.05;
-            double newScale = Math.clamp(scale * rawZoomFactor, 0.03, 10.0);
+            double newScale = Math.clamp(scale * rawZoomFactor, 0.03, 8.0);
             double actualZoomFactor = newScale / scale;
 
             double mouseX = e.getX();
