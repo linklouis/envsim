@@ -477,6 +477,7 @@ public class Agent extends MobileEntity {
             double friction;
             if (cachedTerrain == TerrainType.STANDARD) {
                 // On land, you should only ever be able to move the direction you're facing.
+                // TODO: Maybe unify the two by having friction be impacted by the dot product of the direction and velocity, times some factor based on the terrain type?
                 if (effort < 0 && Math.abs(acceleration) > speed) {
                     this.direction = direction.turn(turn);
                     this.speed = -velocity.magnitude();
