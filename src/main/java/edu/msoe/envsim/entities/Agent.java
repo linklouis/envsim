@@ -111,7 +111,7 @@ public class Agent extends MobileEntity {
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
-    private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.0000005;
+    private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.0000000001;
     private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.0045;
     private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 1000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
@@ -453,54 +453,111 @@ public class Agent extends MobileEntity {
 //        if (energy <= 0 || getRadius() <= 0) die();
     }
 
-    private void move(double turn, double effort) {
-        // TODO: Also add acceleration so larger ones start slower?
-        double cost = SPEED_COST * Math.pow(effort, EFFORT_COST_EXPONENT) + TURN_COST * Math.pow(turn, TURN_COST_EXPONENT);
-        changeEnergy(-cost);
+//    private void move(double turn, double effort) {
+//        // TODO: Also add acceleration so larger ones start slower?
+//        double cost = SPEED_COST * Math.pow(effort, EFFORT_COST_EXPONENT) + TURN_COST * Math.pow(turn, TURN_COST_EXPONENT);
+//        changeEnergy(-cost);
+//
+//        if (alive) {
+//            double volume = (4.0 / 3.0) * Math.PI * Math.pow(getRadius(), 3);   // TODO: Rn this is the volume of a sphere, but maybe we should use some other value? Or just give it a tunable factor parameter
+//            mass = volume * WATER_DENSITY;
+//
+//            effort *= Math.pow(getRadius(), 2);
+//
+//            double terrainModifier = Math.abs(isOnLand() - swimSkill);
+//
+//            Vector change = direction.turn(turn).scale(effort * terrainModifier / mass);
+//            acceleration = change.magnitude();
+//            velocity = velocity.add(change);
+//            double speedSq = velocity.magnitudeSquared();
+//            if (speedSq == 0) return;
+//
+//            double speed = Math.sqrt(speedSq);
+//            Vector velDirection = velocity.scale(1 / speed);
+//            double friction;
+//            if (cachedTerrain == TerrainType.STANDARD) {
+//                // On land, you should only ever be able to move the direction you're facing.
+//                // TODO: Maybe unify the two by having friction be impacted by the dot product of the direction and velocity, times some factor based on the terrain type?
+//                if (effort < 0 && Math.abs(acceleration) > speed) {
+//                    this.direction = direction.turn(turn);
+//                    this.speed = -velocity.magnitude();
+//                } else {
+//                    // Update direction to be a unit vector in the direction of the new velocity
+//                    this.direction = velocity.scale(1 / Math.sqrt(speedSq));
+//                    this.speed = velocity.magnitude();
+//                }
+//                friction = calculateDrag(AIR_DENSITY, speedSq, getRadius());
+//                double sizeModifier = Math.pow(getRadius(), SIZE_SPEED_EXPONENT) * speedSq; // TODO: The math here probably isn't physically accurate
+//                friction += sizeModifier;
+//            } else {
+//                // In water, do "ice rink" physics, where you can turn but keep moving the direction you were going
+//                this.direction = direction.turn(turn / getRadius());
+//                this.speed = velocity.magnitude();
+//                friction = calculateDrag(WATER_DENSITY, speedSq, getRadius());
+//            }
+//            double deceleration = friction / mass;
+//            velocity = velocity.subtract(velDirection.scale(deceleration));
+//
+//            Vector next = getPosition().addInBounds(velocity, Vector.ZERO, getBounds());
+//            setPosition(next);
+//        }
+//    }
 
-        if (alive) {
-            double volume = (4.0 / 3.0) * Math.PI * Math.pow(getRadius(), 3);   // TODO: Rn this is the volume of a sphere, but maybe we should use some other value? Or just give it a tunable factor parameter
-            mass = volume * WATER_DENSITY;
+    private void move(double turnAmount, double thrustEffort) {
+        double energyCostOfMoving = SPEED_COST * Math.pow(thrustEffort, EFFORT_COST_EXPONENT)
+                + TURN_COST * Math.pow(turnAmount, TURN_COST_EXPONENT);
+        changeEnergy(-energyCostOfMoving);
 
-            effort *= Math.pow(getRadius(), 2);
+        if (!alive) return;
 
-            double terrainModifier = Math.abs(isOnLand() - swimSkill);
+        double bodyVolume = (4.0 / 3.0) * Math.PI * Math.pow(getRadius(), 3);   // TODO: sphere volume, maybe make this tunable
+        mass = bodyVolume * WATER_DENSITY;
 
-            Vector change = direction.turn(turn).scale(effort * terrainModifier / mass);
-            acceleration = change.magnitude();
-            velocity = velocity.add(change);
-            double speedSq = velocity.magnitudeSquared();
-            if (speedSq == 0) return;
+        double terrainThrustModifier = Math.abs(isOnLand() - swimSkill);
+        double thrustForce = thrustEffort * Math.pow(getRadius(), 2) * terrainThrustModifier;
+        double thrustAcceleration = thrustForce / mass;
+        acceleration = Math.abs(thrustAcceleration);
 
-            double speed = Math.sqrt(speedSq);
-            Vector velDirection = velocity.scale(1 / speed);
-            double friction;
-            if (cachedTerrain == TerrainType.STANDARD) {
-                // On land, you should only ever be able to move the direction you're facing.
-                // TODO: Maybe unify the two by having friction be impacted by the dot product of the direction and velocity, times some factor based on the terrain type?
-                if (effort < 0 && Math.abs(acceleration) > speed) {
-                    this.direction = direction.turn(turn);
-                    this.speed = -velocity.magnitude();
-                } else {
-                    // Update direction to be a unit vector in the direction of the new velocity
-                    this.direction = velocity.scale(1 / Math.sqrt(speedSq));
-                    this.speed = velocity.magnitude();
-                }
-                friction = calculateDrag(AIR_DENSITY, speedSq, getRadius());
-                double sizeModifier = Math.pow(getRadius(), SIZE_SPEED_EXPONENT) * speedSq; // TODO: The math here probably isn't physically accurate
-                friction += sizeModifier;
-            } else {
-                // In water, do "ice rink" physics, where you can turn but keep moving the direction you were going
-                this.direction = direction.turn(turn / getRadius());
-                this.speed = velocity.magnitude();
-                friction = calculateDrag(WATER_DENSITY, speedSq, getRadius());
-            }
-            double deceleration = friction / mass;
-            velocity = velocity.subtract(velDirection.scale(deceleration));
+        double dragCoefficient = calculateQuadraticDragCoefficient(mass);
 
-            Vector next = getPosition().addInBounds(velocity, Vector.ZERO, getBounds());
-            setPosition(next);
+        if (cachedTerrain == TerrainType.STANDARD) {
+            // LAND: the agent can only move along the direction it faces. Speed is a signed scalar along the heading.
+            direction = direction.turn(turnAmount);
+
+            speed += thrustAcceleration;
+            speed /= (1 + dragCoefficient * Math.abs(speed));
+
+            velocity = direction.scale(speed);
+        } else {
+            // WATER: "ice rink" physics. The agent can turn, but its velocity keeps drifting the way it was going.
+            // Turn first, then thrust along the new heading, so heading and thrust always agree.
+            direction = direction.turn(turnAmount / getRadius());
+
+            velocity = velocity.add(direction.scale(thrustAcceleration));
+            velocity = velocity.scale(1.0 / (1 + dragCoefficient * velocity.magnitude()));
+
+            // Keep speed as the signed speed along the heading so it is already correct if the agent steps onto land next tick.
+            speed = velocity.x() * direction.x() + velocity.y() * direction.y();
         }
+
+        Vector nextPosition = getPosition().addInBounds(velocity, Vector.ZERO, getBounds());
+        setPosition(nextPosition);
+    }
+
+    /**
+     * @param agentMass The mass of this {@link Agent}.
+     * @return The coefficient k such that drag deceleration = k * speed^2 in the current terrain.
+     * Only valid while every drag term is proportional to speed^2.
+     */
+    private double calculateQuadraticDragCoefficient(double agentMass) {
+        double dragForcePerUnitSpeedSquared;
+        if (cachedTerrain == TerrainType.STANDARD) {
+            dragForcePerUnitSpeedSquared = calculateDrag(AIR_DENSITY, 1.0, getRadius())
+                    + Math.pow(getRadius(), SIZE_SPEED_EXPONENT);   // TODO: the land term isn't physically accurate
+        } else {
+            dragForcePerUnitSpeedSquared = calculateDrag(WATER_DENSITY, 1.0, getRadius());
+        }
+        return dragForcePerUnitSpeedSquared / agentMass;
     }
 
     private static double calculateDrag(double fluidDensity, double speedSquared, double radius) {
