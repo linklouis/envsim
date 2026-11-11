@@ -82,6 +82,15 @@ public record Vector(double x, double y) implements VectorBlueprint {
         );
     }
 
+    public @NotNull Vector addInBounds(@NotNull Vector other, @NotNull Vector min, @NotNull Vector max) {
+        double x = x() + other.x();
+        double y = y() + other.y();
+        return new Vector(
+                Math.clamp(x, min.x(), max.x()),
+                Math.clamp(y, min.y(), max.y())
+        );
+    }
+
     public @NotNull Vector addScaled(@NotNull VectorBlueprint other, double scale) {
         double x = x() + other.x() * scale;
         double y = y() + other.y() * scale;
@@ -110,7 +119,9 @@ public record Vector(double x, double y) implements VectorBlueprint {
 
     @Contract(pure = true)
     public @NotNull Vector normalize() {
-        return scale(1/magnitude());
+        double magnitude = magnitude();
+        if (magnitude == 0) return this;
+        return scale(1/magnitude);
     }
 
     @Contract(pure = true)

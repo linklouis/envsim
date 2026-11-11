@@ -77,7 +77,7 @@ public class Agent extends MobileEntity {
      */
     private static final double PASSIVE_SIZE_EXPONENT = 2.25;
     public static final double PASSIVE_LIFE_COST = 0.015;
-    public static final double PASSIVE_TURN_SPEED_COST = 0.004;
+    public static final double PASSIVE_TURN_SPEED_COST = 0.0004;
     /**
      * The number of energy points it costs an Agent to move one pixel in a tick.
      */
@@ -97,7 +97,7 @@ public class Agent extends MobileEntity {
     /**
      * TODO
      */
-    private static final double TURN_COST = 2.25;
+    private static final double TURN_COST = 1;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
@@ -137,6 +137,25 @@ public class Agent extends MobileEntity {
     private static final double SPECIES_MAX_DIFFERENCE = Math.sqrt(-Math.log(SPECIES_SIMILARITY_THRESHOLD) / SPECIES_SIMILARITY_EXPONENTIAL_DECAY_FACTOR);
 
 
+    // PHYSICS PARAMETERS
+    /**
+     * 1px = 0.05m
+     */
+    private static final double PIXELS_PER_METER = 20;
+
+    private static final double AIR_DENSITY = 1.225 / Math.pow(PIXELS_PER_METER, 3);
+    /**
+     * Also used as the average mass of an Agent's body per pixel
+     */
+    private static final double WATER_DENSITY = 1025 / Math.pow(PIXELS_PER_METER, 3);
+    /**
+     * TODO: This could probably be an evolved trait, where the lower it is, the harder it is to accelerate on land, but the easier it is to maintain momentum in the water.
+     *  Could be from 0.002 - 1.2
+     *  I could even change the shape of the agent based on this?? (probably just the displayed shape... That could get complicated.)
+     */
+    private static final double DRAG_COEFF = 0.3;
+
+
     // MISC VALUES
     private final @NotNull Environment environment;
     private final Color baseColor;
@@ -150,7 +169,7 @@ public class Agent extends MobileEntity {
      * <p>Higher values consume more {@link #energy} each time step.</p>
      * <p>The Agent can decide to move any speed from 0 to this value.</p>
      */
-    private final double maxSpeed;
+    private final double maxAcceleration;
     /**
      * The "Max Health" of the Agent.
      * The actual size gene that gets passed to descendants.
@@ -184,6 +203,7 @@ public class Agent extends MobileEntity {
      * Should always be a unit vector
      */
     private Vector direction;
+    private double speed;
     /**
      * The amount of energy the Agent currently has.
      * Energy is consumed passively each time step based on the {@link #size} and {@link #visionRadius} attributes,
@@ -212,6 +232,11 @@ public class Agent extends MobileEntity {
     private final long[] genomeComparisonIds = new long[256];     // ids start at 1, so 0 = empty
     private final double[] genomeComparisonValues = new double[256];
     private final float[] inputBuffer = new float[NUM_INPUTS];
+
+    // INSPECTOR VALUES
+    private double mass = 0;
+    private double movementEffort = 0;
+    private double acceleration = 0;
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -247,7 +272,7 @@ public class Agent extends MobileEntity {
 
         environment = env;
         energy = agentData.energy();
-        maxSpeed = agentData.speed();
+        maxAcceleration = agentData.speed();
         turnSpeed = agentData.turnSpeed();
         size = agentData.size();
         visionRadius = agentData.visionRadius();
@@ -279,7 +304,7 @@ public class Agent extends MobileEntity {
     private float @NotNull [] extractGenome() {
         List<Float> traits = new ArrayList<>();
 
-        traits.add((float) maxSpeed);
+        traits.add((float) maxAcceleration);
         traits.add((float) turnSpeed);
         traits.add((float) size);
         traits.add((float) visionRadius);
@@ -381,7 +406,8 @@ public class Agent extends MobileEntity {
     public void parallelStep() {
         if (!alive) return;
 
-        move(decision.turn(), decision.speed() * maxSpeed);
+        movementEffort = decision.speed() * maxAcceleration;
+        move(decision.turn(), movementEffort);
         changeEnergy(-getPassiveEnergyCost());
 
         //if (reproductionDesire > 0.6 && energy > 80) {
@@ -432,14 +458,48 @@ public class Agent extends MobileEntity {
         changeEnergy(-cost);
 
         if (alive) {
-            direction = direction.turn(turn);
-            // Add 1 to the size modifier so that the divisor can never be < 1, so agents can never go faster than their max speed.
-            double sizeModifier = Math.pow(getRadius(), SIZE_SPEED_EXPONENT) * cachedTerrain.getTerrainResistance() + 1;
+            Vector velocity = direction.scale(speed);
+
+            double volume = (4.0 / 3.0) * Math.PI * Math.pow(getRadius(), 3);   // TODO: Rn this is the volume of a sphere, but maybe we should use some other value? Or just give it a tunable factor parameter
+            mass = volume * WATER_DENSITY;
+
+            effort *= Math.pow(getRadius(), 2);
+
             double terrainModifier = Math.abs(isOnLand() - swimSkill);
-            double speed = effort * terrainModifier / sizeModifier;
-            Vector next = getPosition().addScaledInBounds(direction, Vector.ZERO, getBounds(), speed);
+
+            Vector change = direction.turn(turn).scale(effort * terrainModifier / mass);
+            acceleration = change.magnitude();
+            velocity = velocity.add(change);
+            double speedSq = velocity.magnitudeSquared();
+            if (speedSq == 0) return;
+            // Update direction to be a unit vector in the direction of the new velocity
+            direction = velocity.scale(1 / Math.sqrt(speedSq));
+
+            double deceleration = calculateFriction(speedSq) / mass;
+
+            velocity = velocity.subtract(direction.scale(deceleration));
+            speed = velocity.magnitude();
+            Vector next = getPosition().addInBounds(velocity, Vector.ZERO, getBounds());
             setPosition(next);
         }
+    }
+
+    private double calculateFriction(double speedSquared) {
+        double friction;
+        if (cachedTerrain == TerrainType.STANDARD) {
+            friction = calculateDrag(AIR_DENSITY, speedSquared);
+            // Add 1 to the size modifier so that the divisor can never be < 1, so agents can never go faster than their max speed.
+            double sizeModifier = Math.pow(getRadius(), SIZE_SPEED_EXPONENT) + 1; // TODO: The math here probably isn't physically accurate
+            friction += sizeModifier;
+        } else {
+            friction = calculateDrag(WATER_DENSITY, speedSquared);
+        }
+        return friction;
+    }
+
+    private double calculateDrag(double fluidDensity, double speedSquared) {
+        double referenceArea = Math.PI * Math.pow(getRadius() * 2, 2) / 4;
+        return DRAG_COEFF * fluidDensity * speedSquared * referenceArea / 2;
     }
 
     /**
@@ -621,18 +681,13 @@ public class Agent extends MobileEntity {
         currentWanderOffset += ThreadLocalRandom.current().nextDouble(-RANDOM_WANDER_CHANGE_SPEED, RANDOM_WANDER_CHANGE_SPEED);
         currentWanderOffset = Math.clamp(currentWanderOffset, -1.0, 1.0);
 
-        double nnTurn = (output[2] * 2 - 1) * maxTurnPerTick();
+        double nnTurn = (output[2] * 2 - 1) * turnSpeed;
 
         jitterRequested = output[3];
-        double turn = nnTurn * (1 - jitterRequested) + (currentWanderOffset * maxTurnPerTick()) * jitterRequested;
-        turn = Math.clamp(turn, -maxTurnPerTick(), maxTurnPerTick());
+        double turn = nnTurn * (1 - jitterRequested) + (currentWanderOffset * turnSpeed) * jitterRequested;
+        turn = Math.clamp(turn, -turnSpeed, turnSpeed);
 
         this.decision = new AgentDecision(output[0], turn, desiresPredation);
-    }
-
-    /** Max turn per tick, in degrees. */
-    private double maxTurnPerTick() {
-        return turnSpeed / getRadius();
     }
 
 
@@ -712,7 +767,7 @@ public class Agent extends MobileEntity {
                 getPosition(),
                 getColor(),
                 this.energy,
-                this.maxSpeed,
+                this.maxAcceleration,
                 this.turnSpeed,
                 this.size,
                 this.visionRadius,
@@ -777,5 +832,21 @@ public class Agent extends MobileEntity {
 
     public double getJitterRequested() {
         return jitterRequested;
+    }
+
+    public double getMass() {
+        return mass;
+    }
+
+    public double getSpeed() {
+        return speed;
+    }
+
+    public double getMovementEffort() {
+        return movementEffort;
+    }
+
+    public double getAcceleration() {
+        return acceleration;
     }
 }

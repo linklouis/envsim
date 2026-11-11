@@ -22,12 +22,16 @@ import java.io.File;
 public class AgentInspectorPane extends VBox {
     private final Label energyLabel = new Label();
     private final Label healthLabel = new Label();
+    private final Label massLabel = new Label();
     private final Label terrainLabel = new Label();
     private final Label predationLabel = new Label();
     private final Label actionLabel = new Label();
     private final Label jitterLabel = new Label();
-
     private final Label speedLabel = new Label();
+    private final Label effortLabel = new Label();
+    private final Label accelerationLabel = new Label();
+
+    private final Label maxSpeedLabel = new Label();
     private final Label turnSpeedLabel = new Label();
     private final Label visionLabel = new Label();
     private final Label regenLabel = new Label();
@@ -65,12 +69,18 @@ public class AgentInspectorPane extends VBox {
         int row = 0;
         addStandardRow(grid, row++, "Energy:", energyLabel);
         addStandardRow(grid, row++, "Health:", healthLabel);
+        addStandardRow(grid, row++, "Mass:", massLabel);
         addStandardRow(grid, row++, "Terrain:", terrainLabel);
         addStandardRow(grid, row++, "Desires Predation:", predationLabel);
         addStandardRow(grid, row++, "Current Priority:", actionLabel);
         addStandardRow(grid, row++, "Random Turn Requested:", jitterLabel);
+        addStandardRow(grid, row++, "Current Speed:", speedLabel);
+        addStandardRow(grid, row++, "Current Movement Effort:", effortLabel);
+        addStandardRow(grid, row++, "Current Acceleration:", accelerationLabel);
+
         grid.add(new Separator(), 0, row++);
-        addStandardRow(grid, row++, "Max Speed:", speedLabel);
+
+        addStandardRow(grid, row++, "Max Acceleration Effort:", maxSpeedLabel);
         addStandardRow(grid, row++, "Turn Speed:", turnSpeedLabel);
         addStandardRow(grid, row++, "Vision:", visionLabel);
         addStandardRow(grid, row++, "Regen:", regenLabel);
@@ -111,12 +121,17 @@ public class AgentInspectorPane extends VBox {
         // %6.2f ensures the first value reserves a fixed 6-character width, right-aligned with spaces
         energyLabel.setText(String.format("%6.2f / %.2f", data.energy(), agent.calculateCloneThreshold()));
         healthLabel.setText(String.format("%6.2f / %.2f", agent.getRadius(), data.size()));
+        massLabel.setText(String.format("%.2f", agent.getMass()));
         terrainLabel.setText(agent.getTerrainType().name());
         predationLabel.setText(agent.desiresPredation() ? "True" : "False");
         actionLabel.setText(agent.getPriority());
         jitterLabel.setText(String.format("%.2f", agent.getJitterRequested()));
+        speedLabel.setText(String.format("%.2f", agent.getSpeed()));
+        effortLabel.setText(String.format("%.2f", agent.getMovementEffort()));
+        accelerationLabel.setText(String.format("%.2f", agent.getAcceleration()));
 
-        speedLabel.setText(String.format("%.2f", data.speed()));
+
+        maxSpeedLabel.setText(String.format("%.2f", data.speed()));
         turnSpeedLabel.setText(String.format("%.2f", data.turnSpeed()));
         visionLabel.setText(String.format("%.2f", data.visionRadius()));
         regenLabel.setText(String.format("%.2f", data.healthRegenSpeed()));
