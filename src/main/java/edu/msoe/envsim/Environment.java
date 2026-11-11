@@ -28,9 +28,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/**
- * TODO: Add a way to save the sim state
- */
 public class Environment extends Canvas {
     public static final int NUM_CELLS = 80;
     /**
@@ -554,7 +551,6 @@ public class Environment extends Canvas {
      * @param brushType The {@link TerrainType} to paint at the specified location
      */
     private void handleTerrainPaint(double screenX, double screenY, TerrainType brushType) {
-        // TODO: Change the cached terrain types for all the Food on this area
         if (mode != Mode.EDIT) return;
 
         double worldX = (screenX - translateX) / scale;
