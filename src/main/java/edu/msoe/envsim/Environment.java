@@ -252,18 +252,7 @@ public class Environment extends Canvas {
                         AgentData data = AgentData.loadFromFile(file);
                         double worldX = (e.getX() - translateX) / scale;
                         double worldY = (e.getY() - translateY) / scale;
-
-                        // TODO: MAKE SURE WE ONLY SHOW VALID AGENTS IN THE SPAWNING SCREEN, OR SHOW INVALID ONES AS RED
-                        AgentData spawnedData = new AgentData(
-                                new Vector(worldX, worldY), data.color(), data.energy(), data.speed(),
-                                data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
-                                data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
-                                data.brain(), data.generation()
-                        );
-                        Agent agent = new Agent(spawnedData, this);
-                        flushPendingMobileEntities();
-                        selectedAgent = agent;
-                        resetCanvas();
+                        spawnSelectedAgent(data, new Vector(worldX, worldY));
                         success = true;
                     } catch (Exception ex) {
                         ex.printStackTrace();
@@ -287,6 +276,19 @@ public class Environment extends Canvas {
             translateY = mouseY - (mouseY - translateY) * actualZoomFactor;
             scale = newScale;
         });
+    }
+
+    /**
+     * Spawns and selects a new {@link Agent} based on the specified data.
+     * @param position The location to spawn the new {@link Agent}
+     * @param data The {@link AgentData} holding the info on what kind of {@link Agent} to spawn
+     */
+    public void spawnSelectedAgent(@NotNull AgentData data, @NotNull Vector position) {
+        // TODO: MAKE SURE WE ONLY SHOW VALID AGENTS IN THE SPAWNING SCREEN, OR SHOW INVALID ONES AS RED?
+        AgentData spawnedData = new AgentData(data, position);
+        selectedAgent = new Agent(spawnedData, this);
+        flushPendingMobileEntities();
+        resetCanvas();
     }
 
     /**

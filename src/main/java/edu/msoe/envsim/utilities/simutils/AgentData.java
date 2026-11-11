@@ -22,6 +22,13 @@ public record AgentData(Vector position, Color color, double energy, double spee
         return attribute + (attribute * (ThreadLocalRandom.current().nextDouble() - 0.5) * ATTRIBUTE_MUTATION_SIZE);
     }
 
+    public AgentData(@NotNull AgentData data, Vector position) {
+        this(position, data.color(), data.energy(), data.speed(),
+                data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
+                data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
+                data.brain(), data.generation());
+    }
+
     @Contract(" -> new")
     public @NotNull AgentData mutate() {
         return new AgentData(

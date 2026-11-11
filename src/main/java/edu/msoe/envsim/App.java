@@ -432,16 +432,7 @@ public class App extends Application {
                             }).thenAcceptAsync(data -> {
                                 try {
                                     Vector randomPos = Vector.random(Vector.ZERO, environment.getSize());
-                                    AgentData spawnedData = new AgentData(
-                                            randomPos, data.color(), data.energy(), data.speed(),
-                                            data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
-                                            data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
-                                            data.brain(), data.generation()
-                                    );
-                                    Agent agent = new Agent(spawnedData, environment);
-                                    environment.flushPendingMobileEntities();
-                                    environment.setSelectedAgent(agent);
-                                    environment.resetCanvas();
+                                    environment.spawnSelectedAgent(data, randomPos);
                                 } catch (Exception ex) {
                                     showErrorPopup("Spawn Failed", "Could not spawn agent.", ex.getMessage());
                                 }
