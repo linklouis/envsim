@@ -5,7 +5,6 @@ import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.apputils.Clock;
 import edu.msoe.envsim.utilities.apputils.DebugMessage;
 import edu.msoe.envsim.utilities.simutils.AgentData;
-import edu.msoe.envsim.utilities.simutils.RayCaster;
 import edu.msoe.envsim.utilities.simutils.SpatialGrid;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.animation.AnimationTimer;
@@ -16,6 +15,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
+import javafx.scene.input.DragEvent;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Environment extends Canvas {

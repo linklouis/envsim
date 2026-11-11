@@ -415,46 +415,8 @@ public class App extends Application {
                         imageView.setFitHeight(45);
                         imageView.setPreserveRatio(true);
 
-                        Label nameLabel = new Label(name);
-                        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
-                        nameLabel.setMaxWidth(100);
-
-                        Button spawnBtn = new Button("Spawn Randomly");
-                        spawnBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 9px; -fx-padding: 3 6;");
-                        spawnBtn.setFocusTraversable(false);
-                        spawnBtn.setOnAction(_ -> {
-                            CompletableFuture.supplyAsync(() -> {
-                                try {
-                                    return AgentData.loadFromFile(file);
-                                } catch (Exception ex) {
-                                    throw new RuntimeException(ex);
-                                }
-                            }).thenAcceptAsync(data -> {
-                                try {
-                                    Vector randomPos = Vector.random(Vector.ZERO, environment.getSize());
-                                    environment.spawnSelectedAgent(data, randomPos);
-                                } catch (Exception ex) {
-                                    showErrorPopup("Spawn Failed", "Could not spawn agent.", ex.getMessage());
-                                }
-                            }, Platform::runLater);
-                        });
-
-                        VBox cardDetails = new VBox(2, nameLabel, spawnBtn);
-                        cardDetails.setAlignment(Pos.CENTER_LEFT);
-                        HBox.setHgrow(cardDetails, Priority.ALWAYS);
-
-                        HBox card = new HBox(8, imageView, cardDetails);
-                        card.setAlignment(Pos.CENTER_LEFT);
-                        card.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 6; -fx-padding: 5 8; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 6;");
-                        card.setMaxWidth(Double.MAX_VALUE);
-
-                        card.setOnDragDetected(event -> {
-                            javafx.scene.input.Dragboard db = card.startDragAndDrop(javafx.scene.input.TransferMode.COPY);
-                            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
-                            content.putString(file.getAbsolutePath());
-                            db.setContent(content);
-                            event.consume();
-                        });
+                        VBox cardDetails = makeSavedAgentCardDetails(file, name);
+                        HBox card = makeSavedAgentCard(file, imageView, cardDetails);
 
                         agentTilePane.getChildren().add(card);
                     }
@@ -517,6 +479,51 @@ public class App extends Application {
         StackPane.setMargin(menuLayer, new Insets(15));
 
         return menuLayer;
+    }
+
+    private static @NotNull HBox makeSavedAgentCard(File file, ImageView imageView, VBox cardDetails) {
+        HBox card = new HBox(8, imageView, cardDetails);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setStyle("-fx-background-color: rgba(45, 45, 45, 0.9); -fx-background-radius: 6; -fx-padding: 5 8; -fx-cursor: hand; -fx-border-color: #555; -fx-border-radius: 6;");
+        card.setMaxWidth(Double.MAX_VALUE);
+
+        card.setOnDragDetected(event -> {
+            javafx.scene.input.Dragboard db = card.startDragAndDrop(javafx.scene.input.TransferMode.COPY);
+            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+            content.putString(file.getAbsolutePath());
+            db.setContent(content);
+            event.consume();
+        });
+        return card;
+    }
+
+    private @NotNull VBox makeSavedAgentCardDetails(File file, String name) {
+        Label nameLabel = new Label(name);
+        nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+        nameLabel.setMaxWidth(100);
+
+        Button spawnBtn = new Button("Spawn Randomly");
+        spawnBtn.setStyle(BUTTON_STYLE + "-fx-font-size: 9px; -fx-padding: 3 6;");
+        spawnBtn.setFocusTraversable(false);
+        spawnBtn.setOnAction(_ -> CompletableFuture.supplyAsync(() -> {
+            try {
+                return AgentData.loadFromFile(file);
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }).thenAcceptAsync(data -> {
+            try {
+                Vector randomPos = Vector.random(Vector.ZERO, environment.getSize());
+                environment.spawnSelectedAgent(data, randomPos);
+            } catch (Exception ex) {
+                showErrorPopup("Spawn Failed", "Could not spawn agent.", ex.getMessage());
+            }
+        }, Platform::runLater));
+
+        VBox cardDetails = new VBox(2, nameLabel, spawnBtn);
+        cardDetails.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(cardDetails, Priority.ALWAYS);
+        return cardDetails;
     }
 
     private void showErrorPopup(String titleText, String headerText, String contentText) {

@@ -552,17 +552,17 @@ public class Agent extends MobileEntity {
     private double calculateQuadraticDragCoefficient(double agentMass) {
         double dragForcePerUnitSpeedSquared;
         if (cachedTerrain == TerrainType.STANDARD) {
-            dragForcePerUnitSpeedSquared = calculateDrag(AIR_DENSITY, 1.0, getRadius())
+            dragForcePerUnitSpeedSquared = calculateDragPerUnitSpeedSquared(AIR_DENSITY, getRadius())
                     + Math.pow(getRadius(), SIZE_SPEED_EXPONENT);   // TODO: the land term isn't physically accurate
         } else {
-            dragForcePerUnitSpeedSquared = calculateDrag(WATER_DENSITY, 1.0, getRadius());
+            dragForcePerUnitSpeedSquared = calculateDragPerUnitSpeedSquared(WATER_DENSITY, getRadius());
         }
         return dragForcePerUnitSpeedSquared / agentMass;
     }
 
-    private static double calculateDrag(double fluidDensity, double speedSquared, double radius) {
+    private static double calculateDragPerUnitSpeedSquared(double fluidDensity, double radius) {
         double referenceArea = Math.PI * Math.pow(radius * 2, 2) / 4;
-        return DRAG_COEFF * fluidDensity * speedSquared * referenceArea / 2;
+        return DRAG_COEFF * fluidDensity * referenceArea / 2;
     }
 
     /**
