@@ -203,6 +203,7 @@ public class Agent extends MobileEntity {
      * Should always be a unit vector
      */
     private Vector direction;
+    private Vector velocity = Vector.ZERO;
     private double speed;
     /**
      * The amount of energy the Agent currently has.
@@ -458,8 +459,6 @@ public class Agent extends MobileEntity {
         changeEnergy(-cost);
 
         if (alive) {
-            Vector velocity = direction.scale(speed);
-
             double volume = (4.0 / 3.0) * Math.PI * Math.pow(getRadius(), 3);   // TODO: Rn this is the volume of a sphere, but maybe we should use some other value? Or just give it a tunable factor parameter
             mass = volume * WATER_DENSITY;
 
@@ -472,33 +471,39 @@ public class Agent extends MobileEntity {
             velocity = velocity.add(change);
             double speedSq = velocity.magnitudeSquared();
             if (speedSq == 0) return;
-            // Update direction to be a unit vector in the direction of the new velocity
-            direction = velocity.scale(1 / Math.sqrt(speedSq));
 
-            double deceleration = calculateFriction(speedSq) / mass;
+            double speed = Math.sqrt(speedSq);
+            Vector velDirection = velocity.scale(1 / speed);
+            double friction;
+            if (cachedTerrain == TerrainType.STANDARD) {
+                // On land, you should only ever be able to move the direction you're facing.
+                if (effort < 0 && Math.abs(acceleration) > speed) {
+                    this.direction = direction.turn(turn);
+                    this.speed = -velocity.magnitude();
+                } else {
+                    // Update direction to be a unit vector in the direction of the new velocity
+                    this.direction = velocity.scale(1 / Math.sqrt(speedSq));
+                    this.speed = velocity.magnitude();
+                }
+                friction = calculateDrag(AIR_DENSITY, speedSq, getRadius());
+                double sizeModifier = Math.pow(getRadius(), SIZE_SPEED_EXPONENT) * speedSq; // TODO: The math here probably isn't physically accurate
+                friction += sizeModifier;
+            } else {
+                // In water, do "ice rink" physics, where you can turn but keep moving the direction you were going
+                this.direction = direction.turn(turn / getRadius());
+                this.speed = velocity.magnitude();
+                friction = calculateDrag(WATER_DENSITY, speedSq, getRadius());
+            }
+            double deceleration = friction / mass;
+            velocity = velocity.subtract(velDirection.scale(deceleration));
 
-            velocity = velocity.subtract(direction.scale(deceleration));
-            speed = velocity.magnitude();
             Vector next = getPosition().addInBounds(velocity, Vector.ZERO, getBounds());
             setPosition(next);
         }
     }
 
-    private double calculateFriction(double speedSquared) {
-        double friction;
-        if (cachedTerrain == TerrainType.STANDARD) {
-            friction = calculateDrag(AIR_DENSITY, speedSquared);
-            // Add 1 to the size modifier so that the divisor can never be < 1, so agents can never go faster than their max speed.
-            double sizeModifier = Math.pow(getRadius(), SIZE_SPEED_EXPONENT) + 1; // TODO: The math here probably isn't physically accurate
-            friction += sizeModifier;
-        } else {
-            friction = calculateDrag(WATER_DENSITY, speedSquared);
-        }
-        return friction;
-    }
-
-    private double calculateDrag(double fluidDensity, double speedSquared) {
-        double referenceArea = Math.PI * Math.pow(getRadius() * 2, 2) / 4;
+    private static double calculateDrag(double fluidDensity, double speedSquared, double radius) {
+        double referenceArea = Math.PI * Math.pow(radius * 2, 2) / 4;
         return DRAG_COEFF * fluidDensity * speedSquared * referenceArea / 2;
     }
 
@@ -628,6 +633,7 @@ public class Agent extends MobileEntity {
         inputBuffer[0] = (float) (energy / calculateCloneThreshold());
         inputBuffer[1] = (float) (getRadius() / size);
         inputBuffer[2] = cachedTerrain.ordinal();
+        // TODO: Add current speed
 
         RayCaster.RayData[] rayData = doRaycasts();
         for (int i = 0; i < NUM_RAYS * 6; i += 6) {
@@ -687,7 +693,7 @@ public class Agent extends MobileEntity {
         double turn = nnTurn * (1 - jitterRequested) + (currentWanderOffset * turnSpeed) * jitterRequested;
         turn = Math.clamp(turn, -turnSpeed, turnSpeed);
 
-        this.decision = new AgentDecision(output[0], turn, desiresPredation);
+        this.decision = new AgentDecision(output[0] * 1.75 - 0.75, turn, desiresPredation);
     }
 
 

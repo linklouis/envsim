@@ -20,6 +20,7 @@ import java.io.File;
  * Source: Google Gemini
  */
 public class AgentInspectorPane extends VBox {
+    private final Label generationLabel = new Label();
     private final Label energyLabel = new Label();
     private final Label healthLabel = new Label();
     private final Label massLabel = new Label();
@@ -67,6 +68,7 @@ public class AgentInspectorPane extends VBox {
         healthLabel.setStyle("-fx-text-fill: white; -fx-font-family: monospace;");
 
         int row = 0;
+        addStandardRow(grid, row++, "Generation:", generationLabel);
         addStandardRow(grid, row++, "Energy:", energyLabel);
         addStandardRow(grid, row++, "Health:", healthLabel);
         addStandardRow(grid, row++, "Mass:", massLabel);
@@ -119,6 +121,7 @@ public class AgentInspectorPane extends VBox {
         AgentData data = agent.getAgentData();
 
         // %6.2f ensures the first value reserves a fixed 6-character width, right-aligned with spaces
+        generationLabel.setText(String.valueOf(data.generation()));
         energyLabel.setText(String.format("%6.2f / %.2f", data.energy(), agent.calculateCloneThreshold()));
         healthLabel.setText(String.format("%6.2f / %.2f", agent.getRadius(), data.size()));
         massLabel.setText(String.format("%.2f", agent.getMass()));
