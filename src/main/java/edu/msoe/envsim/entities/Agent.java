@@ -25,9 +25,9 @@ public class Agent extends MobileEntity {
      */
     public static final double WATER_DENSITY = 1025 / Math.pow(Agent.PIXELS_PER_METER, 3);
     /**
-     * 1px = 0.05m
+     * 20: 1px = 0.05m
      */
-    public static final double PIXELS_PER_METER = 20;
+    public static final double PIXELS_PER_METER = 30;
     /**
      * Body length divided by body width. Scales the sideways reference area relative to the frontal area.
      * TODO: This could probably be an evolved trait, where the higher it is, the harder it is to accelerate on land, but the easier it is to maintain momentum in the water.
@@ -457,73 +457,6 @@ public class Agent extends MobileEntity {
 
 //        if (energy <= 0 || getRadius() <= 0) die();
     }
-
-//    private void move(double turnAmount, double thrustEffort) {
-//        double energyCostOfMoving = SPEED_COST * Math.pow(thrustEffort, EFFORT_COST_EXPONENT)
-//                + TURN_COST * Math.pow(turnAmount, TURN_COST_EXPONENT);
-//        changeEnergy(-energyCostOfMoving);
-//
-//        if (!alive) return;
-//
-//        double bodyVolume = (4.0 / 3.0) * Math.PI * Math.pow(getRadius(), 3);   // TODO: sphere volume, maybe make this tunable
-//        mass = bodyVolume * WATER_DENSITY;
-//
-//        double terrainThrustModifier = Math.abs(isOnLand() - swimSkill);
-//        double thrustForce = thrustEffort * Math.pow(getRadius(), 2) * terrainThrustModifier;
-//        double thrustAcceleration = thrustForce / mass;
-//        acceleration = Math.abs(thrustAcceleration);
-//
-//        double dragCoefficient = calculateQuadraticDragCoefficient(mass);
-//
-//        if (cachedTerrain == TerrainType.STANDARD) {
-//            // LAND: the agent can only move along the direction it faces. Speed is a signed scalar along the heading.
-//            // TODO: I don't think this makes physical sense. Wouldn't it make more sense to have something like:
-//            //  newDir = dir.turn(turnAmount)
-//            //  vel = vel.add(dir.scale(thrust))
-//            //  do drag on vel
-//            //  dir = vel.norm()
-//            direction = direction.turn(turnAmount);
-//
-//            speed += thrustAcceleration;
-//            speed /= (1 + dragCoefficient * Math.abs(speed));
-//
-//            velocity = direction.scale(speed);
-//        } else {
-//            // WATER: "ice rink" physics. The agent can turn, but its velocity keeps drifting the way it was going.
-//            // Turn first, then thrust along the new heading, so heading and thrust always agree.
-//            direction = direction.turn(turnAmount / getRadius());
-//
-//            velocity = velocity.add(direction.scale(thrustAcceleration));
-//            velocity = velocity.scale(1.0 / (1 + dragCoefficient * velocity.magnitude()));
-//
-//            // Keep speed as the signed speed along the heading so it is already correct if the agent steps onto land next tick.
-//            speed = velocity.dot(direction);    // TODO: Why are we doing the dot product here?
-//        }
-//
-//        Vector nextPosition = getPosition().addInBounds(velocity, Vector.ZERO, getBounds());
-//        setPosition(nextPosition);
-//    }
-//
-//    /**
-//     * @param agentMass The mass of this {@link Agent}.
-//     * @return The coefficient k such that drag deceleration = k * speed^2 in the current terrain.
-//     * Only valid while every drag term is proportional to speed^2.
-//     */
-//    private double calculateQuadraticDragCoefficient(double agentMass) {
-//        double dragForcePerUnitSpeedSquared;
-//        if (cachedTerrain == TerrainType.STANDARD) {
-//            dragForcePerUnitSpeedSquared = calculateDragPerUnitSpeedSquared(AIR_DENSITY, getRadius())
-//                    + Math.pow(getRadius(), SIZE_SPEED_EXPONENT);   // TODO: the land term isn't physically accurate
-//        } else {
-//            dragForcePerUnitSpeedSquared = calculateDragPerUnitSpeedSquared(WATER_DENSITY, getRadius());
-//        }
-//        return dragForcePerUnitSpeedSquared / agentMass;
-//    }
-//
-//    private static double calculateDragPerUnitSpeedSquared(double fluidDensity, double radius) {
-//        double referenceArea = Math.PI * Math.pow(radius * 2, 2) / 4;
-//        return DRAG_COEFF * fluidDensity * referenceArea / 2;
-//    }
 
     private static double calculateForwardDragCoefficient(double bodyElongation) {
         return SPHERE_DRAG_COEFFICIENT / Math.sqrt(bodyElongation);

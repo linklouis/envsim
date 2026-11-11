@@ -38,7 +38,7 @@ public class Food extends StationaryEntity {
     }
 
     public double getValue() {
-        return getRadius() * RADIUS_VALUE_SCALE;
+        return getRadius() * RADIUS_VALUE_SCALE * getTerrainType().getFoodValue();
     }
 
     /**

@@ -33,7 +33,7 @@ public class Environment extends Canvas {
      * The number of screen pixels per terrain pixel on each axis.
      */
     public static final int TERRAIN_RESOLUTION_RATIO = 20;
-    private static final String DEFAULT_ENVIRONMENT = "environments/ocean-with-lake-huge.terrain";
+    private static final String DEFAULT_ENVIRONMENT = "environments/marsh & desert huge.terrain";
 
     /**
      * Food and any other entity that never moves. Rebuilt only when something is added.
@@ -657,7 +657,7 @@ public class Environment extends Canvas {
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
                     int ordinal = in.readInt();
-                    TerrainType type = values[ordinal];
+                    TerrainType type = values[ordinal]; // ordinal == 1 ? values[0] : values[3]
                     setTerrainTile(x, y, type);
                 }
             }

@@ -332,29 +332,52 @@ public class App extends Application {
         Label brushTypeLabel = new Label("Brush Type");
         brushTypeLabel.setStyle(CAPTION_STYLE);
 
+        Button desert = new Button("Desert");
         Button grass = new Button("Grass");
+        Button marsh = new Button("Marsh");
         Button water = new Button("Water");
-        for (Button b : new Button[]{grass, water}) {
+        for (Button b : new Button[]{desert, grass, marsh, water}) {
             b.setFocusTraversable(false);
             b.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(b, Priority.ALWAYS);
         }
 
         // Initial state: Grass is selected by default
+        desert.setStyle(BUTTON_STYLE);
         grass.setStyle(SELECTED_BUTTON_STYLE);
+        marsh.setStyle(BUTTON_STYLE);
         water.setStyle(BUTTON_STYLE);
 
+
+        desert.setOnAction(_ -> {
+            environment.setBrush(TerrainType.DESERT);
+            desert.setStyle(SELECTED_BUTTON_STYLE);
+            grass.setStyle(BUTTON_STYLE);
+            marsh.setStyle(BUTTON_STYLE);
+            water.setStyle(BUTTON_STYLE);
+        });
         grass.setOnAction(_ -> {
             environment.setBrush(TerrainType.STANDARD);
+            desert.setStyle(BUTTON_STYLE);
             grass.setStyle(SELECTED_BUTTON_STYLE);
+            marsh.setStyle(BUTTON_STYLE);
+            water.setStyle(BUTTON_STYLE);
+        });
+        marsh.setOnAction(_ -> {
+            environment.setBrush(TerrainType.MARSH);
+            desert.setStyle(BUTTON_STYLE);
+            grass.setStyle(BUTTON_STYLE);
+            marsh.setStyle(SELECTED_BUTTON_STYLE);
             water.setStyle(BUTTON_STYLE);
         });
         water.setOnAction(_ -> {
             environment.setBrush(TerrainType.WATER);
-            water.setStyle(SELECTED_BUTTON_STYLE);
+            desert.setStyle(BUTTON_STYLE);
             grass.setStyle(BUTTON_STYLE);
+            marsh.setStyle(BUTTON_STYLE);
+            water.setStyle(SELECTED_BUTTON_STYLE);
         });
-        HBox terrainOptions = new HBox(8, grass, water);
+        HBox terrainOptions = new HBox(8, desert, grass, marsh, water);
 
         Label brushSizeLabel = new Label("Brush Size: 5");
         brushSizeLabel.setStyle(CAPTION_STYLE);
