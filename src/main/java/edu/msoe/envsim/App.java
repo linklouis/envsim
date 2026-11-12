@@ -157,8 +157,11 @@ public class App extends Application {
         DebugMessage numPredations = new DebugMessage(
                 () -> environment.getNumPredations(), "predations", 0, environment
         );
+        DebugMessage difficulty = new DebugMessage(
+                Agent::getDifficulty, "difficulty", 4, environment
+        );
 
-        debugBox.getChildren().addAll(tick, framesPerSecond, ticksPerSecond, numAgents, listMs, decideMs, stepMs, TpSpA, numPredations);
+        debugBox.getChildren().addAll(tick, framesPerSecond, ticksPerSecond, numAgents, listMs, decideMs, stepMs, TpSpA, numPredations, difficulty);
         toggleDebugMode(debugMode);
     }
 

@@ -137,14 +137,17 @@ public class Agent extends MobileEntity {
     private static final int MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT = 3;
 
 
+    private static final double INITIAL_GELF = 0.0000000001;//0.00001;//
     /**
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
-    private static double GLOBAL_ENERGY_LOSS_FACTOR = 0.00000000001;
-    private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.0045;
-    private final static int GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 1200000;
-    private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
+    private static double GLOBAL_ENERGY_LOSS_FACTOR = INITIAL_GELF;
+    private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.013;
+    private final static int TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 900000;
+    private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
+    private final static int TARGET_NUM_AGENTS_WHILE_ANNEALING = 1000;
+
     /**
      * The maximum number of degrees that an Agent's wander offset can be randomly changed by each tick.
      * Prevents looping.
@@ -845,9 +848,9 @@ public class Agent extends MobileEntity {
         cachedTerrain = environment.getStandingTerrainType(this);
     }
 
-    public static void updateDifficulty() {
+    public static void updateDifficulty(double numAgents) {
         if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
-            GLOBAL_ENERGY_LOSS_FACTOR += GLOBAL_ENERGY_LOSS_ANNEALING_RATE;
+            GLOBAL_ENERGY_LOSS_FACTOR += GLOBAL_ENERGY_LOSS_ANNEALING_RATE * numAgents / TARGET_NUM_AGENTS_WHILE_ANNEALING;
         }
     }
 
@@ -869,5 +872,9 @@ public class Agent extends MobileEntity {
 
     public double getAcceleration() {
         return acceleration;
+    }
+
+    public static double getDifficulty() {
+        return (GLOBAL_ENERGY_LOSS_FACTOR - INITIAL_GELF) / (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - INITIAL_GELF);
     }
 }
