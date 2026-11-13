@@ -486,6 +486,8 @@ public class Agent extends MobileEntity {
                 + (BROADSIDE_CYLINDER_DRAG_COEFFICIENT - SPHERE_DRAG_COEFFICIENT) * portionOfBodyThatIsBlunt;
     }
 
+    private final static double MAX_BODY_ELONGATION = 2.5;
+
     private void move(double turnAmount, double thrustEffort) {
         double energyCostOfMoving = SPEED_COST * Math.pow(thrustEffort, EFFORT_COST_EXPONENT)
                 + TURN_COST * Math.pow(turnAmount, TURN_COST_EXPONENT);
@@ -508,9 +510,9 @@ public class Agent extends MobileEntity {
         // Anisotropic drag: the fluid resists sideways motion more than forward motion.
         // TODO: Some redundant math can be removed in the future
         double frontalArea = Math.PI * Math.pow(getRadius(), 2);
-        double sidewaysArea = frontalArea * BODY_ELONGATION;
-        double forwardDragPerSpeed = 0.5 * cachedTerrain.getFluidDensity() * FORWARD_DRAG_COEFFICIENT * frontalArea / mass;
-        double sidewaysDragPerSpeed = 0.5 * cachedTerrain.getFluidDensity() * SIDEWAYS_DRAG_COEFFICIENT * sidewaysArea / mass;
+        double sidewaysArea = frontalArea * swimSkill * MAX_BODY_ELONGATION;
+        double forwardDragPerSpeed = 0.5 * cachedTerrain.getFluidDensity() * calculateForwardDragCoefficient(swimSkill * MAX_BODY_ELONGATION) * frontalArea / mass;
+        double sidewaysDragPerSpeed = 0.5 * cachedTerrain.getFluidDensity() * calculateSidewaysDragCoefficient(swimSkill * MAX_BODY_ELONGATION) * sidewaysArea / mass;
         double walkingDragPerSpeed = cachedTerrain.getWalkingResistance();
         forwardDragPerSpeed += walkingDragPerSpeed;
 
