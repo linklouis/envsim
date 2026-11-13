@@ -7,6 +7,7 @@
 - [ ] "Go To Agent" button
 - [ ] Add a radar chart for food preference?
 - [ ] Add units + a way to see stuff in metric, imperial, & pixels
+- [ ] Add current turn speed
 
 ### Agent Spawner
 - [ ] Make it wide enough to fit the whole names
@@ -32,6 +33,10 @@
 - [X] **Painting under food should reset the food's cached terrain**
 - [ ] Add circular brushes
 - [ ] Add filling?
+
+### Debug Panel
+- [ ] Have the num predations counter be per frame rather than per tick?
+- [ ] Completely redo it
 
 ### MISC.
 - [ ] Change the max zoom factor based on the world size

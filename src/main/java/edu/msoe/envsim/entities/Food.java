@@ -15,6 +15,7 @@ public class Food extends StationaryEntity {
     private final static double RADIUS_VALUE_SCALE = 2;
     private static final double GROWTH_SPEED = 0.002;
     private static final int REGROWTH_TIME = 100;
+    private static final double MIN_FOOD_PREFERENCE_WITHOUT_POISON = 0.3;
 
     private final double maxSize;
     private int regrowthTimer = 0;
@@ -63,12 +64,26 @@ public class Food extends StationaryEntity {
             );
         }
 
+        private static double calculateCompatibilityNoNegative(double preference) {
+            return Math.pow(preference - MIN_FOOD_PREFERENCE_WITHOUT_POISON, 3);
+        }
+
+        /**
+         * TODO: Make the exponent a hyperparameter? (Would have to add the Math.abs() back in)
+         * TODO: Move redundant calculations?
+         * @param preference
+         * @return
+         */
+        private static double calculateCompatibility(double preference) {
+            return Math.signum(preference - MIN_FOOD_PREFERENCE_WITHOUT_POISON) * Math.pow((preference - MIN_FOOD_PREFERENCE_WITHOUT_POISON) / (1 - MIN_FOOD_PREFERENCE_WITHOUT_POISON), 2);
+        }
+
         @Contract(pure = true)
         private double getCompatibility(@NotNull FoodType foodType) {
             return switch (foodType) {
-                case TYPE_1 -> type1Preference;
-                case TYPE_2 -> type2Preference;
-                case TYPE_3 -> type3Preference;
+                case TYPE_1 -> calculateCompatibility(type1Preference);
+                case TYPE_2 -> calculateCompatibility(type2Preference);
+                case TYPE_3 -> calculateCompatibility(type3Preference);
             };
         }
 
@@ -109,7 +124,7 @@ public class Food extends StationaryEntity {
     }
 
     public double getValue(@NotNull FoodPreference foodPreference) {
-        return getRadius() * RADIUS_VALUE_SCALE * getTerrainType().getFoodValue() * Math.pow(foodPreference.getCompatibility(foodType), 2); // TODO: Make the exponent a constant
+        return getRadius() * RADIUS_VALUE_SCALE * getTerrainType().getFoodValue() * foodPreference.getCompatibility(foodType);
     }
 
     /**
