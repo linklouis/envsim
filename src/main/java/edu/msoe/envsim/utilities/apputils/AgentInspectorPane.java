@@ -40,6 +40,10 @@ public class AgentInspectorPane extends VBox {
     private final Label attackLabel = new Label();
     private final Label defenseLabel = new Label();
     private final Label fovLabel = new Label();
+    private final Label food1Label = new Label();
+    private final Label food2Label = new Label();
+    private final Label food3Label = new Label();
+
 
     private final Runnable onCloseCallback;
     private Agent currentAgent;
@@ -90,6 +94,9 @@ public class AgentInspectorPane extends VBox {
         addStandardRow(grid, row++, "Attack:", attackLabel);
         addStandardRow(grid, row++, "Defense:", defenseLabel);
         addStandardRow(grid, row++, "FOV:", fovLabel);
+        addStandardRow(grid, row++, "Food 1 Preference:", food1Label);
+        addStandardRow(grid, row++, "Food 2 Preference:", food2Label);
+        addStandardRow(grid, row++, "Food 3 Preference:", food3Label);
 
         Button saveButton = new Button("Save Agent");
         saveButton.setStyle("-fx-background-color: #3b5998; -fx-text-fill: white; -fx-cursor: hand;");
@@ -142,6 +149,9 @@ public class AgentInspectorPane extends VBox {
         attackLabel.setText(String.format("%.2f", data.attack()));
         defenseLabel.setText(String.format("%.2f", data.defense()));
         fovLabel.setText(String.format("%.2f", data.fieldOfView()));
+        food1Label.setText(String.format("%.2f", data.foodPreference().type1Preference()));
+        food2Label.setText(String.format("%.2f", data.foodPreference().type2Preference()));
+        food3Label.setText(String.format("%.2f", data.foodPreference().type3Preference()));
         // TODO: Add line for actual max speed and current speed
 
         setVisible(true);

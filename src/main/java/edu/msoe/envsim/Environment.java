@@ -538,7 +538,7 @@ public class Environment extends Canvas {
             stepMs = stepMs * 0.99 + (t3 - t2) / 1e6 * 0.01;
         }
 
-        Agent.updateDifficulty();
+        Agent.updateDifficulty(mobileEntities.size());
         simClock.update();
 
         currentTick++;

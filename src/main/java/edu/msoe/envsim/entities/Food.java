@@ -78,8 +78,8 @@ public class Food extends StationaryEntity {
             out.writeDouble(type3Preference);
         }
 
-        public double calculatePerTickCost(double costFactor) {
-            return (type1Preference + type2Preference + type3Preference) * costFactor;
+        public double getTotalPreferenceAmount() {
+            return type1Preference + type2Preference + type3Preference;
         }
     }
 
@@ -109,7 +109,7 @@ public class Food extends StationaryEntity {
     }
 
     public double getValue(@NotNull FoodPreference foodPreference) {
-        return getRadius() * RADIUS_VALUE_SCALE * getTerrainType().getFoodValue() * foodPreference.getCompatibility(foodType);
+        return getRadius() * RADIUS_VALUE_SCALE * getTerrainType().getFoodValue() * Math.pow(foodPreference.getCompatibility(foodType), 2); // TODO: Make the exponent a constant
     }
 
     /**

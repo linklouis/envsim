@@ -27,7 +27,7 @@ public class Agent extends MobileEntity {
     /**
      * 20: 1px = 0.05m
      */
-    public static final double PIXELS_PER_METER = 30;
+    public static final double PIXELS_PER_METER = 50;
     /**
      * Body length divided by body width. Scales the sideways reference area relative to the frontal area.
      * TODO: This could probably be an evolved trait, where the higher it is, the harder it is to accelerate on land, but the easier it is to maintain momentum in the water.
@@ -58,7 +58,7 @@ public class Agent extends MobileEntity {
      * The energy at which an entity will clone.
      * The actual threshold is calculated using this and radius.
      */
-    private static final int CLONE_THRESHOLD = 20;
+    private static final int BASE_CLONE_THRESHOLD = 20;
     /**
      * In the real world, this should likely be proportional to mass, so this should be 3.
      * However, reproduction and mutation happen significantly faster here, and having this be any value above 1 causes
@@ -75,15 +75,15 @@ public class Agent extends MobileEntity {
      * Scales with the size ratio (so it's easier to eat something smaller.)
      * </p>
      */
-    private static final double PREDATION_COST_FACTOR = 0.1;    // TODO: Can maybe get rid of since we have predation efficiency?
+    private static final double PREDATION_COST_FACTOR = 0.05;    // TODO: Can maybe get rid of since we have predation efficiency?
     /**
      * The portion of the prey's energy that the predator actually receives.
      */
-    private static final double PREDATION_EFFICIENCY = 0.99; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
+    private static final double PREDATION_EFFICIENCY = 0.999; // Should be much more beneficial than eating plants, so if you get huge you have to eat others, plants can't sustain you.
     /**
      * The portion of energy to spend when trying to attempt predation and not touching another agent
      */
-    private static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.02;
+    private static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.015;
     /**
      * The portion of total energy an agent needs to start regenerating health.
      */
@@ -95,7 +95,7 @@ public class Agent extends MobileEntity {
     /**
      * The amount of energy cost per time step per pixel of vision radius
      */
-    private static final double PASSIVE_VISION_QUALITY_COST = 0.001;
+    private static final double PASSIVE_VISION_QUALITY_COST = 0.0003;
     /**
      * The energy cost per time step per point of defense
      */
@@ -103,33 +103,33 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.001;
+    private static final double PASSIVE_SIZE_COST = 0.0003;
     /**
      * Kleiber's Law dictates that basal metabolic rate scales with mass to the 3/4 power.
      * In 3D, mass scales with R^3.
      * So basal metabolic rate should scale to R^{9/4} = R^2.25
      */
     private static final double PASSIVE_SIZE_EXPONENT = 2.25;
-    public static final double PASSIVE_LIFE_COST = 0.015;
-    public static final double PASSIVE_TURN_SPEED_COST = 0.0004;
+    public static final double PASSIVE_LIFE_COST = 0.012;
+    public static final double PASSIVE_TURN_SPEED_COST = 0.00004;
     /**
      * The cost per tick of having a 100% preference for a single food type.
      */
-    private static final double PASSIVE_FOOD_PREFERENCE_COST = 0.01;
+    private static final double PASSIVE_FOOD_PREFERENCE_COST = 3;
     /**
-     * The number of energy points it costs an Agent to move one pixel in a tick.
+     * TODO: Actually acceleration now
      */
-    private static final double SPEED_COST = 0.09;
+    private static final double SPEED_COST = 0.12;
     private static final int EFFORT_COST_EXPONENT = 2;
     private static final int TURN_COST_EXPONENT = 2;
     /**
      * TODO
      */
-    private static final double TURN_COST = 1;
+    private static final double TURN_COST = 0.2;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
-    private static final double ATTACK_COST = 0.3;
+    private static final double ATTACK_COST = 0.25;
     /**
      * Sets the max energy at a clone event to be the clone threshold times this value.
      * TODO: make better name
@@ -144,9 +144,9 @@ public class Agent extends MobileEntity {
      */
     private static double GLOBAL_ENERGY_LOSS_FACTOR = INITIAL_GELF;
     private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.013;
-    private final static int TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 900000;
+    private final static int TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 6000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
-    private final static int TARGET_NUM_AGENTS_WHILE_ANNEALING = 1000;
+    private final static int TARGET_NUM_AGENTS_WHILE_ANNEALING = 3000;
 
     /**
      * The maximum number of degrees that an Agent's wander offset can be randomly changed by each tick.
@@ -303,7 +303,7 @@ public class Agent extends MobileEntity {
         foodPreference = agentData.foodPreference();
         brain =  agentData.brain();
 
-        perTickFoodPreferenceCost = foodPreference.calculatePerTickCost(PASSIVE_FOOD_PREFERENCE_COST);
+        perTickFoodPreferenceCost = Math.pow(foodPreference.getTotalPreferenceAmount(), 2) * PASSIVE_FOOD_PREFERENCE_COST;
 
         generation = agentData.generation();
 
@@ -334,6 +334,9 @@ public class Agent extends MobileEntity {
         traits.add((float) attack);
         traits.add((float) defense);
         traits.add((float) fieldOfView);
+        traits.add((float) foodPreference.type1Preference());
+        traits.add((float) foodPreference.type2Preference());
+        traits.add((float) foodPreference.type3Preference());
 
         traits.addAll(brain.getWeights());
 
@@ -493,7 +496,7 @@ public class Agent extends MobileEntity {
         double bodyVolume = (4.0 / 3.0) * Math.PI * Math.pow(getRadius(), 3);
         mass = bodyVolume * WATER_DENSITY;
 
-        double terrainThrustModifier = 1.0 - Math.abs(cachedTerrain.getSwimSkillRequired() - swimSkill);
+        double terrainThrustModifier = Math.pow(1.0 - Math.abs(cachedTerrain.getSwimSkillRequired() - swimSkill), 3);   // TODO: Make the exponent a hyperparameter
         double thrustAcceleration = thrustEffort * Math.pow(getRadius(), 2) * terrainThrustModifier / mass;
         acceleration = Math.abs(thrustAcceleration);
 
@@ -624,7 +627,7 @@ public class Agent extends MobileEntity {
     }
 
     private static @NotNull NeuralNetwork newBrain() {
-        return new NeuralNetwork(new int[] {NUM_INPUTS, 16, 4});
+        return new NeuralNetwork(new int[] {NUM_INPUTS, 32, 16, 4});
     }
 
 
@@ -819,7 +822,7 @@ public class Agent extends MobileEntity {
     }
 
     private static double calculateCloneThreshold(double radius) {
-        return CLONE_THRESHOLD * Math.pow(radius, CLONE_THRESHOLD_EXPONENT);
+        return BASE_CLONE_THRESHOLD * Math.pow(radius, CLONE_THRESHOLD_EXPONENT);
     }
 
     /**
@@ -872,6 +875,10 @@ public class Agent extends MobileEntity {
 
     public double getAcceleration() {
         return acceleration;
+    }
+
+    public Food.FoodPreference getFoodPreference() {
+        return foodPreference;
     }
 
     public static double getDifficulty() {
