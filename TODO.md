@@ -45,6 +45,7 @@
   - Could have food actually go away, and spawn new food
     - Could allow like having certain foods spawn more NEAR water, which would be super cool
 - [ ] Add memory?
+- [ ] Freezing stats for a run or just species?
 
 ## Stats
 - [ ] Add stats screen

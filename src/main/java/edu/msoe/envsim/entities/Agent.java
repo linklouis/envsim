@@ -855,7 +855,7 @@ public class Agent extends MobileEntity {
 
     public static void updateDifficulty(double numAgents) {
         if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
-            GLOBAL_ENERGY_LOSS_FACTOR += GLOBAL_ENERGY_LOSS_ANNEALING_RATE * numAgents / TARGET_NUM_AGENTS_WHILE_ANNEALING;
+            GLOBAL_ENERGY_LOSS_FACTOR += GLOBAL_ENERGY_LOSS_ANNEALING_RATE * (numAgents/TARGET_NUM_AGENTS_WHILE_ANNEALING - 1.0/6);
         }
     }
 
