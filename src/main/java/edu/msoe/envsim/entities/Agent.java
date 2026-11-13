@@ -786,7 +786,7 @@ public class Agent extends MobileEntity {
                 + visionRadius * PASSIVE_VISION_QUALITY_COST
                 + Math.pow(getRadius(), PASSIVE_SIZE_EXPONENT) * PASSIVE_SIZE_COST
                 + defense * PASSIVE_DEFENSE_COST
-                + perTickFoodPreferenceCost;
+                + perTickFoodPreferenceCost / (GLOBAL_ENERGY_LOSS_FACTOR / FINAL_GLOBAL_ENERGY_LOSS_FACTOR);
     }
 
     @Contract(" -> new")
