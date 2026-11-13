@@ -115,7 +115,7 @@ public class Agent extends MobileEntity {
     /**
      * The cost per tick of having a 100% preference for a single food type.
      */
-    private static final double PASSIVE_FOOD_PREFERENCE_COST = 3;
+    private static final double PASSIVE_FOOD_PREFERENCE_COST = 4;
     /**
      * TODO: Actually acceleration now
      */
@@ -144,7 +144,7 @@ public class Agent extends MobileEntity {
      */
     private static double GLOBAL_ENERGY_LOSS_FACTOR = INITIAL_GELF;
     private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.013;
-    private final static int TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 6000000;
+    private final static int TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 10000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     private final static int TARGET_NUM_AGENTS_WHILE_ANNEALING = 3000;
 
@@ -152,7 +152,7 @@ public class Agent extends MobileEntity {
      * The maximum number of degrees that an Agent's wander offset can be randomly changed by each tick.
      * Prevents looping.
      */
-    private static final double RANDOM_WANDER_CHANGE_SPEED = 0.15;
+    private static final double RANDOM_WANDER_CHANGE_SPEED = 0.17;
 
 
     private static final AtomicLong NEXT_ID = new AtomicLong(1);
