@@ -35,6 +35,7 @@
 
 ### MISC.
 - [ ] Change the max zoom factor based on the world size
+- [ ] Make the agents more visually distinct from food
 
 ## MISC.
 - [ ] Add pixel to meter scale to size energy cost calculation
