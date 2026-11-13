@@ -28,24 +28,14 @@ public class Agent extends MobileEntity {
      * 20: 1px = 0.05m
      */
     public static final double PIXELS_PER_METER = 50;
-    /**
-     * Body length divided by body width. Scales the sideways reference area relative to the frontal area.
-     * TODO: This could probably be an evolved trait, where the higher it is, the harder it is to accelerate on land, but the easier it is to maintain momentum in the water.
-     *  Could be from 1 - 6
-     *  I could even change the shape of the agent based on this?? (probably just the displayed shape... That could get complicated.)
-     */
-    private static final double BODY_ELONGATION = 2.0;
-    /**
-     * Drag coefficient for fluid flowing along the body (streamlined).
-     */
-    private static final double FORWARD_DRAG_COEFFICIENT = calculateForwardDragCoefficient(BODY_ELONGATION);
-    /**
-     * Drag coefficient for fluid hitting the side of the body (blunt, like a cylinder broadside).
-     */
-    private static final double SIDEWAYS_DRAG_COEFFICIENT = calculateSidewaysDragCoefficient(BODY_ELONGATION);
+
 
     private static final double SPHERE_DRAG_COEFFICIENT = 0.47;
-    private static final double BROADSIDE_CYLINDER_DRAG_COEFFICIENT = 1.2;
+
+    private final static double MAX_BODY_ELONGATION = 2.5;
+    private final static double MIN_BODY_ELONGATION = 0.15;
+    private static final double MAX_SIDEWAYS_DRAG = 0.96;
+    private static final double MIN_BLUNT_BODY_PORTION = calculatePortionOfBodyThatIsBlunt(MAX_BODY_ELONGATION);
 
 
     // WEIGHT PARAMETERS
@@ -249,6 +239,7 @@ public class Agent extends MobileEntity {
     private final double[] genomeComparisonValues = new double[256];
     private final float[] inputBuffer = new float[NUM_INPUTS];
     private final double perTickFoodPreferenceCost;
+    private final double bodyElongation;
 
     // INSPECTOR VALUES
     private double mass = 0;
@@ -297,6 +288,7 @@ public class Agent extends MobileEntity {
         visionRadiusSquared = visionRadius * visionRadius;
         healthRegenSpeed = agentData.healthRegenSpeed();
         swimSkill = agentData.swimSkill();
+        bodyElongation = (MAX_BODY_ELONGATION - MIN_BODY_ELONGATION) * Math.pow(swimSkill, 2) + MIN_BODY_ELONGATION;
         attack = agentData.attack();
         defense = agentData.defense();
         fieldOfView = agentData.fieldOfView();
@@ -480,13 +472,14 @@ public class Agent extends MobileEntity {
         return SPHERE_DRAG_COEFFICIENT / Math.sqrt(bodyElongation);
     }
 
-    private static double calculateSidewaysDragCoefficient(double bodyElongation) {
-        double portionOfBodyThatIsBlunt = 1.0 - 1.0 / bodyElongation;
-        return SPHERE_DRAG_COEFFICIENT
-                + (BROADSIDE_CYLINDER_DRAG_COEFFICIENT - SPHERE_DRAG_COEFFICIENT) * portionOfBodyThatIsBlunt;
+    private static double calculatePortionOfBodyThatIsBlunt(double bodyElongation) {
+        return (bodyElongation - 1.0) / (bodyElongation + 1.0);
     }
 
-    private final static double MAX_BODY_ELONGATION = 2.5;
+    private static double calculateSidewaysDragCoefficient(double bodyElongation) {
+        double portionOfBodyThatIsBlunt = calculatePortionOfBodyThatIsBlunt(bodyElongation);
+        return MAX_SIDEWAYS_DRAG * (portionOfBodyThatIsBlunt + 1) / (MIN_BLUNT_BODY_PORTION + 1);
+    }
 
     private void move(double turnAmount, double thrustEffort) {
         double energyCostOfMoving = SPEED_COST * Math.pow(thrustEffort, EFFORT_COST_EXPONENT)
@@ -508,11 +501,10 @@ public class Agent extends MobileEntity {
         velocity = velocity.add(direction.scale(thrustAcceleration));
 
         // Anisotropic drag: the fluid resists sideways motion more than forward motion.
-        // TODO: Some redundant math can be removed in the future
         double frontalArea = Math.PI * Math.pow(getRadius(), 2);
-        double sidewaysArea = frontalArea * swimSkill * MAX_BODY_ELONGATION;
-        double forwardDragPerSpeed = 0.5 * cachedTerrain.getFluidDensity() * calculateForwardDragCoefficient(swimSkill * MAX_BODY_ELONGATION) * frontalArea / mass;
-        double sidewaysDragPerSpeed = 0.5 * cachedTerrain.getFluidDensity() * calculateSidewaysDragCoefficient(swimSkill * MAX_BODY_ELONGATION) * sidewaysArea / mass;
+        double sidewaysArea = frontalArea * bodyElongation; // TODO: Is this math really right?
+        double forwardDragPerSpeed = 0.5 * cachedTerrain.getFluidDensity() * calculateForwardDragCoefficient(bodyElongation) * frontalArea / mass;
+        double sidewaysDragPerSpeed = 0.5 * cachedTerrain.getFluidDensity() * calculateSidewaysDragCoefficient(bodyElongation) * sidewaysArea / mass;
         double walkingDragPerSpeed = cachedTerrain.getWalkingResistance();
         forwardDragPerSpeed += walkingDragPerSpeed;
 
@@ -877,10 +869,6 @@ public class Agent extends MobileEntity {
 
     public double getAcceleration() {
         return acceleration;
-    }
-
-    public Food.FoodPreference getFoodPreference() {
-        return foodPreference;
     }
 
     public static double getDifficulty() {
