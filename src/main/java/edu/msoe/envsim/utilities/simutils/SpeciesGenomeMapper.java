@@ -4,7 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class SpeciesGenomeMapper extends DimensionalMapper {
     private static final int OUTPUT_SIZE = 150;
-    private static final float MAX_RADIUS = 0.5f;
+    private static final float MAX_RADIUS = 0.5f;   // TODO: Could making this larger lead to more accurate comparisons?
 
     /**
      * Projects a high-dimensional genome vector into a lower-dimensional representation.

@@ -515,11 +515,6 @@ public class Agent extends MobileEntity {
         }
     }
 
-    private void updateColor() {
-        double brightness = Math.clamp(energy / calculateCloneThreshold(), 0.0, 1.0);
-        setColor(Color.hsb(baseColor.getHue(), baseColor.getSaturation(), brightness));
-    }
-
     /**
      * @param prey The {@link Agent} to attempt to predate upon.
      */
@@ -709,6 +704,11 @@ public class Agent extends MobileEntity {
                 }
             }
         }
+    }
+
+    private void updateColor() {
+        double brightness = Math.clamp(energy / calculateCloneThreshold(), 0.0, 1.0);
+        setColor(Color.hsb(baseColor.getHue(), baseColor.getSaturation(), brightness));
     }
 
     protected void die() {
