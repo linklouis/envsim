@@ -2,8 +2,8 @@ package edu.msoe.envsim.utilities.simutils;
 
 import javafx.scene.paint.Color;
 
-import static edu.msoe.envsim.entities.Agent.AIR_DENSITY;
-import static edu.msoe.envsim.entities.Agent.WATER_DENSITY;
+import static edu.msoe.envsim.utilities.simutils.PhysicsMath.AIR_DENSITY;
+import static edu.msoe.envsim.utilities.simutils.PhysicsMath.WATER_DENSITY;
 
 public enum TerrainType {
     // Turning resistance has to be >= 1 because the division by radius already takes so much away from the turn.

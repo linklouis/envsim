@@ -14,30 +14,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiPredicate;
 
+import static edu.msoe.envsim.utilities.simutils.PhysicsMath.*;
+
 public class Agent extends MobileEntity {
-    // PHYSICS PARAMETERS
-    /**
-     * TODO: The density constants make more sense in TerrainType, but there's no good way to include them there.
-     */
-    public static final double AIR_DENSITY = 1.225 / Math.pow(Agent.PIXELS_PER_METER, 3);
-    /**
-     * Also used as the average mass of an Agent's body per pixel
-     */
-    public static final double WATER_DENSITY = 1025 / Math.pow(Agent.PIXELS_PER_METER, 3);
-    /**
-     * 20: 1px = 0.05m
-     */
-    public static final double PIXELS_PER_METER = 50;
-
-
-    private static final double SPHERE_DRAG_COEFFICIENT = 0.47;
-
-    private final static double MAX_BODY_ELONGATION = 2.5;
-    private final static double MIN_BODY_ELONGATION = 0.15;
-    private static final double MAX_SIDEWAYS_DRAG = 0.96;
-    private static final double MIN_BLUNT_BODY_PORTION = calculatePortionOfBodyThatIsBlunt(MAX_BODY_ELONGATION);
-
-
     // WEIGHT PARAMETERS
     public static final double MIN_SIZE = 1;
     /**
@@ -434,19 +413,6 @@ public class Agent extends MobileEntity {
         }
 
 //        if (energy <= 0 || getRadius() <= 0) die();
-    }
-
-    private static double calculateForwardDragCoefficient(double bodyElongation) {
-        return SPHERE_DRAG_COEFFICIENT / Math.sqrt(bodyElongation);
-    }
-
-    private static double calculatePortionOfBodyThatIsBlunt(double bodyElongation) {
-        return (bodyElongation - 1.0) / (bodyElongation + 1.0);
-    }
-
-    private static double calculateSidewaysDragCoefficient(double bodyElongation) {
-        double portionOfBodyThatIsBlunt = calculatePortionOfBodyThatIsBlunt(bodyElongation);
-        return MAX_SIDEWAYS_DRAG * (portionOfBodyThatIsBlunt + 1) / (MIN_BLUNT_BODY_PORTION + 1);
     }
 
     private void move(double turnAmount, double thrustEffort) {
