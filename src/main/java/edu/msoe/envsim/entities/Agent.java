@@ -56,7 +56,7 @@ public class Agent extends MobileEntity {
     /**
      * The portion of energy to spend when trying to attempt predation and not touching another agent
      */
-    private static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.015;
+    private static final double FALSE_PREDATION_PUNISHMENT_FACTOR = 0.001;
     /**
      * The portion of total energy an agent needs to start regenerating health.
      */
@@ -128,6 +128,7 @@ public class Agent extends MobileEntity {
     private final static int TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 10000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     private final static int TARGET_NUM_AGENTS_WHILE_ANNEALING = 3000;
+    private final static int MIN_NUM_AGENTS_WHILE_ANNEALING = 1300;
 
 
     // AGENT STATE PARAMETERS
@@ -258,7 +259,7 @@ public class Agent extends MobileEntity {
                 Math.random() * 5,
                 Math.random() * (Math.PI - 0.5) + 0.5,
                 Food.FoodPreference.random(),
-                new NeuralNetwork(new int[] {NUM_INPUTS, 32, 16, 4}),
+                new NeuralNetwork(new int[] {NUM_INPUTS, 32, 4}),
                 0
         );
 
@@ -790,9 +791,12 @@ public class Agent extends MobileEntity {
         cachedTerrain = environment.getStandingTerrainType(this);
     }
 
-    public static void updateDifficulty(double numAgents) {
+    public static void updateDifficulty(double numAgents, double step) {
+        if (step < 80000 && numAgents > MIN_NUM_AGENTS_WHILE_ANNEALING) return;
         if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
-            GLOBAL_ENERGY_LOSS_FACTOR += GLOBAL_ENERGY_LOSS_ANNEALING_RATE * (numAgents/TARGET_NUM_AGENTS_WHILE_ANNEALING - 1.0/5);
+            double populationFactor = (Math.min(numAgents, 50000) - MIN_NUM_AGENTS_WHILE_ANNEALING)/TARGET_NUM_AGENTS_WHILE_ANNEALING;
+            double change = GLOBAL_ENERGY_LOSS_ANNEALING_RATE * Math.signum(populationFactor) * Math.pow(Math.abs(populationFactor), 0.6);
+            GLOBAL_ENERGY_LOSS_FACTOR = Math.max(GLOBAL_ENERGY_LOSS_FACTOR + change, INITIAL_GELF);
         }
     }
 
