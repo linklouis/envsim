@@ -15,7 +15,6 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
-import javafx.scene.input.DragEvent;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
 
@@ -893,10 +892,6 @@ public class Environment extends Canvas {
         return num;
     }
 
-    public boolean isDebugMode() {
-        return debugMode;
-    }
-
     public void setDebugMode(boolean debugMode) {
         this.debugMode = debugMode;
     }
@@ -943,10 +938,6 @@ public class Environment extends Canvas {
 
     public Agent getSelectedAgent() {
         return selectedAgent;
-    }
-
-    public void setSelectedAgent(Agent agent) {
-        this.selectedAgent = agent;
     }
 
     public void flushPendingMobileEntities() {

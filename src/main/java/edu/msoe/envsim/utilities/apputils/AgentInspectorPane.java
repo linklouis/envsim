@@ -10,7 +10,6 @@ import javafx.scene.control.Separator;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -98,29 +97,9 @@ public class AgentInspectorPane extends VBox {
         addStandardRow(grid, row++, "Food 2 Preference:", food2Label);
         addStandardRow(grid, row++, "Food 3 Preference:", food3Label);
 
-        Button saveButton = new Button("Save Agent");
-        saveButton.setStyle("-fx-background-color: #3b5998; -fx-text-fill: white; -fx-cursor: hand;");
-        saveButton.setFocusTraversable(false);
-        saveButton.setOnAction(_ -> saveCurrentAgent());
-
-        Button closeButton = new Button("Close");
-        closeButton.setOnAction(_ -> hide());
-        closeButton.setStyle("-fx-background-color: #444; -fx-text-fill: white; -fx-cursor: hand;");
-        closeButton.setFocusTraversable(false);
-
-        HBox actionButtons = new HBox(10, saveButton, closeButton);
+        HBox actionButtons = getActionButtonsPane();
 
         getChildren().addAll(title, grid, new Separator(), actionButtons);
-    }
-
-    private void addStandardRow(@NotNull GridPane grid, int row, String labelText, @NotNull Label valLabel) {
-        Label lbl = new Label(labelText);
-        lbl.setStyle("-fx-text-fill: #aaa; -fx-font-weight: bold;");
-        if (valLabel.getStyle().isEmpty()) {
-            valLabel.setStyle("-fx-text-fill: white;");
-        }
-        grid.add(lbl, 0, row);
-        grid.add(valLabel, 1, row);
     }
 
     public void showAgent(@NotNull Agent agent) {
@@ -152,9 +131,33 @@ public class AgentInspectorPane extends VBox {
         food1Label.setText(String.format("%.2f", data.foodPreference().type1Preference()));
         food2Label.setText(String.format("%.2f", data.foodPreference().type2Preference()));
         food3Label.setText(String.format("%.2f", data.foodPreference().type3Preference()));
-        // TODO: Add line for actual max speed and current speed
+        // TODO: Add line for actual max speed
 
         setVisible(true);
+    }
+
+    private @NotNull HBox getActionButtonsPane() {
+        Button saveButton = new Button("Save Agent");
+        saveButton.setStyle("-fx-background-color: #3b5998; -fx-text-fill: white; -fx-cursor: hand;");
+        saveButton.setFocusTraversable(false);
+        saveButton.setOnAction(_ -> saveCurrentAgent());
+
+        Button closeButton = new Button("Close");
+        closeButton.setOnAction(_ -> hide());
+        closeButton.setStyle("-fx-background-color: #444; -fx-text-fill: white; -fx-cursor: hand;");
+        closeButton.setFocusTraversable(false);
+
+        return new HBox(10, saveButton, closeButton);
+    }
+
+    private void addStandardRow(@NotNull GridPane grid, int row, String labelText, @NotNull Label valLabel) {
+        Label lbl = new Label(labelText);
+        lbl.setStyle("-fx-text-fill: #aaa; -fx-font-weight: bold;");
+        if (valLabel.getStyle().isEmpty()) {
+            valLabel.setStyle("-fx-text-fill: white;");
+        }
+        grid.add(lbl, 0, row);
+        grid.add(valLabel, 1, row);
     }
 
     private void saveCurrentAgent() {

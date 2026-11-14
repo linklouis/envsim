@@ -19,9 +19,9 @@ public class Food extends StationaryEntity {
 
     private final double maxSize;
     private int regrowthTimer = 0;
-    private FoodType foodType;
+    private final FoodType foodType;
 
-    // TODO: Might make actual types in the future, but this works for now
+    // TODO: Might make actual types W/ names in the future, but this works for now
     private enum FoodType {
         TYPE_1(new Color(0.82, 0.72, 0.16, 1)),
         TYPE_2(new Color(0.68, 0.14, 0.14, 1)),
@@ -71,8 +71,8 @@ public class Food extends StationaryEntity {
         /**
          * TODO: Make the exponent a hyperparameter? (Would have to add the Math.abs() back in)
          * TODO: Move redundant calculations?
-         * @param preference
-         * @return
+         * @param preference The preference value for a given {@link FoodType}
+         * @return The factor that should be applied in the calculation of the energy value that a given {@link Food} should provide
          */
         private static double calculateCompatibility(double preference) {
             return Math.signum(preference - MIN_FOOD_PREFERENCE_WITHOUT_POISON) * Math.pow((preference - MIN_FOOD_PREFERENCE_WITHOUT_POISON) / (1 - MIN_FOOD_PREFERENCE_WITHOUT_POISON), 2);

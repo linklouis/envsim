@@ -8,6 +8,7 @@
 - [ ] Add a radar chart for food preference?
 - [ ] Add units + a way to see stuff in metric, imperial, & pixels
 - [ ] Add current turn speed
+- [ ] Have the food preferences have the colors the refer to
 
 ### Agent Spawner
 - [ ] Make it wide enough to fit the whole names
@@ -51,6 +52,7 @@
     - Could allow like having certain foods spawn more NEAR water, which would be super cool
 - [ ] Add memory?
 - [ ] Freezing stats for a run or just species?
+- [ ] Have poison food actually take health?
 
 ## Stats
 - [ ] Add stats screen

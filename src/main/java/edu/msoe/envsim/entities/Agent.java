@@ -265,7 +265,7 @@ public class Agent extends MobileEntity {
                 Math.random() * 5,
                 Math.random() * (Math.PI - 0.5) + 0.5,
                 Food.FoodPreference.random(),
-                newBrain(),
+                new NeuralNetwork(new int[] {NUM_INPUTS, 32, 16, 4}),
                 0
         );
 
@@ -389,11 +389,6 @@ public class Agent extends MobileEntity {
         return Math.sqrt(Math.max(0.0, squaredDistance) / g1.length);
     }
 
-    /**
-     * TODO
-     * @param other
-     * @return
-     */
     private double getGenomeComparisonOld(@NotNull Agent other) {
         Double cached = genomeComparisonCache.get(other.id);
         if (cached != null) return cached;
@@ -531,6 +526,7 @@ public class Agent extends MobileEntity {
         double desiredFraction = (getRadius() * MAX_BITE_SIZE) / food.getRadius();
         double actualFraction = Math.min(1.0, desiredFraction);
 
+        // TODO: Negative energy (poison) should actually go towards health?
         double energyGained = actualFraction * food.getValue(foodPreference);
         energy += energyGained;
 
@@ -618,10 +614,6 @@ public class Agent extends MobileEntity {
     private void reproduce() {
         energy = Math.min(energy, calculateCloneThreshold() * MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT) / 2;
         new Agent(getAgentData().mutate(), environment);
-    }
-
-    private static @NotNull NeuralNetwork newBrain() {
-        return new NeuralNetwork(new int[] {NUM_INPUTS, 32, 16, 4});
     }
 
 
