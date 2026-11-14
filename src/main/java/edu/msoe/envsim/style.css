@@ -1,0 +1,69 @@
+.panel {
+    -fx-background-color: rgba(30, 30, 30, 0.9);
+    -fx-background-radius: 8;
+    -fx-border-color: #555;
+    -fx-border-radius: 8;
+}
+
+.dialog-backdrop {
+    -fx-background-color: rgba(0, 0, 0, 0.75);
+}
+
+.title-label {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-text-fill: white;
+}
+
+.caption-label {
+    -fx-text-fill: #aaa;
+    -fx-font-weight: bold;
+}
+
+.value-label {
+    -fx-text-fill: white;
+}
+
+.mono-value-label {
+    -fx-text-fill: white;
+    -fx-font-family: monospace;
+}
+
+.sim-button {
+    -fx-background-color: #444;
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+}
+
+.sim-button:hover {
+    -fx-background-color: #555;
+}
+
+.selected-button {
+    -fx-background-color: #3b5998;
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+    -fx-border-color: #88c0d0;
+    -fx-border-width: 2;
+    -fx-border-radius: 4;
+}
+
+.danger-button {
+    -fx-background-color: #5a2e2e;
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+}
+
+.transparent-scroll-pane {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+
+.caption-label {
+    -fx-text-fill: #aaa;
+    -fx-font-weight: bold;
+}
+
+.slider-tick-fix {
+    -fx-text-background-color: white;
+}

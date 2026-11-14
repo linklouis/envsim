@@ -2,55 +2,42 @@ package edu.msoe.envsim.utilities.apputils;
 
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.utilities.simutils.AgentData;
-import javafx.geometry.Insets;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
 
-/**
- * Source: Google Gemini
- */
+import static javafx.scene.control.PopupControl.USE_PREF_SIZE;
+
 public class AgentInspectorPane extends VBox {
-    private final Label generationLabel = new Label();
-    private final Label energyLabel = new Label();
-    private final Label healthLabel = new Label();
-    private final Label massLabel = new Label();
-    private final Label terrainLabel = new Label();
-    private final Label predationLabel = new Label();
-    private final Label actionLabel = new Label();
-    private final Label jitterLabel = new Label();
-    private final Label speedLabel = new Label();
-    private final Label effortLabel = new Label();
-    private final Label accelerationLabel = new Label();
-
-    private final Label maxSpeedLabel = new Label();
-    private final Label turnSpeedLabel = new Label();
-    private final Label visionLabel = new Label();
-    private final Label regenLabel = new Label();
-    private final Label swimSkillLabel = new Label();
-    private final Label attackLabel = new Label();
-    private final Label defenseLabel = new Label();
-    private final Label fovLabel = new Label();
-    private final Label food1Label = new Label();
-    private final Label food2Label = new Label();
-    private final Label food3Label = new Label();
-
+    @FXML private Label generationLabel, energyLabel, healthLabel, massLabel, terrainLabel;
+    @FXML private Label predationLabel, actionLabel, jitterLabel, speedLabel, effortLabel, accelerationLabel;
+    @FXML private Label maxSpeedLabel, turnSpeedLabel, visionLabel, regenLabel, swimSkillLabel;
+    @FXML private Label attackLabel, defenseLabel, fovLabel, food1Label, food2Label, food3Label;
 
     private final Runnable onCloseCallback;
     private Agent currentAgent;
 
     public AgentInspectorPane(@Nullable Runnable onCloseCallback) {
-        super(10);
         this.onCloseCallback = onCloseCallback;
-        setPadding(new Insets(15));
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/edu/msoe/envsim/AgentInspector.fxml"));
+        loader.setRoot(this);
+        loader.setController(this);
+
+        try {
+            loader.load();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load AgentInspector.fxml", e);
+        }
+
+        // Restore exact sizing, styling, and behavior from the original class
         setPrefWidth(USE_COMPUTED_SIZE);
         setMaxWidth(USE_PREF_SIZE);
         setMaxHeight(USE_PREF_SIZE);
@@ -58,55 +45,12 @@ public class AgentInspectorPane extends VBox {
         setStyle("-fx-background-color: rgba(30, 30, 30, 0.9); -fx-background-radius: 8; -fx-border-color: #555; -fx-border-radius: 8;");
         setVisible(false);
         setFocusTraversable(false);
-
-        Label title = new Label("Agent Inspector");
-        title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: white;");
-
-        GridPane grid = new GridPane();
-        grid.setHgap(15);
-        grid.setVgap(6);
-
-        // Apply monospace font to fractional value labels so fixed-width spacing aligns perfectly
-        energyLabel.setStyle("-fx-text-fill: white; -fx-font-family: monospace;");
-        healthLabel.setStyle("-fx-text-fill: white; -fx-font-family: monospace;");
-
-        int row = 0;
-        addStandardRow(grid, row++, "Generation:", generationLabel);
-        addStandardRow(grid, row++, "Energy:", energyLabel);
-        addStandardRow(grid, row++, "Health:", healthLabel);
-        addStandardRow(grid, row++, "Mass:", massLabel);
-        addStandardRow(grid, row++, "Terrain:", terrainLabel);
-        addStandardRow(grid, row++, "Desires Predation:", predationLabel);
-        addStandardRow(grid, row++, "Current Priority:", actionLabel);
-        addStandardRow(grid, row++, "Random Turn Requested:", jitterLabel);
-        addStandardRow(grid, row++, "Current Speed:", speedLabel);
-        addStandardRow(grid, row++, "Current Movement Effort:", effortLabel);
-        addStandardRow(grid, row++, "Current Acceleration:", accelerationLabel);
-
-        grid.add(new Separator(), 0, row++);
-
-        addStandardRow(grid, row++, "Max Acceleration Effort:", maxSpeedLabel);
-        addStandardRow(grid, row++, "Turn Speed:", turnSpeedLabel);
-        addStandardRow(grid, row++, "Vision:", visionLabel);
-        addStandardRow(grid, row++, "Regen:", regenLabel);
-        addStandardRow(grid, row++, "Swim Skill:", swimSkillLabel);
-        addStandardRow(grid, row++, "Attack:", attackLabel);
-        addStandardRow(grid, row++, "Defense:", defenseLabel);
-        addStandardRow(grid, row++, "FOV:", fovLabel);
-        addStandardRow(grid, row++, "Food 1 Preference:", food1Label);
-        addStandardRow(grid, row++, "Food 2 Preference:", food2Label);
-        addStandardRow(grid, row++, "Food 3 Preference:", food3Label);
-
-        HBox actionButtons = getActionButtonsPane();
-
-        getChildren().addAll(title, grid, new Separator(), actionButtons);
     }
 
     public void showAgent(@NotNull Agent agent) {
         this.currentAgent = agent;
         AgentData data = agent.getAgentData();
 
-        // %6.2f ensures the first value reserves a fixed 6-character width, right-aligned with spaces
         generationLabel.setText(String.valueOf(data.generation()));
         energyLabel.setText(String.format("%6.2f / %.2f", data.energy(), agent.calculateCloneThreshold()));
         healthLabel.setText(String.format("%6.2f / %.2f", agent.getRadius(), data.size()));
@@ -119,7 +63,6 @@ public class AgentInspectorPane extends VBox {
         effortLabel.setText(String.format("%.2f", agent.getMovementEffort()));
         accelerationLabel.setText(String.format("%.2f", agent.getAcceleration()));
 
-
         maxSpeedLabel.setText(String.format("%.2f", data.maxAcceleration()));
         turnSpeedLabel.setText(String.format("%.2f", data.turnSpeed()));
         visionLabel.setText(String.format("%.2f", data.visionRadius()));
@@ -131,35 +74,11 @@ public class AgentInspectorPane extends VBox {
         food1Label.setText(String.format("%.2f", data.foodPreference().type1Preference()));
         food2Label.setText(String.format("%.2f", data.foodPreference().type2Preference()));
         food3Label.setText(String.format("%.2f", data.foodPreference().type3Preference()));
-        // TODO: Add line for actual max maxAcceleration
 
         setVisible(true);
     }
 
-    private @NotNull HBox getActionButtonsPane() {
-        Button saveButton = new Button("Save Agent");
-        saveButton.setStyle("-fx-background-color: #3b5998; -fx-text-fill: white; -fx-cursor: hand;");
-        saveButton.setFocusTraversable(false);
-        saveButton.setOnAction(_ -> saveCurrentAgent());
-
-        Button closeButton = new Button("Close");
-        closeButton.setOnAction(_ -> hide());
-        closeButton.setStyle("-fx-background-color: #444; -fx-text-fill: white; -fx-cursor: hand;");
-        closeButton.setFocusTraversable(false);
-
-        return new HBox(10, saveButton, closeButton);
-    }
-
-    private void addStandardRow(@NotNull GridPane grid, int row, String labelText, @NotNull Label valLabel) {
-        Label lbl = new Label(labelText);
-        lbl.setStyle("-fx-text-fill: #aaa; -fx-font-weight: bold;");
-        if (valLabel.getStyle().isEmpty()) {
-            valLabel.setStyle("-fx-text-fill: white;");
-        }
-        grid.add(lbl, 0, row);
-        grid.add(valLabel, 1, row);
-    }
-
+    @FXML
     private void saveCurrentAgent() {
         if (currentAgent == null) return;
 
@@ -171,8 +90,7 @@ public class AgentInspectorPane extends VBox {
         dialog.setHeaderText("Save Agent to Library");
         dialog.setContentText("Enter agent name:");
 
-        java.util.Optional<String> result = dialog.showAndWait();
-        result.ifPresent(name -> {
+        dialog.showAndWait().ifPresent(name -> {
             if (!name.trim().isEmpty()) {
                 File targetFile = new File(dir, name.trim() + ".agent");
                 try {
@@ -188,6 +106,7 @@ public class AgentInspectorPane extends VBox {
         });
     }
 
+    @FXML
     public void hide() {
         if (isVisible()) {
             currentAgent = null;
