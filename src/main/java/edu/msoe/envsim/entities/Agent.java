@@ -171,7 +171,7 @@ public class Agent extends MobileEntity {
     /**
      * The maximum distance an Agent can move each time step in pixels.
      * <p>Higher values consume more {@link #energy} each time step.</p>
-     * <p>The Agent can decide to move any speed from 0 to this value.</p>
+     * <p>The Agent can decide to move any maxAcceleration from 0 to this value.</p>
      */
     private final double maxAcceleration;
     /**
@@ -281,7 +281,7 @@ public class Agent extends MobileEntity {
 
         environment = env;
         energy = agentData.energy();
-        maxAcceleration = agentData.speed();
+        maxAcceleration = agentData.maxAcceleration();
         turnSpeed = agentData.turnSpeed();
         size = agentData.size();
         visionRadius = agentData.visionRadius();
@@ -305,40 +305,13 @@ public class Agent extends MobileEntity {
         rayCaster = new RayCaster(getPosition(), fieldOfView, NUM_RAYS, visionRadius, direction.angle(),
                 environment::getTerrainType, this::isSameSpecies, environment.getSize());
 
-        genome = extractGenome();
+        genome = agentData.extractGenome();
         float norm = 0;
         for (float val : genome) { norm += val * val; }
         this.genomeNormSq = norm;
 
         this.baseColor = SpeciesColorMapper.getBaseSpeciesColor(genome);
         updateColor();
-    }
-
-    private float @NotNull [] extractGenome() {
-        List<Float> traits = new ArrayList<>();
-
-        traits.add((float) maxAcceleration);
-        traits.add((float) turnSpeed);
-        traits.add((float) size);
-        traits.add((float) visionRadius);
-        traits.add((float) healthRegenSpeed);
-        traits.add((float) swimSkill);
-        traits.add((float) attack);
-        traits.add((float) defense);
-        traits.add((float) fieldOfView);
-        traits.add((float) foodPreference.type1Preference());
-        traits.add((float) foodPreference.type2Preference());
-        traits.add((float) foodPreference.type3Preference());
-
-        traits.addAll(brain.getWeights());
-
-        float[] genome = new float[traits.size()];
-        for (int i = 0; i < traits.size(); i++) {
-            genome[i] = traits.get(i);
-        }
-
-//        System.out.println(SpeciesGenomeMapper.getGenomeProjection(genome).length);
-        return SpeciesGenomeMapper.getGenomeProjection(genome);
     }
 
     /**

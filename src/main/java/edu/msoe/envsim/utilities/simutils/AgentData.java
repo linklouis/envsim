@@ -9,10 +9,12 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 
-public record AgentData(Vector position, Color color, double energy, double speed, double turnSpeed, double size,
+public record AgentData(Vector position, Color color, double energy, double maxAcceleration, double turnSpeed, double size,
                         double visionRadius, double healthRegenSpeed, double swimSkill, double attack, double defense,
                         double fieldOfView, Food.FoodPreference foodPreference, NeuralNetwork brain, int generation) {
     public static final double MUTATION_CHANCE = 0.1;
@@ -24,7 +26,7 @@ public record AgentData(Vector position, Color color, double energy, double spee
     }
 
     public AgentData(@NotNull AgentData data, Vector position) {
-        this(position, data.color(), data.energy(), data.speed(),
+        this(position, data.color(), data.energy(), data.maxAcceleration(),
                 data.turnSpeed(), data.size(), data.visionRadius(), data.healthRegenSpeed(),
                 data.swimSkill(), data.attack(), data.defense(), data.fieldOfView(),
                 data.foodPreference(), data.brain(), data.generation());
@@ -36,7 +38,7 @@ public record AgentData(Vector position, Color color, double energy, double spee
                 position().add(Vector.random(100 + size() * 2)),
                 color(),
                 energy, // TODO: Children should actually get the cost subtracted from each parent's health (What did I mean by this?)
-                mutateAttribute(speed),
+                mutateAttribute(maxAcceleration),
                 mutateAttribute(turnSpeed),
                 Math.max(mutateAttribute(size), Agent.MIN_SIZE),
                 mutateAttribute(visionRadius),
@@ -49,6 +51,33 @@ public record AgentData(Vector position, Color color, double energy, double spee
                 this.brain.child(MUTATION_CHANCE, NEURON_MUTATION_SIZE),
                 generation + 1
         );
+    }
+
+    public float @NotNull [] extractGenome() {
+        List<Float> traits = new ArrayList<>();
+
+        traits.add((float) maxAcceleration);
+        traits.add((float) turnSpeed);
+        traits.add((float) size);
+        traits.add((float) visionRadius);
+        traits.add((float) healthRegenSpeed);
+        traits.add((float) swimSkill);
+        traits.add((float) attack);
+        traits.add((float) defense);
+        traits.add((float) fieldOfView);
+        traits.add((float) foodPreference.type1Preference());
+        traits.add((float) foodPreference.type2Preference());
+        traits.add((float) foodPreference.type3Preference());
+
+        traits.addAll(brain.getWeights());
+
+        float[] genome = new float[traits.size()];
+        for (int i = 0; i < traits.size(); i++) {
+            genome[i] = traits.get(i);
+        }
+
+//        System.out.println(SpeciesGenomeMapper.getGenomeProjection(genome).length);
+        return SpeciesGenomeMapper.getGenomeProjection(genome);
     }
 
     /**
@@ -67,7 +96,7 @@ public record AgentData(Vector position, Color color, double energy, double spee
             out.writeDouble(color.getOpacity());
 
             out.writeDouble(energy);
-            out.writeDouble(speed);
+            out.writeDouble(maxAcceleration);
             out.writeDouble(turnSpeed);
             out.writeDouble(size);
             out.writeDouble(visionRadius);

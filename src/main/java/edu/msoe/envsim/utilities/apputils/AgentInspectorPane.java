@@ -120,7 +120,7 @@ public class AgentInspectorPane extends VBox {
         accelerationLabel.setText(String.format("%.2f", agent.getAcceleration()));
 
 
-        maxSpeedLabel.setText(String.format("%.2f", data.speed()));
+        maxSpeedLabel.setText(String.format("%.2f", data.maxAcceleration()));
         turnSpeedLabel.setText(String.format("%.2f", data.turnSpeed()));
         visionLabel.setText(String.format("%.2f", data.visionRadius()));
         regenLabel.setText(String.format("%.2f", data.healthRegenSpeed()));
@@ -131,7 +131,7 @@ public class AgentInspectorPane extends VBox {
         food1Label.setText(String.format("%.2f", data.foodPreference().type1Preference()));
         food2Label.setText(String.format("%.2f", data.foodPreference().type2Preference()));
         food3Label.setText(String.format("%.2f", data.foodPreference().type3Preference()));
-        // TODO: Add line for actual max speed
+        // TODO: Add line for actual max maxAcceleration
 
         setVisible(true);
     }
