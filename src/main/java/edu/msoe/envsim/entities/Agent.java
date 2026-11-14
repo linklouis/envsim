@@ -35,6 +35,10 @@ public class Agent extends MobileEntity {
      */
     private static final double CLONE_THRESHOLD_EXPONENT = 0.8;
     /**
+     * Sets the max energy at a clone event to be the clone threshold times this value.
+     */
+    private static final int SINGLE_CLONE_ENERGY_LIMIT = 3;
+    /**
      * The size of bite an Agent can take relative to its radius.
      */
     private static final double MAX_BITE_SIZE = 0.8;
@@ -79,7 +83,13 @@ public class Agent extends MobileEntity {
      * So basal metabolic rate should scale to R^{9/4} = R^2.25
      */
     private static final double PASSIVE_SIZE_EXPONENT = 2.25;
+    /**
+     * The amount of energy lost each tick regardless of the Agent's actions.
+     */
     public static final double PASSIVE_LIFE_COST = 0.012;
+    /**
+     * The amount of energy lost each tick per unit of max turn speed the Agent is capable of.
+     */
     public static final double PASSIVE_TURN_SPEED_COST = 0.00004;
     /**
      * The cost per tick of having a 100% preference for a single food type.
@@ -89,23 +99,25 @@ public class Agent extends MobileEntity {
      * TODO: Actually acceleration now
      */
     private static final double SPEED_COST = 0.12;
+    /**
+     * The exponent the effort the Agent puts into accelerating is raised to when calculating the energy cost
+     */
     private static final int EFFORT_COST_EXPONENT = 2;
+    /**
+     * The exponent the Agents' turn choice is raised to when calculating the energy cost
+     */
     private static final int TURN_COST_EXPONENT = 2;
     /**
-     * TODO
+     * The factor the Agents' turn choice is raised to when calculating the energy cost.
      */
     private static final double TURN_COST = 0.2;
     /**
      * The number of energy points it costs an Agent to attack per attack point
      */
     private static final double ATTACK_COST = 0.25;
-    /**
-     * Sets the max energy at a clone event to be the clone threshold times this value.
-     * TODO: make better name
-     */
-    private static final int MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT = 3;
 
 
+    // DIFFICULTY PARAMETERS
     private static final double INITIAL_GELF = 0.0000000001;//0.00001;//
     /**
      * The multiplier for how much energy an Agent actually loses each tick.
@@ -117,14 +129,16 @@ public class Agent extends MobileEntity {
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     private final static int TARGET_NUM_AGENTS_WHILE_ANNEALING = 3000;
 
+
+    // AGENT STATE PARAMETERS
+    private static final AtomicLong NEXT_ID = new AtomicLong(1);
+    public final static double MAX_BODY_ELONGATION = 2.5;
+    public final static double MIN_BODY_ELONGATION = 0.15;
     /**
      * The maximum number of degrees that an Agent's wander offset can be randomly changed by each tick.
      * Prevents looping.
      */
     private static final double RANDOM_WANDER_CHANGE_SPEED = 0.17;
-
-
-    private static final AtomicLong NEXT_ID = new AtomicLong(1);
 
 
     // ARCHITECTURE PARAMETERS
@@ -546,7 +560,7 @@ public class Agent extends MobileEntity {
     }
 
     private void reproduce() {
-        energy = Math.min(energy, calculateCloneThreshold() * MAX_TIME_CLONE_THRESHOLD_ENERGY_LIMIT) / 2;
+        energy = Math.min(energy, calculateCloneThreshold() * SINGLE_CLONE_ENERGY_LIMIT) / 2;
         new Agent(getAgentData().mutate(), environment);
     }
 
