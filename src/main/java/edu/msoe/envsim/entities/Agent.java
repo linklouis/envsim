@@ -480,9 +480,12 @@ public class Agent extends MobileEntity {
         double desiredFraction = (getRadius() * MAX_BITE_SIZE) / food.getRadius();
         double actualFraction = Math.min(1.0, desiredFraction);
 
-        // TODO: Negative energy (poison) should actually go towards health?
         double energyGained = actualFraction * food.getValue(foodPreference);
-        energy += energyGained;
+        if (energyGained > 0) {
+            energy += energyGained;
+        } else {
+            setRadius(getRadius() + getRadius() * energyGained);
+        }
 
         food.getEaten(desiredFraction);
         lastEatenFood = food;

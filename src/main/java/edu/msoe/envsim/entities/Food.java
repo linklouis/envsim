@@ -41,12 +41,54 @@ public class Food extends StationaryEntity {
     public record FoodPreference(double type1Preference, double type2Preference, double type3Preference) {
         // TODO: Could update a few of these functions to be general for any number of food types using arrays, but would technically be slower
 
+        /**
+         * Source: Google Gemini
+         * @param logits
+         * @return
+         */
+        @Contract("null -> fail")
+        public static double @NotNull [] softmax(double[] logits) {
+            if (logits == null || logits.length == 0) {
+                throw new IllegalArgumentException("Input array must not be null or empty");
+            }
+
+            // 1. Find the maximum value for numerical stability
+            double max = Double.NEGATIVE_INFINITY;
+            for (double val : logits) {
+                if (val > max) {
+                    max = val;
+                }
+            }
+
+            // 2. Compute exponentials (shifted by max) and their sum
+            double[] exps = new double[logits.length];
+            double sum = 0.0;
+            for (int i = 0; i < logits.length; i++) {
+                exps[i] = Math.exp(logits[i] - max);
+                sum += exps[i];
+            }
+
+            // 3. Normalize to get probabilities
+            double[] probabilities = new double[logits.length];
+            for (int i = 0; i < logits.length; i++) {
+                probabilities[i] = Math.min(2 * exps[i] / sum, 1);
+            }
+
+            return probabilities;
+        }
+
         @Contract(" -> new")
         public static @NotNull FoodPreference random() {
-            return new FoodPreference(
+            double[] preferences = new double[] {
                     ThreadLocalRandom.current().nextDouble(),
                     ThreadLocalRandom.current().nextDouble(),
                     ThreadLocalRandom.current().nextDouble()
+            };
+//            preferences = softmax(preferences);
+            return new FoodPreference(
+                    preferences[0],
+                    preferences[1],
+                    preferences[2]
             );
         }
 
@@ -141,6 +183,12 @@ public class Food extends StationaryEntity {
         if (getRadius() <= 0) {
             regrowthTimer = REGROWTH_TIME;
         }
+    }
+
+    @Override
+    public void setRadius(double radius) {
+        if (radius > maxSize) throw new IllegalArgumentException("radius > maxSize");
+        super.setRadius(radius);
     }
 
     public float getFoodType() {
