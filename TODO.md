@@ -64,3 +64,4 @@
 
 ## Bugs
 - [ ] Bug where an agent you're tracking will just disappear, but its stats don't give a reason for why it would be dead
+- [ ] All the Agents just randomly disappeared, but the number didn't change

@@ -475,7 +475,7 @@ public class Agent extends MobileEntity {
     }
 
     private void eat(@NotNull Food food) {
-        if (food == lastEatenFood) return;
+        if (desiresPredation() || food == lastEatenFood) return;
         double desiredFraction = (getRadius() * MAX_BITE_SIZE) / food.getRadius();
         double actualFraction = Math.min(1.0, desiredFraction);
 
