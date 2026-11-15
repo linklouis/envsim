@@ -57,6 +57,46 @@
 .transparent-scroll-pane {
     -fx-background: transparent;
     -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.transparent-scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.transparent-scroll-pane .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 8;
+    -fx-padding: 0 0 0 2;
+}
+
+.transparent-scroll-pane .scroll-bar .track {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.transparent-scroll-pane .scroll-bar .thumb {
+    -fx-background-color: #555;
+    -fx-background-radius: 4;
+    -fx-background-insets: 0;
+}
+
+.transparent-scroll-pane .scroll-bar .thumb:hover {
+    -fx-background-color: #777;
+}
+
+.transparent-scroll-pane .scroll-bar .increment-button,
+.transparent-scroll-pane .scroll-bar .decrement-button {
+    -fx-padding: 0;
+    -fx-pref-height: 0;
+    -fx-background-color: transparent;
+}
+
+.transparent-scroll-pane .scroll-bar .increment-arrow,
+.transparent-scroll-pane .scroll-bar .decrement-arrow {
+    -fx-padding: 0;
+    -fx-shape: "";
 }
 
 .caption-label {

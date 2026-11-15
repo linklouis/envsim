@@ -1,11 +1,11 @@
 
 ## UI
 ### Agent Inspector
-- [ ] Move the generation
-- [ ] Remove desires predation
-- [ ] Dropdowns?
+- [X] Move the generation
+- [X] Remove desires predation
+- [X] Dropdowns?
 - [ ] "Go To Agent" button
-- [ ] Add a radar chart for food preference?
+- [X] Add a radar chart for food preference?
 - [ ] Add units + a way to see stuff in metric, imperial, & pixels
 - [ ] Add current turn speed
 - [ ] Have the food preferences have the colors the refer to

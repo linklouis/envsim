@@ -1,97 +1,150 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.canvas.Canvas?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<fx:root type="javafx.scene.layout.VBox" spacing="10" stylesheets="@style.css" styleClass="panel"
-         visible="false" focusTraversable="false"
+<fx:root type="javafx.scene.layout.VBox" spacing="8" stylesheets="@style.css" styleClass="panel"
+         style="-fx-background-color: rgba(30, 30, 30, 0.9); -fx-background-radius: 8; -fx-border-color: #555; -fx-border-radius: 8;"
+         prefWidth="310" maxWidth="310" visible="false" focusTraversable="false"
          xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
     <padding>
-        <Insets top="15" right="15" bottom="15" left="15"/>
+        <Insets top="12" right="12" bottom="12" left="12"/>
     </padding>
 
-    <Label text="Agent Inspector" styleClass="title-label"/>
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Label text="Agent Inspector" styleClass="title-label"/>
+        <HBox HBox.hgrow="ALWAYS"/>
+        <Label fx:id="generationHeaderLabel" styleClass="telemetry-category-label" text="Gen 0"/>
+    </HBox>
 
-    <GridPane hgap="15" vgap="6">
-        <!-- Row indices and injected UI nodes -->
-        <Label text="Generation:" styleClass="caption-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-        <Label fx:id="generationLabel" styleClass="value-label" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+    <Separator style="-fx-stroke: #444;"/>
 
-        <Label text="Energy:" styleClass="caption-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-        <Label fx:id="energyLabel" styleClass="mono-value-label" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+    <!-- Scrollable stats: lets the pane shrink to fit the window instead of forcing the layout taller -->
+    <ScrollPane fitToWidth="true" styleClass="transparent-scroll-pane"
+                vbarPolicy="AS_NEEDED" hbarPolicy="NEVER" VBox.vgrow="ALWAYS">
+        <VBox spacing="8">
 
-        <Label text="Health:" styleClass="caption-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-        <Label fx:id="healthLabel" styleClass="mono-value-label" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+            <!-- Vitals Section -->
+            <VBox style="-fx-background-color: rgba(40, 40, 40, 0.6); -fx-background-radius: 6; -fx-border-color: #444; -fx-border-radius: 6;">
+                <HBox fx:id="vitalsHeader" alignment="CENTER_LEFT" style="-fx-padding: 8 10; -fx-cursor: hand;">
+                    <Label fx:id="vitalsArrowLabel" text="▼" styleClass="telemetry-category-label" style="-fx-font-size: 9px;"/>
+                    <HBox minWidth="6"/>
+                    <Label text="VITALS &amp; STATE" styleClass="telemetry-category-label"/>
+                </HBox>
+                <VBox fx:id="vitalsContent" spacing="4" style="-fx-padding: 0 10 10 10;">
+                    <GridPane hgap="10" vgap="3">
+                        <Label text="Energy:" styleClass="caption-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                        <Label fx:id="energyLabel" styleClass="mono-value-label" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
-        <Label text="Mass:" styleClass="caption-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-        <Label fx:id="massLabel" styleClass="value-label" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                        <Label text="Health / Size:" styleClass="caption-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                        <Label fx:id="healthLabel" styleClass="mono-value-label" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-        <Label text="Terrain:" styleClass="caption-label" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-        <Label fx:id="terrainLabel" styleClass="value-label" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                        <Label text="Mass:" styleClass="caption-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                        <Label fx:id="massLabel" styleClass="value-label" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
-        <Label text="Desires Predation:" styleClass="caption-label" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-        <Label fx:id="predationLabel" styleClass="value-label" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                        <Label text="Terrain:" styleClass="caption-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                        <Label fx:id="terrainLabel" styleClass="value-label" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
-        <Label text="Current Priority:" styleClass="caption-label" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
-        <Label fx:id="actionLabel" styleClass="value-label" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+<!--                        <Label text="Predation:" styleClass="caption-label" GridPane.rowIndex="4" GridPane.columnIndex="0"/>-->
+<!--                        <Label fx:id="predationLabel" styleClass="value-label" GridPane.rowIndex="4" GridPane.columnIndex="1"/>-->
 
-        <Label text="Random Turn Requested:" styleClass="caption-label" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
-        <Label fx:id="jitterLabel" styleClass="value-label" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+                        <Label text="Priority:" styleClass="caption-label" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                        <Label fx:id="actionLabel" styleClass="value-label" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                    </GridPane>
+                </VBox>
+            </VBox>
 
-        <Label text="Current Speed:" styleClass="caption-label" GridPane.rowIndex="8" GridPane.columnIndex="0"/>
-        <Label fx:id="speedLabel" styleClass="value-label" GridPane.rowIndex="8" GridPane.columnIndex="1"/>
+            <!-- Dynamics Section -->
+            <VBox style="-fx-background-color: rgba(40, 40, 40, 0.6); -fx-background-radius: 6; -fx-border-color: #444; -fx-border-radius: 6;">
+                <HBox fx:id="dynamicsHeader" alignment="CENTER_LEFT" style="-fx-padding: 8 10; -fx-cursor: hand;">
+                    <Label fx:id="dynamicsArrowLabel" text="▼" styleClass="telemetry-category-label" style="-fx-font-size: 9px;"/>
+                    <HBox minWidth="6"/>
+                    <Label text="DYNAMICS &amp; MOVEMENT" styleClass="telemetry-category-label"/>
+                </HBox>
+                <VBox fx:id="dynamicsContent" spacing="4" style="-fx-padding: 0 10 10 10;">
+                    <GridPane hgap="10" vgap="3">
+                        <Label text="Speed:" styleClass="caption-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                        <Label fx:id="speedLabel" styleClass="value-label" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
-        <Label text="Current Movement Effort:" styleClass="caption-label" GridPane.rowIndex="9" GridPane.columnIndex="0"/>
-        <Label fx:id="effortLabel" styleClass="value-label" GridPane.rowIndex="9" GridPane.columnIndex="1"/>
+                        <Label text="Acceleration:" styleClass="caption-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                        <Label fx:id="accelerationLabel" styleClass="value-label" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-        <Label text="Current Acceleration:" styleClass="caption-label" GridPane.rowIndex="10" GridPane.columnIndex="0"/>
-        <Label fx:id="accelerationLabel" styleClass="value-label" GridPane.rowIndex="10" GridPane.columnIndex="1"/>
+                        <Label text="Movement Effort:" styleClass="caption-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                        <Label fx:id="effortLabel" styleClass="value-label" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
-        <Separator GridPane.rowIndex="11" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+                        <Label text="Random Turn Requested:" styleClass="caption-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                        <Label fx:id="jitterLabel" styleClass="value-label" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                    </GridPane>
+                </VBox>
+            </VBox>
 
-        <Label text="Max Acceleration Effort:" styleClass="caption-label" GridPane.rowIndex="12" GridPane.columnIndex="0"/>
-        <Label fx:id="maxSpeedLabel" styleClass="value-label" GridPane.rowIndex="12" GridPane.columnIndex="1"/>
+            <!-- Attributes Section -->
+            <VBox style="-fx-background-color: rgba(40, 40, 40, 0.6); -fx-background-radius: 6; -fx-border-color: #444; -fx-border-radius: 6;">
+                <HBox fx:id="attributesHeader" alignment="CENTER_LEFT" style="-fx-padding: 8 10; -fx-cursor: hand;">
+                    <Label fx:id="attributesArrowLabel" text="▼" styleClass="telemetry-category-label" style="-fx-font-size: 9px;"/>
+                    <HBox minWidth="6"/>
+                    <Label text="ATTRIBUTES &amp; COMBAT" styleClass="telemetry-category-label"/>
+                </HBox>
+                <VBox fx:id="attributesContent" spacing="4" style="-fx-padding: 0 10 10 10;">
+                    <GridPane hgap="10" vgap="3">
+                        <Label text="Max Accel:" styleClass="caption-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                        <Label fx:id="maxSpeedLabel" styleClass="value-label" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
-        <Label text="Turn Speed:" styleClass="caption-label" GridPane.rowIndex="13" GridPane.columnIndex="0"/>
-        <Label fx:id="turnSpeedLabel" styleClass="value-label" GridPane.rowIndex="13" GridPane.columnIndex="1"/>
+                        <Label text="Turn Speed:" styleClass="caption-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                        <Label fx:id="turnSpeedLabel" styleClass="value-label" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-        <Label text="Vision:" styleClass="caption-label" GridPane.rowIndex="14" GridPane.columnIndex="0"/>
-        <Label fx:id="visionLabel" styleClass="value-label" GridPane.rowIndex="14" GridPane.columnIndex="1"/>
+                        <Label text="Vision Radius:" styleClass="caption-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                        <Label fx:id="visionLabel" styleClass="value-label" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
-        <Label text="Regen:" styleClass="caption-label" GridPane.rowIndex="15" GridPane.columnIndex="0"/>
-        <Label fx:id="regenLabel" styleClass="value-label" GridPane.rowIndex="15" GridPane.columnIndex="1"/>
+                        <Label text="FOV:" styleClass="caption-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                        <Label fx:id="fovLabel" styleClass="value-label" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
-        <Label text="Swim Skill:" styleClass="caption-label" GridPane.rowIndex="16" GridPane.columnIndex="0"/>
-        <Label fx:id="swimSkillLabel" styleClass="value-label" GridPane.rowIndex="16" GridPane.columnIndex="1"/>
+                        <Label text="Health Regen:" styleClass="caption-label" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                        <Label fx:id="regenLabel" styleClass="value-label" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
 
-        <Label text="Attack:" styleClass="caption-label" GridPane.rowIndex="17" GridPane.columnIndex="0"/>
-        <Label fx:id="attackLabel" styleClass="value-label" GridPane.rowIndex="17" GridPane.columnIndex="1"/>
+                        <Label text="Swim Skill:" styleClass="caption-label" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                        <Label fx:id="swimSkillLabel" styleClass="value-label" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
 
-        <Label text="Defense:" styleClass="caption-label" GridPane.rowIndex="18" GridPane.columnIndex="0"/>
-        <Label fx:id="defenseLabel" styleClass="value-label" GridPane.rowIndex="18" GridPane.columnIndex="1"/>
+                        <Label text="Attack:" styleClass="caption-label" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                        <Label fx:id="attackLabel" styleClass="value-label" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
 
-        <Label text="FOV:" styleClass="caption-label" GridPane.rowIndex="19" GridPane.columnIndex="0"/>
-        <Label fx:id="fovLabel" styleClass="value-label" GridPane.rowIndex="19" GridPane.columnIndex="1"/>
+                        <Label text="Defense:" styleClass="caption-label" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+                        <Label fx:id="defenseLabel" styleClass="value-label" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+                    </GridPane>
+                </VBox>
+            </VBox>
 
-        <Label text="Food 1 Preference:" styleClass="caption-label" GridPane.rowIndex="20" GridPane.columnIndex="0"/>
-        <Label fx:id="food1Label" styleClass="value-label" GridPane.rowIndex="20" GridPane.columnIndex="1"/>
+            <!-- Food Preferences Section -->
+            <VBox style="-fx-background-color: rgba(40, 40, 40, 0.6); -fx-background-radius: 6; -fx-border-color: #444; -fx-border-radius: 6;">
+                <HBox fx:id="foodHeader" alignment="CENTER_LEFT" style="-fx-padding: 8 10; -fx-cursor: hand;">
+                    <Label fx:id="foodArrowLabel" text="▼" styleClass="telemetry-category-label" style="-fx-font-size: 9px;"/>
+                    <HBox minWidth="6"/>
+                    <Label text="FOOD PREFERENCES" styleClass="telemetry-category-label"/>
+                </HBox>
+                <VBox fx:id="foodContent" alignment="CENTER" spacing="4" style="-fx-padding: 0 10 10 10;">
+                    <Canvas fx:id="foodRadarCanvas" width="200" height="150"/>
+                    <HBox spacing="15" alignment="CENTER">
+                        <Label fx:id="food1Label" styleClass="value-label" style="-fx-font-size: 10px;"/>
+                        <Label fx:id="food2Label" styleClass="value-label" style="-fx-font-size: 10px;"/>
+                        <Label fx:id="food3Label" styleClass="value-label" style="-fx-font-size: 10px;"/>
+                    </HBox>
+                </VBox>
+            </VBox>
 
-        <Label text="Food 2 Preference:" styleClass="caption-label" GridPane.rowIndex="21" GridPane.columnIndex="0"/>
-        <Label fx:id="food2Label" styleClass="value-label" GridPane.rowIndex="21" GridPane.columnIndex="1"/>
+        </VBox>
+    </ScrollPane>
 
-        <Label text="Food 3 Preference:" styleClass="caption-label" GridPane.rowIndex="22" GridPane.columnIndex="0"/>
-        <Label fx:id="food3Label" styleClass="value-label" GridPane.rowIndex="22" GridPane.columnIndex="1"/>
-    </GridPane>
-
-<!--    <Separator/>-->
-
-    <HBox spacing="10">
-        <Button text="Save Agent" styleClass="sim-button" focusTraversable="false" onAction="#saveCurrentAgent"/>
-        <Button text="Close" styleClass="sim-button" focusTraversable="false" onAction="#hide"/>
+    <!-- Footer Actions -->
+    <HBox spacing="8" style="-fx-padding: 4 0 0 0;">
+        <Button text="Save Agent" styleClass="sim-button" focusTraversable="false" onAction="#saveCurrentAgent" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+        <Button text="Close" styleClass="sim-button" focusTraversable="false" onAction="#hide" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
     </HBox>
 </fx:root>

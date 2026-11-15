@@ -84,6 +84,7 @@ public class App extends Application {
         AgentInspectorPane inspectorPane = new AgentInspectorPane(() -> environment.clearSelectedAgent());
         StackPane.setAlignment(inspectorPane, Pos.TOP_RIGHT);
         StackPane.setMargin(inspectorPane, new Insets(15));
+        inspectorPane.maximumHeightLimitProperty().bind(stage.heightProperty().subtract(80));
 
         // Environment must exist before the menu is built, since the sim speed slider pushes its value into it
         setupEnvironment(stage, viewWidth, viewHeight, inspectorPane);
@@ -106,6 +107,7 @@ public class App extends Application {
 
         environment.startSimulation();
 
+        StackPane.setAlignment(environment, Pos.TOP_LEFT);
         gamePane.getChildren().addAll(environment, menuLayer, inspectorPane);
 
         setupDebugPane();
@@ -646,8 +648,10 @@ public class App extends Application {
     private void toggleDebugMode(boolean debugMode) {
         this.debugMode = debugMode;
         environment.setDebugMode(debugMode);
-        telemetryPanel.setVisible(debugMode);
-        telemetryPanel.setManaged(debugMode);
+        if (telemetryPanel != null) {
+            telemetryPanel.setVisible(debugMode);
+            telemetryPanel.setManaged(debugMode);
+        }
     }
 
     private @NotNull WritableImage loadAgentThumbnail(File file, int thumbW, int thumbH) {
