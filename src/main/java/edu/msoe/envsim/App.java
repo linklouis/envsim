@@ -580,10 +580,22 @@ public class App extends Application {
         alert.setHeaderText(headerText);
 
         Label contentLabel = new Label(contentText != null ? contentText : "An unexpected error occurred.");
+        contentLabel.getStyleClass().add("value-label");
         contentLabel.setWrapText(true);
         contentLabel.setMaxWidth(380);
-        alert.getDialogPane().setContent(contentLabel);
-        alert.getDialogPane().setPrefWidth(450);
+
+        javafx.scene.control.DialogPane dialogPane = alert.getDialogPane();
+        dialogPane.setContent(contentLabel);
+        dialogPane.setPrefWidth(450);
+
+        // Match the rest of the UI (.panel style class and stylesheet)
+        dialogPane.getStyleClass().add("panel");
+        if (environment != null && environment.getScene() != null) {
+            String css = environment.getScene().getStylesheets().stream().findFirst().orElse(null);
+            if (css != null && !dialogPane.getStylesheets().contains(css)) {
+                dialogPane.getStylesheets().add(css);
+            }
+        }
 
         alert.showAndWait();
     }
