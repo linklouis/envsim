@@ -87,30 +87,38 @@ public record AgentData(Vector position, Color color, double energy, double maxA
      */
     public void saveToFile(@NotNull File file) throws IOException {
         try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)))) {
-            out.writeDouble(position.x());
-            out.writeDouble(position.y());
-
-            out.writeDouble(color.getRed());
-            out.writeDouble(color.getGreen());
-            out.writeDouble(color.getBlue());
-            out.writeDouble(color.getOpacity());
-
-            out.writeDouble(energy);
-            out.writeDouble(maxAcceleration);
-            out.writeDouble(turnSpeed);
-            out.writeDouble(size);
-            out.writeDouble(visionRadius);
-            out.writeDouble(healthRegenSpeed);
-            out.writeDouble(swimSkill);
-            out.writeDouble(attack);
-            out.writeDouble(defense);
-            out.writeDouble(fieldOfView);
-            foodPreference.writeValues(out);
-            out.writeInt(generation);
-
-            // Serialize Neural Networks
-            brain.save(out);
+            writeTo(out);
         }
+    }
+
+    /**
+     * Writes this agent's genes, brain, energy and position to {@code out}. Used by {@link #saveToFile(File)}
+     * and by full game saves, which write many agents into one stream.
+     */
+    public void writeTo(@NotNull DataOutputStream out) throws IOException {
+        out.writeDouble(position.x());
+        out.writeDouble(position.y());
+
+        out.writeDouble(color.getRed());
+        out.writeDouble(color.getGreen());
+        out.writeDouble(color.getBlue());
+        out.writeDouble(color.getOpacity());
+
+        out.writeDouble(energy);
+        out.writeDouble(maxAcceleration);
+        out.writeDouble(turnSpeed);
+        out.writeDouble(size);
+        out.writeDouble(visionRadius);
+        out.writeDouble(healthRegenSpeed);
+        out.writeDouble(swimSkill);
+        out.writeDouble(attack);
+        out.writeDouble(defense);
+        out.writeDouble(fieldOfView);
+        foodPreference.writeValues(out);
+        out.writeInt(generation);
+
+        // Serialize Neural Networks
+        brain.save(out);
     }
 
     /**
@@ -121,29 +129,36 @@ public record AgentData(Vector position, Color color, double energy, double maxA
      */
     public static @NotNull AgentData loadFromFile(@NotNull File file) throws IOException {
         try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
-            double px = in.readDouble();
-            double py = in.readDouble();
-
-            Color color = new Color(in.readDouble(), in.readDouble(), in.readDouble(), in.readDouble());
-
-            double energy = in.readDouble();
-            double speed = in.readDouble();
-            double turnSpeed = in.readDouble();
-            double size = in.readDouble();
-            double visionRadius = in.readDouble();
-            double healthRegenSpeed = in.readDouble();
-            double swimSkill = in.readDouble();
-            double attack = in.readDouble();
-            double defense = in.readDouble();
-            double fieldOfView = in.readDouble();
-            Food.FoodPreference foodPreference = new Food.FoodPreference(in.readDouble(), in.readDouble(), in.readDouble());
-            int generation = in.readInt();
-
-            NeuralNetwork brain = NeuralNetwork.load(in);
-
-            return new AgentData(new Vector(px, py), color, energy, speed, turnSpeed, size,
-                    visionRadius, healthRegenSpeed, swimSkill, attack, defense, fieldOfView,
-                    foodPreference, brain, generation);
+            return readFrom(in);
         }
+    }
+
+    /**
+     * Reads one agent written by {@link #writeTo(DataOutputStream)}.
+     */
+    public static @NotNull AgentData readFrom(@NotNull DataInputStream in) throws IOException {
+        double px = in.readDouble();
+        double py = in.readDouble();
+
+        Color color = new Color(in.readDouble(), in.readDouble(), in.readDouble(), in.readDouble());
+
+        double energy = in.readDouble();
+        double speed = in.readDouble();
+        double turnSpeed = in.readDouble();
+        double size = in.readDouble();
+        double visionRadius = in.readDouble();
+        double healthRegenSpeed = in.readDouble();
+        double swimSkill = in.readDouble();
+        double attack = in.readDouble();
+        double defense = in.readDouble();
+        double fieldOfView = in.readDouble();
+        Food.FoodPreference foodPreference = new Food.FoodPreference(in.readDouble(), in.readDouble(), in.readDouble());
+        int generation = in.readInt();
+
+        NeuralNetwork brain = NeuralNetwork.load(in);
+
+        return new AgentData(new Vector(px, py), color, energy, speed, turnSpeed, size,
+                visionRadius, healthRegenSpeed, swimSkill, attack, defense, fieldOfView,
+                foodPreference, brain, generation);
     }
 }

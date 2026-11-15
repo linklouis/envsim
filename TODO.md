@@ -22,8 +22,8 @@
 ### Main Menu
 - [X] Make a main menu
 - [X] Allow customizable default terrains
-- [ ] **Allow saving an entire game state**
-- [ ] Allow loading a terrain that's a different size than the current one
+- [X] **Allow saving an entire game state**
+- [X] Allow loading a terrain that's a different size than the current one
   - Scale agent positions
   - Respawn all food?
 
@@ -66,3 +66,4 @@
 ## Bugs
 - [ ] Bug where an agent you're tracking will just disappear, but its stats don't give a reason for why it would be dead
 - [ ] All the Agents just randomly disappeared, but the number didn't change
+- [ ] Brain not using all the inputs?

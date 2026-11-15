@@ -3,6 +3,7 @@ package edu.msoe.envsim.entities;
 import edu.msoe.envsim.Environment;
 import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.simutils.*;
+import edu.msoe.envsim.utilities.apputils.GameSnapshot.AgentState;
 import edu.msoe.envsim.utilities.NeuralNetwork;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
@@ -267,7 +268,15 @@ public class Agent extends MobileEntity {
     }
 
     public Agent(@NotNull AgentData agentData, @NotNull Environment env) {
-        super(agentData.position().add(Vector.random(20)), agentData.size(), agentData.color(), env);
+        this(agentData, env, agentData.position().add(Vector.random(20)));
+    }
+
+    /**
+     * @param spawnPosition Where the agent is placed. The public constructor passes a slightly jittered position
+     *                      so that children don't stack on top of their parent; {@link #restore} passes the exact one.
+     */
+    private Agent(@NotNull AgentData agentData, @NotNull Environment env, @NotNull Vector spawnPosition) {
+        super(spawnPosition, agentData.size(), agentData.color(), env);
 
         this.id = NEXT_ID.getAndIncrement();
 
@@ -840,5 +849,51 @@ public class Agent extends MobileEntity {
      */
     public static void resetDifficulty() {
         GLOBAL_ENERGY_LOSS_FACTOR = INITIAL_GELF;
+    }
+
+    public static double getGlobalEnergyLossFactor() {
+        return GLOBAL_ENERGY_LOSS_FACTOR;
+    }
+
+    public static void setGlobalEnergyLossFactor(double globalEnergyLossFactor) {
+        GLOBAL_ENERGY_LOSS_FACTOR = globalEnergyLossFactor;
+    }
+
+    /**
+     * @return How many inputs the agents' brains take. Saves made with a different number can't be loaded.
+     */
+    public static int getExpectedBrainInputCount() {
+        return NUM_INPUTS;
+    }
+
+    public boolean isAlive() {
+        return alive;
+    }
+
+    /**
+     * @return Everything about this agent that has to be saved: its {@link AgentData} plus the state that
+     * {@code AgentData} doesn't hold (current health, heading, velocity, speed and wander offset).
+     */
+    public @NotNull AgentState captureState() {
+        return new AgentState(getAgentData(), getRadius(), direction, velocity, speed, currentWanderOffset);
+    }
+
+    /**
+     * Creates an agent that continues exactly where {@code state} left off. Unlike the public constructor,
+     * the position isn't jittered, and the agent keeps its health, heading and velocity.
+     */
+    public static @NotNull Agent restore(@NotNull AgentState state, @NotNull Environment env) {
+        Agent agent = new Agent(state.data(), env, state.data().position());
+        agent.restoreMovementState(state);
+        return agent;
+    }
+
+    private void restoreMovementState(@NotNull AgentState state) {
+        setRadius(Math.min(state.health(), size));
+        direction = state.direction();
+        velocity = state.velocity();
+        speed = state.speed();
+        currentWanderOffset = state.wanderOffset();
+        updateColor();
     }
 }

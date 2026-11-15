@@ -2,6 +2,7 @@ package edu.msoe.envsim.entities;
 
 import edu.msoe.envsim.Environment;
 import edu.msoe.envsim.utilities.Vector;
+import edu.msoe.envsim.utilities.apputils.GameSnapshot.FoodState;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import org.jetbrains.annotations.Contract;
@@ -145,6 +146,32 @@ public class Food extends StationaryEntity {
         super(position, maxSize, foodType.getColor(), env);
         this.foodType = foodType;
         this.maxSize = maxSize;
+    }
+
+    /**
+     * Recreates a piece of food exactly as it was saved: same type, current size and regrowth progress.
+     *
+     * @param foodTypeIndex The food type's ordinal, as returned by {@link #getFoodTypeIndex()}
+     */
+    public Food(Vector position, double maxSize, double radius, int foodTypeIndex, int regrowthTimer, @NotNull Environment env) {
+        FoodType foodType = FoodType.values()[foodTypeIndex];
+        super(position, maxSize, foodType.getColor(), env);
+        this.foodType = foodType;
+        this.maxSize = maxSize;
+        setRadius(Math.clamp(radius, 0, maxSize));
+        this.regrowthTimer = regrowthTimer;
+    }
+
+    public static int getFoodTypeCount() {
+        return FoodType.values().length;
+    }
+
+    public int getFoodTypeIndex() {
+        return foodType.ordinal();
+    }
+
+    public @NotNull FoodState captureState() {
+        return new FoodState(x(), y(), maxSize, getRadius(), getFoodTypeIndex(), regrowthTimer);
     }
 
     @Override

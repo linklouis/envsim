@@ -4,6 +4,7 @@ import edu.msoe.envsim.entities.*;
 import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.apputils.Clock;
 import edu.msoe.envsim.utilities.simutils.AgentData;
+import edu.msoe.envsim.utilities.apputils.GameSnapshot;
 import edu.msoe.envsim.utilities.simutils.SpatialGrid;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.animation.AnimationTimer;
@@ -369,21 +370,127 @@ public class Environment extends Canvas {
         pauseStateless();
         synchronized (pauseLock) {
             loadTerrain(terrainFile);
-
-            mobileEntities.clear();
-            pendingMobileEntities.clear();
-            mobileEntitiesToRemove.clear();
-            stationaryEntities.clear();
-            staticGridDirty = true;
-            agentGridCurrent = false;
-
-            selectedAgent = null;
-            currentTick = 0;
-            numPredations = 0;
-            numPredationsCounter = 0;
-            Agent.resetDifficulty();
-
+            clearWorld();
             populateWorld.run();
+            flushPendingMobileEntities();
+        }
+        resetCanvas();
+    }
+
+    /**
+     * Removes every entity and resets the per-game counters. Callers must hold {@link #pauseLock}.
+     */
+    private void clearWorld() {
+        mobileEntities.clear();
+        pendingMobileEntities.clear();
+        mobileEntitiesToRemove.clear();
+        stationaryEntities.clear();
+        staticGridDirty = true;
+        agentGridCurrent = false;
+
+        selectedAgent = null;
+        currentTick = 0;
+        numPredations = 0;
+        numPredationsCounter = 0;
+        Agent.resetDifficulty();
+    }
+
+    /**
+     * Captures everything needed to restore the game later: the terrain, every piece of food and every living agent
+     * (including its movement state), the tick counter, the difficulty, and the camera.
+     * <p>
+     * Takes the simulation lock only while copying, so the snapshot is consistent, and writing it to disk can then
+     * happen on another thread while the simulation carries on. Agents' brains are shared rather than copied, which is
+     * safe because a {@code NeuralNetwork}'s weights never change after it is created.
+     * </p>
+     */
+    public @NotNull GameSnapshot captureSnapshot() {
+        synchronized (pauseLock) {
+            int terrainWidth = getTerrainWidth();
+            int terrainHeight = getTerrainHeight();
+            byte[] terrainOrdinals = new byte[terrainWidth * terrainHeight];
+            int tileIndex = 0;
+            for (int x = 0; x < terrainWidth; x++) {
+                for (int y = 0; y < terrainHeight; y++) {
+                    terrainOrdinals[tileIndex++] = (byte) terrainData[x][y].ordinal();
+                }
+            }
+
+            List<GameSnapshot.FoodState> foodStates = new ArrayList<>(stationaryEntities.size());
+            for (StationaryEntity entity : stationaryEntities) {
+                if (entity instanceof Food food) {
+                    foodStates.add(food.captureState());
+                }
+            }
+
+            List<GameSnapshot.AgentState> agentStates = new ArrayList<>(mobileEntities.size() + pendingMobileEntities.size());
+            addLivingAgentStates(mobileEntities, agentStates);
+            addLivingAgentStates(pendingMobileEntities, agentStates);
+
+            GameSnapshot.Header header = new GameSnapshot.Header(
+                    GameSnapshot.FORMAT_VERSION, System.currentTimeMillis(),
+                    worldWidth, worldHeight, terrainWidth, terrainHeight,
+                    Agent.getExpectedBrainInputCount(), currentTick, Agent.getGlobalEnergyLossFactor(),
+                    scale, translateX, translateY,
+                    agentStates.size(), foodStates.size());
+            return new GameSnapshot(header, terrainOrdinals, foodStates, agentStates);
+        }
+    }
+
+    private static void addLivingAgentStates(@NotNull Collection<MobileEntity> entities,
+                                             @NotNull List<GameSnapshot.AgentState> out) {
+        for (MobileEntity entity : entities) {
+            if (entity instanceof Agent agent && agent.isAlive()) {
+                out.add(agent.captureState());
+            }
+        }
+    }
+
+    /**
+     * Replaces the current game with {@code snapshot}. Does not start the simulation; call {@link #startSimulation()}
+     * afterwards. Must be called on the JavaFX thread, since it redraws the terrain.
+     * <p>
+     * Everything that can be checked is checked before the current game is touched,
+     * so a snapshot from a different-sized world is rejected and leaves the current game alone.
+     * </p>
+     *
+     * @throws IllegalArgumentException if the snapshot is from a world of a different size
+     */
+    public void loadSnapshot(@NotNull GameSnapshot snapshot) {
+        GameSnapshot.Header header = snapshot.header();
+        if (header.worldWidth() != worldWidth || header.worldHeight() != worldHeight
+                || header.terrainWidth() != getTerrainWidth() || header.terrainHeight() != getTerrainHeight()) {
+            throw new IllegalArgumentException("This save is for a " + header.worldWidth() + "x" + header.worldHeight()
+                    + " world, but the current world is " + worldWidth + "x" + worldHeight + ".");
+        }
+
+        pauseStateless();
+        synchronized (pauseLock) {
+            TerrainType[] terrainTypes = TerrainType.values();
+            byte[] terrainOrdinals = snapshot.terrainOrdinals();
+            int tileIndex = 0;
+            for (int x = 0; x < getTerrainWidth(); x++) {
+                for (int y = 0; y < getTerrainHeight(); y++) {
+                    setTerrainTile(x, y, terrainTypes[terrainOrdinals[tileIndex++]]);
+                }
+            }
+
+            clearWorld();
+            currentTick = header.tick();
+            Agent.setGlobalEnergyLossFactor(header.energyLossFactor());
+            scale = header.cameraScale();
+            translateX = header.cameraTranslateX();
+            translateY = header.cameraTranslateY();
+
+            // Food looks up the terrain it sits on when it is created, so the terrain has to be restored first
+            for (GameSnapshot.FoodState food : snapshot.foods()) {
+                new Food(new Vector(food.x(), food.y()), food.maxSize(), food.radius(),
+                        food.foodTypeIndex(), food.regrowthTimer(), this);
+            }
+            for (GameSnapshot.AgentState agentState : snapshot.agents()) {
+                Agent.restore(agentState, this);
+            }
+
             flushPendingMobileEntities();
         }
         resetCanvas();

@@ -7,6 +7,7 @@ import edu.msoe.envsim.utilities.apputils.EnvironmentManagerDialog;
 import edu.msoe.envsim.utilities.apputils.MainMenuPane;
 import edu.msoe.envsim.utilities.apputils.TelemetryPanel;
 import edu.msoe.envsim.utilities.simutils.AgentData;
+import edu.msoe.envsim.utilities.apputils.GameSnapshot;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import edu.msoe.envsim.utilities.Vector;
 import javafx.application.Application;
@@ -42,6 +43,8 @@ import javafx.stage.Stage;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -60,8 +63,8 @@ public class App extends Application {
 //    // Slider tick labels pull their color from this looked-up color
 //    private static final String SLIDER_STYLE = "-fx-text-background-color: white;";
 
-    private static double MIN_SIM_SPEED = 10.0;
-    private static double MAX_SIM_SPEED = 5000.0;
+    private static final double MIN_SIM_SPEED = 10.0;
+    private static final double MAX_SIM_SPEED = 5000.0;
 
     private static final int INITIAL_AGENT_COUNT = 12000;
     private static final int INITIAL_FOOD_COUNT = 9000;
@@ -105,7 +108,27 @@ public class App extends Application {
         gamePane.getChildren().addAll(environment, menuLayer, inspectorPane);
 
         // The world is only populated once the player starts a new game. Until then the menu covers everything.
-        mainMenuPane = new MainMenuPane(gamePane, environment, this::startNewGame, this::quit);
+        mainMenuPane = new MainMenuPane(gamePane, environment, new MainMenuPane.Actions() {
+            @Override
+            public void startNewGame(@NotNull File terrainFile) {
+                App.this.startNewGame(terrainFile);
+            }
+
+            @Override
+            public @NotNull CompletableFuture<Void> saveGame(@NotNull File saveFile) {
+                return App.this.saveGame(saveFile);
+            }
+
+            @Override
+            public @NotNull CompletableFuture<Void> loadGame(@NotNull File saveFile) {
+                return App.this.loadGame(saveFile);
+            }
+
+            @Override
+            public void quit() {
+                App.this.quit();
+            }
+        });
         mainMenuPane.open(false);
 
         setupDebugPane();
@@ -150,6 +173,43 @@ public class App extends Application {
         mainMenuPane.close();
         environment.resetCamera(environment.getWidth());
         environment.startSimulation();
+    }
+
+    /**
+     * Captures the game right now, which is quick and has to happen here, and writes it to disk in the background.
+     * The game isn't affected while the file is being written.
+     */
+    private @NotNull CompletableFuture<Void> saveGame(@NotNull File saveFile) {
+        GameSnapshot snapshot = environment.captureSnapshot();
+        return CompletableFuture.runAsync(() -> {
+            try {
+                GameSnapshot.write(snapshot, saveFile);
+            } catch (IOException exception) {
+                throw new UncheckedIOException(exception);
+            }
+        });
+    }
+
+    /**
+     * Reads the save in the background, then swaps it in on the JavaFX thread.
+     * If anything goes wrong the current game is left as it was and the returned future fails.
+     */
+    private @NotNull CompletableFuture<Void> loadGame(@NotNull File saveFile) {
+        return CompletableFuture
+                .supplyAsync(() -> {
+                    try {
+                        return GameSnapshot.read(saveFile, Agent.getExpectedBrainInputCount());
+                    } catch (IOException exception) {
+                        throw new UncheckedIOException(exception);
+                    }
+                })
+                .thenAcceptAsync(snapshot -> {
+                    environment.loadSnapshot(snapshot);
+                    gameStarted = true;
+                    setMenuOpen(false);
+                    mainMenuPane.close();
+                    environment.startSimulation();
+                }, Platform::runLater);
     }
 
     private void showMainMenu() {
