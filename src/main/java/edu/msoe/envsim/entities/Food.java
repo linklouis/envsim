@@ -178,7 +178,13 @@ public class Food extends StationaryEntity {
         double radiusRemoved = currentRadius * Math.min(1.0, targetConsumptionFraction);
 
         double newRadius = currentRadius - radiusRemoved;
-        setRadius(Math.max(0, newRadius));
+        try {
+            setRadius(Math.max(0, newRadius));
+        } catch (IllegalArgumentException e) {
+            System.out.println(currentRadius);
+            System.out.println(radiusRemoved);
+            throw e;
+        }
 
         if (getRadius() <= 0) {
             regrowthTimer = REGROWTH_TIME;
@@ -187,7 +193,7 @@ public class Food extends StationaryEntity {
 
     @Override
     public void setRadius(double radius) {
-        if (radius > maxSize) throw new IllegalArgumentException("radius > maxSize");
+        if (radius > maxSize) throw new IllegalArgumentException("radius > maxSize:" + radius);
         super.setRadius(radius);
     }
 

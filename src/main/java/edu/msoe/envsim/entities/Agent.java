@@ -128,7 +128,7 @@ public class Agent extends MobileEntity {
     private final static int TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 10000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     private final static int TARGET_NUM_AGENTS_WHILE_ANNEALING = 3000;
-    private final static int MIN_NUM_AGENTS_WHILE_ANNEALING = 1300;
+    private final static int MIN_NUM_AGENTS_WHILE_ANNEALING = 1000;
 
 
     // AGENT STATE PARAMETERS
@@ -417,6 +417,7 @@ public class Agent extends MobileEntity {
             if (entity.getRadius() <= 0) continue;
             if (entity instanceof Food food) {
                 eat(food);
+                if (!alive) return;
             } else if (entity instanceof Agent agent) {
                 interact(agent);
                 collidedAgent = true;
@@ -485,9 +486,15 @@ public class Agent extends MobileEntity {
             energy += energyGained;
         } else {
             setRadius(getRadius() + getRadius() * energyGained);
+            if (!alive) return;
         }
 
-        food.getEaten(desiredFraction);
+        try {
+            food.getEaten(desiredFraction);
+        } catch (Exception e) {
+            System.out.println(getRadius());
+            throw e;
+        }
         lastEatenFood = food;
     }
 
