@@ -4,16 +4,15 @@ import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Label;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
-
-import static javafx.scene.control.PopupControl.USE_PREF_SIZE;
 
 public class AgentInspectorPane extends VBox {
     @FXML private Label generationLabel, energyLabel, healthLabel, massLabel, terrainLabel;
@@ -85,10 +84,53 @@ public class AgentInspectorPane extends VBox {
         File dir = new File("agents");
         if (!dir.exists()) dir.mkdirs();
 
-        javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog("agent_gen" + currentAgent.getAgentData().generation());
+        Dialog<String> dialog = new Dialog<>();
         dialog.setTitle("Save Agent");
-        dialog.setHeaderText("Save Agent to Library");
-        dialog.setContentText("Enter agent name:");
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        dialogPane.getStyleClass().add("panel");
+
+        // Force the dialog pane background and corner radius to match your rounded panel style
+        dialogPane.setStyle("-fx-background-color: rgba(30, 30, 30, 0.9); -fx-background-radius: 8; -fx-border-radius: 8;");
+
+        if (getScene() != null) {
+            String css = getScene().getStylesheets().stream().findFirst().orElse(null);
+            if (css != null && !dialogPane.getStylesheets().contains(css)) {
+                dialogPane.getStylesheets().add(css);
+            }
+        }
+
+        // Custom dark-themed layout to avoid JavaFX's awkward Modena header split
+        VBox content = new VBox(12);
+        content.setPadding(new Insets(20));
+        content.setAlignment(Pos.CENTER_LEFT);
+
+        Label headerLbl = new Label("Save Agent to Library");
+        headerLbl.getStyleClass().add("title-label");
+
+        Label promptLbl = new Label("Enter agent name:");
+        promptLbl.getStyleClass().add("caption-label");
+
+        javafx.scene.control.TextField textField = new javafx.scene.control.TextField("agent_gen" + currentAgent.getAgentData().generation());
+        textField.setStyle("-fx-background-color: #222; -fx-text-fill: white; -fx-border-color: #555; -fx-border-radius: 4; -fx-padding: 6;");
+
+        content.getChildren().addAll(headerLbl, promptLbl, textField);
+        dialogPane.setContent(content);
+
+        dialogPane.getButtonTypes().addAll(javafx.scene.control.ButtonType.OK, javafx.scene.control.ButtonType.CANCEL);
+
+        // Style buttons to match app theme
+        javafx.scene.Node okButton = dialogPane.lookupButton(javafx.scene.control.ButtonType.OK);
+        okButton.getStyleClass().add("sim-button");
+        javafx.scene.Node cancelButton = dialogPane.lookupButton(javafx.scene.control.ButtonType.CANCEL);
+        cancelButton.getStyleClass().add("sim-button");
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == javafx.scene.control.ButtonType.OK) {
+                return textField.getText();
+            }
+            return null;
+        });
 
         dialog.showAndWait().ifPresent(name -> {
             if (!name.trim().isEmpty()) {
@@ -99,7 +141,23 @@ public class AgentInspectorPane extends VBox {
                     Alert alert = new Alert(Alert.AlertType.ERROR);
                     alert.setTitle("Save Failed");
                     alert.setHeaderText("Could not save agent");
-                    alert.setContentText(e.getMessage());
+
+                    Label contentLabel = new Label(e.getMessage() != null ? e.getMessage() : "An unexpected error occurred.");
+                    contentLabel.getStyleClass().add("value-label");
+                    contentLabel.setWrapText(true);
+                    contentLabel.setMaxWidth(380);
+
+                    DialogPane alertPane = alert.getDialogPane();
+                    alertPane.setContent(contentLabel);
+                    alertPane.setPrefWidth(450);
+                    alertPane.getStyleClass().add("panel");
+                    if (getScene() != null) {
+                        String css = getScene().getStylesheets().stream().findFirst().orElse(null);
+                        if (css != null && !alertPane.getStylesheets().contains(css)) {
+                            alertPane.getStylesheets().add(css);
+                        }
+                    }
+
                     alert.showAndWait();
                 }
             }

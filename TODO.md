@@ -17,7 +17,7 @@
 - [ ] A way to delete agents
 
 ### Agent Saving
-- [ ] Make the window match the style of everything else
+- [X] Make the window match the style of everything else
 
 ### Main Menu
 - [ ] Make a main menu
