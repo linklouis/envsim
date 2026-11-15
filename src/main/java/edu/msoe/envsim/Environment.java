@@ -31,7 +31,6 @@ public class Environment extends Canvas {
      * The number of screen pixels per terrain pixel on each axis.
      */
     public static final int TERRAIN_RESOLUTION_RATIO = 20;
-    private static final String DEFAULT_ENVIRONMENT = "environments/marsh & desert huge.terrain";
 
     /**
      * Food and any other entity that never moves. Rebuilt only when something is added.
@@ -138,22 +137,8 @@ public class Environment extends Canvas {
         terrainData = new TerrainType[terrainWidth][terrainHeight];
         terrainCacheImage = new WritableImage(terrainWidth, terrainHeight);
         terrainPixelWriter = terrainCacheImage.getPixelWriter();
-        try {
-            loadTerrain(new File(DEFAULT_ENVIRONMENT));
-        } catch (Exception e) {
-            fillTerrain();
-            Platform.runLater(() -> {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Startup Load Failed");
-                alert.setHeaderText("Could not load default environment");
-                Label contentLabel = new Label(e.getMessage() != null ? e.getMessage() : "An error occurred while loading " + DEFAULT_ENVIRONMENT);
-                contentLabel.setWrapText(true);
-                contentLabel.setMaxWidth(380);
-                alert.getDialogPane().setContent(contentLabel);
-                alert.getDialogPane().setPrefWidth(450);
-                alert.showAndWait();
-            });
-        }
+        // The terrain is chosen on the main menu's New Game page, so start with a placeholder
+        fillTerrain();
 
         this.onSimModeStart = onSimModeStart;
         this.onEditModeStart = onEditModeStart;
@@ -362,6 +347,46 @@ public class Environment extends Canvas {
         } else {
             startSimulation();
         }
+    }
+
+    public boolean isSimulationRunning() {
+        return simRunning;
+    }
+
+    /**
+     * Loads {@code terrainFile}, throws away every entity and per-game counter, and then runs {@code populateWorld}
+     * to create the entities for the new game. Does not start the simulation; call {@link #startSimulation()} afterwards.
+     * <p>
+     * Holds the simulation lock the whole time so the simulation thread can't be mid-step while the entity lists change.
+     * The terrain is loaded before anything is cleared, so a bad file leaves the current game untouched.
+     * </p>
+     *
+     * @param terrainFile   The terrain to load. Must match the current world dimensions.
+     * @param populateWorld Creates the starting agents and food. Runs while the lock is held.
+     * @throws IOException if the terrain file can't be read
+     */
+    public void startNewWorld(@NotNull File terrainFile, @NotNull Runnable populateWorld) throws IOException {
+        pauseStateless();
+        synchronized (pauseLock) {
+            loadTerrain(terrainFile);
+
+            mobileEntities.clear();
+            pendingMobileEntities.clear();
+            mobileEntitiesToRemove.clear();
+            stationaryEntities.clear();
+            staticGridDirty = true;
+            agentGridCurrent = false;
+
+            selectedAgent = null;
+            currentTick = 0;
+            numPredations = 0;
+            numPredationsCounter = 0;
+            Agent.resetDifficulty();
+
+            populateWorld.run();
+            flushPendingMobileEntities();
+        }
+        resetCanvas();
     }
 
     public void simMode() {

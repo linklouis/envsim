@@ -20,8 +20,8 @@
 - [X] Make the window match the style of everything else
 
 ### Main Menu
-- [ ] Make a main menu
-- [ ] Allow customizable default terrains
+- [X] Make a main menu
+- [X] Allow customizable default terrains
 - [ ] **Allow saving an entire game state**
 - [ ] Allow loading a terrain that's a different size than the current one
   - Scale agent positions
@@ -53,6 +53,7 @@
 - [ ] Add memory?
 - [ ] Freezing stats for a run or just species?
 - [ ] Have poison food actually take health?
+- [ ] Maximizing the window should reset the camera
 
 ## Stats
 - [ ] Add stats screen

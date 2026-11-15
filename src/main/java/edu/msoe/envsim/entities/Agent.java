@@ -833,4 +833,12 @@ public class Agent extends MobileEntity {
     public static double getDifficulty() {
         return (GLOBAL_ENERGY_LOSS_FACTOR - INITIAL_GELF) / (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - INITIAL_GELF);
     }
+
+    /**
+     * Puts the difficulty back to where a brand new game starts.
+     * The difficulty is static, so without this a second game would begin at the difficulty the last one ended on.
+     */
+    public static void resetDifficulty() {
+        GLOBAL_ENERGY_LOSS_FACTOR = INITIAL_GELF;
+    }
 }

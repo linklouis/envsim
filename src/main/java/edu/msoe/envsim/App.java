@@ -4,6 +4,7 @@ import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.utilities.apputils.AgentInspectorPane;
 import edu.msoe.envsim.utilities.apputils.EnvironmentManagerDialog;
+import edu.msoe.envsim.utilities.apputils.MainMenuPane;
 import edu.msoe.envsim.utilities.apputils.TelemetryPanel;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
@@ -62,11 +63,18 @@ public class App extends Application {
     private static double MIN_SIM_SPEED = 10.0;
     private static double MAX_SIM_SPEED = 5000.0;
 
+    private static final int INITIAL_AGENT_COUNT = 12000;
+    private static final int INITIAL_FOOD_COUNT = 9000;
+
     private Environment environment;
     private boolean debugMode = false;
     private Slider simSpeed;
 
     private TelemetryPanel telemetryPanel;
+
+    private MainMenuPane mainMenuPane;
+    /** Whether the player has started a game yet. Decides if the main menu offers Resume. */
+    private boolean gameStarted = false;
 
     // Menu pieces
     private VBox menuPanel;
@@ -93,22 +101,12 @@ public class App extends Application {
         StackPane gamePane = new StackPane();
         VBox menuLayer = setupMenu(stage, gamePane);
 
-        // Populate Entities
-        for (int i = 0; i < 12000; i++) {
-            Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
-
-            new Agent(Math.random() * 30 + 3, randomColor, environment);
-        }
-
-        for (int i = 0; i < 9000; i++) {
-            Vector position = Vector.random(Vector.ZERO, environment.getSize());
-            new Food(position, Math.pow(Math.random(), 4) * 40 + 5, environment);
-        }
-
-        environment.startSimulation();
-
         StackPane.setAlignment(environment, Pos.TOP_LEFT);
         gamePane.getChildren().addAll(environment, menuLayer, inspectorPane);
+
+        // The world is only populated once the player starts a new game. Until then the menu covers everything.
+        mainMenuPane = new MainMenuPane(gamePane, environment, this::startNewGame, this::quit);
+        mainMenuPane.open(false);
 
         setupDebugPane();
 
@@ -119,14 +117,49 @@ public class App extends Application {
         scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("style.css")).toExternalForm());
         stage.setScene(scene);
         stage.setTitle("EnvSim");
-        stage.setOnCloseRequest(_ -> {
-            Platform.exit();
-            System.exit(0);
-        });
+        stage.setOnCloseRequest(_ -> quit());
         stage.show();
 
         setupKeyboardInputs(scene, environment);
         setupClickAwayClose(scene, menuLayer, inspectorPane);
+    }
+
+    /**
+     * Replaces the current world with a fresh one on the given terrain and starts the simulation.
+     */
+    private void startNewGame(@NotNull File terrainFile) {
+        try {
+            environment.startNewWorld(terrainFile, () -> {
+                for (int agentIndex = 0; agentIndex < INITIAL_AGENT_COUNT; agentIndex++) {
+                    Color randomColor = Color.color(Math.random(), Math.random(), Math.random());
+                    new Agent(Math.random() * 30 + 3, randomColor, environment);
+                }
+
+                for (int foodIndex = 0; foodIndex < INITIAL_FOOD_COUNT; foodIndex++) {
+                    Vector position = Vector.random(Vector.ZERO, environment.getSize());
+                    new Food(position, Math.pow(Math.random(), 4) * 40 + 5, environment);
+                }
+            });
+        } catch (Exception exception) {
+            showErrorPopup("Could Not Start Game", "Could not load the selected terrain.", exception.getMessage());
+            return;
+        }
+
+        gameStarted = true;
+        setMenuOpen(false);
+        mainMenuPane.close();
+        environment.resetCamera(environment.getWidth());
+        environment.startSimulation();
+    }
+
+    private void showMainMenu() {
+        setMenuOpen(false);
+        mainMenuPane.open(gameStarted);
+    }
+
+    private void quit() {
+        Platform.exit();
+        System.exit(0);
     }
 
     private void setupDebugPane() {
@@ -164,6 +197,18 @@ public class App extends Application {
 
     private void setupKeyboardInputs(@NotNull Scene scene, Environment environment) {
         scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.ESCAPE) {
+                if (mainMenuPane.isShowing()) {
+                    mainMenuPane.onEscapePressed();
+                } else {
+                    showMainMenu();
+                }
+                event.consume();
+                return;
+            }
+            // The game's hotkeys shouldn't fire on the world hiding behind the menu
+            if (mainMenuPane.isShowing()) return;
+
             switch (event.getCode()) {
                 case KeyCode.HOME -> {
                     toggleDebugMode();
@@ -310,6 +355,11 @@ public class App extends Application {
             environment.resetCamera(stage.getWidth());
             setMenuOpen(false);
         });
+
+        Button mainMenuButton = new Button("Main Menu");
+        mainMenuButton.getStyleClass().add("sim-button");
+        mainMenuButton.setFocusTraversable(false);
+        mainMenuButton.setOnAction(_ -> showMainMenu());
 
         // --- File management controls (always in the menu) ---
         Label envManagementLabel = new Label("Environments");
@@ -500,7 +550,7 @@ public class App extends Application {
         VBox agentMenuEntry = new VBox(8, new Separator(), agentMenuLabel, toggleAgentMgrBtn);
 
         // ---- Panel ----
-        menuPanel = new VBox(10, title, simSpeedLabel, simSpeed, resetCamera, new Separator(), envManagementLabel, fileIoOptions, agentMenuEntry, agentSection, editorSection);
+        menuPanel = new VBox(10, title, simSpeedLabel, simSpeed, resetCamera, mainMenuButton, new Separator(), envManagementLabel, fileIoOptions, agentMenuEntry, agentSection, editorSection);
         menuPanel.setPadding(new Insets(15));
         menuPanel.setPrefWidth(240);
         menuPanel.setMaxWidth(USE_PREF_SIZE);
