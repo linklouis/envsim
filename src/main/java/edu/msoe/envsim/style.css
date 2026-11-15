@@ -67,3 +67,32 @@
 .slider-tick-fix {
     -fx-text-background-color: white;
 }
+
+/* --- Telemetry / Debug Overlay Styles --- */
+.telemetry-panel {
+    -fx-background-color: rgba(20, 20, 20, 0.85);
+    -fx-background-radius: 0 0 8 8;
+    -fx-border-color: #333 #333 #555 #333;
+    -fx-border-radius: 0 0 8 8;
+    -fx-padding: 8 12;
+}
+
+.telemetry-category-label {
+    -fx-text-fill: #88c0d0;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+    -fx-font-family: monospace;
+}
+
+.telemetry-key-label {
+    -fx-text-fill: #888;
+    -fx-font-size: 11px;
+    -fx-font-family: monospace;
+}
+
+.telemetry-val-label {
+    -fx-text-fill: #eceff4;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-font-family: monospace;
+}

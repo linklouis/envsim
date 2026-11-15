@@ -5,6 +5,7 @@ import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.utilities.apputils.AgentInspectorPane;
 import edu.msoe.envsim.utilities.apputils.DebugMessage;
 import edu.msoe.envsim.utilities.apputils.EnvironmentManagerDialog;
+import edu.msoe.envsim.utilities.apputils.TelemetryPanel;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import edu.msoe.envsim.utilities.Vector;
@@ -63,7 +64,7 @@ public class App extends Application {
     private boolean debugMode = false;
     private Slider simSpeed;
 
-    private HBox debugBox;
+    private TelemetryPanel telemetryPanel;
 
     // Menu pieces
     private VBox menuPanel;
@@ -108,7 +109,7 @@ public class App extends Application {
         setupDebugPane();
 
         VBox root  = new VBox();
-        root.getChildren().addAll(debugBox, gamePane);
+        root.getChildren().addAll(telemetryPanel, gamePane);
 
         Scene scene = new Scene(root, viewWidth, viewHeight);
         scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("style.css")).toExternalForm());
@@ -125,40 +126,7 @@ public class App extends Application {
     }
 
     private void setupDebugPane() {
-        debugBox = new HBox();
-
-        DebugMessage tick = new DebugMessage(
-                () -> environment.getCurrentTick(), "Ticks", 0, environment
-        );
-        DebugMessage framesPerSecond = new DebugMessage(
-                () -> environment.getFrameRate(), "FpS", 2, environment
-        );
-        DebugMessage ticksPerSecond = new DebugMessage(
-                () -> environment.getSimUpdateRate(), "TpS", 2, environment
-        );
-        DebugMessage numAgents = new DebugMessage(
-                () -> environment.getNumAgents(), "Agents", 0, environment
-        );
-        DebugMessage listMs = new DebugMessage(
-                () -> environment.getListMs(), "listMs", 3, environment
-        );
-        DebugMessage decideMs = new DebugMessage(
-                () -> environment.getDecideMs(), "decideMs", 3, environment
-        );
-        DebugMessage stepMs = new DebugMessage(
-                () -> environment.getStepMs(), "stepMs", 3, environment
-        );
-        DebugMessage TpSpA = new DebugMessage(
-                () -> 1 / (environment.getSimUpdateRate() * (double) environment.getNumAgents()), "SpAT", 10, environment
-        );
-        DebugMessage numPredations = new DebugMessage(
-                () -> environment.getNumPredations(), "predations", 0, environment
-        );
-        DebugMessage difficulty = new DebugMessage(
-                Agent::getDifficulty, "difficulty", 4, environment
-        );
-
-        debugBox.getChildren().addAll(tick, framesPerSecond, ticksPerSecond, numAgents, listMs, decideMs, stepMs, TpSpA, numPredations, difficulty);
+        telemetryPanel = new TelemetryPanel(environment);
         toggleDebugMode(debugMode);
     }
 
@@ -235,6 +203,11 @@ public class App extends Application {
 
         environment = new Environment(viewWidth, viewHeight, worldWidth, worldHeight, zoom, debugMode,
                 onSimModeStart, onEditModeStart,
+                () -> {
+                    if (telemetryPanel != null) {
+                        telemetryPanel.updateMetrics();
+                    }
+                },
                 agent -> {
                     if (agent != null) {
                         inspectorPane.showAgent(agent);
@@ -614,8 +587,8 @@ public class App extends Application {
     private void toggleDebugMode(boolean debugMode) {
         this.debugMode = debugMode;
         environment.setDebugMode(debugMode);
-        debugBox.setVisible(debugMode);
-        debugBox.setManaged(debugMode);
+        telemetryPanel.setVisible(debugMode);
+        telemetryPanel.setManaged(debugMode);
     }
 
     private @NotNull WritableImage loadAgentThumbnail(File file, int thumbW, int thumbH) {
@@ -650,5 +623,9 @@ public class App extends Application {
             }
             return fallback;
         }
+    }
+
+    public TelemetryPanel getTelemetryPanel() {
+        return telemetryPanel;
     }
 }

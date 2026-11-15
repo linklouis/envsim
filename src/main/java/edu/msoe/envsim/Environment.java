@@ -109,6 +109,7 @@ public class Environment extends Canvas {
     private boolean isPainting = false;
 
     // STATS
+    private final Runnable onVisualUpdate;
     private int currentTick = 0;
     private double listMs;
     private double decideMs;
@@ -123,7 +124,7 @@ public class Environment extends Canvas {
 
 
     public Environment(int viewWidth, int viewHeight, int worldWidth, int worldHeight, double zoom, boolean debugMode,
-                       Runnable onSimModeStart, Runnable onEditModeStart, Consumer<Agent> onAgentSelected) {
+                       Runnable onSimModeStart, Runnable onEditModeStart, Runnable onVisualUpdate, Consumer<Agent> onAgentSelected) {
         super(viewWidth, viewHeight);
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
@@ -132,6 +133,7 @@ public class Environment extends Canvas {
         this.agentGrid = new SpatialGrid(NUM_CELLS, cellSize.x(), cellSize.y(), false);
         gc = getGraphicsContext2D();
         scale = zoom;
+        this.onVisualUpdate = onVisualUpdate;
 
         int terrainWidth = worldWidth / TERRAIN_RESOLUTION_RATIO;
         int terrainHeight = worldHeight / TERRAIN_RESOLUTION_RATIO;
@@ -476,10 +478,8 @@ public class Environment extends Canvas {
             entity.paint(gc, entity == selectedAgent || debugMode);
         }
 
-        if (debugMode) {
-            for (DebugMessage message : debugMessages) {
-                message.update();
-            }
+        if (debugMode && onVisualUpdate != null) {
+            onVisualUpdate.run();
         }
 
         onAgentSelected.accept(selectedAgent);

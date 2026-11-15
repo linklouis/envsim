@@ -37,7 +37,7 @@
 
 ### Debug Panel
 - [ ] Have the num predations counter be per frame rather than per tick?
-- [ ] Completely redo it
+- [X] Completely redo it
 
 ### MISC.
 - [ ] Change the max zoom factor based on the world size
