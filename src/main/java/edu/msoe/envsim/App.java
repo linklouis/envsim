@@ -60,6 +60,9 @@ public class App extends Application {
 //    // Slider tick labels pull their color from this looked-up color
 //    private static final String SLIDER_STYLE = "-fx-text-background-color: white;";
 
+    private static double MIN_SIM_SPEED = 10.0;
+    private static double MAX_SIM_SPEED = 5000.0;
+
     private Environment environment;
     private boolean debugMode = false;
     private Slider simSpeed;
@@ -174,10 +177,14 @@ public class App extends Application {
                     event.consume();
                 }
                 case KeyCode.R -> {
-                    if (simSpeed.getValue() == 60) {
-                        simSpeed.setValue(Double.MAX_VALUE);
+                    // Calculate the slider position that maps precisely to 60 TpS
+                    double targetValFor60 = 100.0 * Math.log10(60.0 / MIN_SIM_SPEED) / Math.log10(MAX_SIM_SPEED / MIN_SIM_SPEED);
+                    boolean isCurrently60 = Math.abs(simSpeed.getValue() - targetValFor60) < 1.0;
+
+                    if (isCurrently60) {
+                        simSpeed.setValue(100.0); // Switch to UNLIMITED
                     } else {
-                        simSpeed.setValue(60);
+                        simSpeed.setValue(targetValFor60); // Switch to 60 TpS
                     }
                     event.consume();
                 }
@@ -235,24 +242,65 @@ public class App extends Application {
         Label simSpeedLabel = new Label();  // TODO: Allow the user to type in a selected tick speed
         simSpeedLabel.getStyleClass().add("value-label");
 
-        simSpeed = new Slider(0, 5000, 0);
-        simSpeed.setMajorTickUnit(1000);
-        simSpeed.setMinorTickCount(2);
+        simSpeed = new Slider(0, 100, 0);
+        simSpeed.setMajorTickUnit(25);
+        simSpeed.setMinorTickCount(4);
         simSpeed.setSnapToTicks(false);
         simSpeed.setShowTickLabels(true);
         simSpeed.setShowTickMarks(true);
         simSpeed.getStyleClass().add("slider-tick-fix");
         simSpeed.setFocusTraversable(false);
+
+        // Map slider values (0-100) to actual speeds for the tick labels
+        simSpeed.setLabelFormatter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(Double value) {
+                if (value == null) return "";
+                if (value >= 99.9) return "Max";
+                double rate = MIN_SIM_SPEED * Math.pow(MAX_SIM_SPEED / MIN_SIM_SPEED, value / 100.0);
+                if (rate >= 1000) {
+                    return String.format(java.util.Locale.US, "%.1fk", rate / 1000.0);
+                }
+                return String.format(java.util.Locale.US, "%d", (int) rate);
+            }
+
+            @Override
+            public Double fromString(String string) {
+                return 0.0; // Not needed for read-only labels
+            }
+        });
         simSpeed.valueProperty().addListener((observable, oldValue, newValue) -> {
-            if (Math.abs(newValue.doubleValue() - simSpeed.getMax()) < 0.1) {
+            double val = newValue.doubleValue();
+            if (val >= 99.9) {
                 environment.setMaxSimUpdateRate(Double.POSITIVE_INFINITY);
                 simSpeedLabel.setText("Max update rate: UNLIMITED");
             } else {
-                environment.setMaxSimUpdateRate(newValue.doubleValue());
-                simSpeedLabel.setText("Max update rate: " + newValue.intValue());
+                double rate = MIN_SIM_SPEED * Math.pow(MAX_SIM_SPEED / MIN_SIM_SPEED, val / 100.0);
+                environment.setMaxSimUpdateRate(rate);
+                simSpeedLabel.setText("Max update rate: " + String.format(java.util.Locale.US, "%,d", (int) rate));
             }
         });
-        simSpeed.setValue(simSpeed.getMax());
+        simSpeed.setValue(simSpeed.getMax()); // Defaults to UNLIMITED
+
+        // Custom logarithmic tick labels matching the 0-100 scale distribution
+        HBox speedLabels = new HBox();
+        speedLabels.setAlignment(Pos.CENTER_LEFT);
+        String[] labelsText = {"10", "100", "1k", "5k", "Max"};
+        for (int i = 0; i < labelsText.length; i++) {
+            Label lbl = new Label(labelsText[i]);
+            lbl.setStyle("-fx-text-fill: #aaa; -fx-font-size: 9px;");
+            if (i == 0) {
+                lbl.setAlignment(Pos.CENTER_LEFT);
+                HBox.setHgrow(lbl, Priority.NEVER);
+            } else if (i == labelsText.length - 1) {
+                lbl.setAlignment(Pos.CENTER_RIGHT);
+                HBox.setHgrow(lbl, Priority.NEVER);
+            } else {
+                lbl.setAlignment(Pos.CENTER);
+                HBox.setHgrow(lbl, Priority.ALWAYS);
+            }
+            speedLabels.getChildren().add(lbl);
+        }
 
         Button resetCamera =  new Button("Reset Cam");
         resetCamera.getStyleClass().add("sim-button");

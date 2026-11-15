@@ -28,7 +28,7 @@
   - Respawn all food?
 
 ### Hamburger Menu
-- [ ] Make the sim speed slider logarithmic
+- [X] Make the sim speed slider logarithmic
 
 ### Terrain Editing
 - [X] **Painting under food should reset the food's cached terrain**
