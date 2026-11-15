@@ -3,7 +3,6 @@ package edu.msoe.envsim;
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.utilities.apputils.AgentInspectorPane;
-import edu.msoe.envsim.utilities.apputils.DebugMessage;
 import edu.msoe.envsim.utilities.apputils.EnvironmentManagerDialog;
 import edu.msoe.envsim.utilities.apputils.TelemetryPanel;
 import edu.msoe.envsim.utilities.simutils.AgentData;

@@ -3,7 +3,6 @@ package edu.msoe.envsim;
 import edu.msoe.envsim.entities.*;
 import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.apputils.Clock;
-import edu.msoe.envsim.utilities.apputils.DebugMessage;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.simutils.SpatialGrid;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
@@ -54,7 +53,6 @@ public class Environment extends Canvas {
 
     private final List<StationaryEntity> stationaryEntities = new ArrayList<>();
 
-    private final List<DebugMessage> debugMessages = new ArrayList<>();
     private boolean debugMode;
 
     private final GraphicsContext gc;
@@ -794,10 +792,6 @@ public class Environment extends Canvas {
         } else {
             throw new RuntimeException("Cannot remove entity of type " + entity.getClass().getName() + ". Must inherit from MobileEntity.");
         }
-    }
-
-    public void addDebugMessage(DebugMessage debugMessage) {
-        debugMessages.add(debugMessage);
     }
 
     public Vector getSize() {
