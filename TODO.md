@@ -36,7 +36,7 @@
 - [ ] Add filling?
 
 ### Debug Panel
-- [ ] Have the num predations counter be per frame rather than per tick?
+- [X] Have the num predations counter be per frame rather than per tick?
 - [X] Completely redo it
 
 ### MISC.

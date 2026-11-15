@@ -529,7 +529,7 @@ public class Environment extends Canvas {
 
             numPredationsCounter = 0;
             for (MobileEntity e : mobileEntities) e.step();
-            numPredations = numPredationsCounter;
+            numPredations += numPredationsCounter;
 
             long t3 = System.nanoTime();
             listMs = listMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages
@@ -933,7 +933,9 @@ public class Environment extends Canvas {
     }
 
     public int getNumPredations() {
-        return numPredations;
+        int temp = numPredations;
+        numPredations = 0;
+        return temp;
     }
 
     public Agent getSelectedAgent() {
