@@ -9,6 +9,7 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import edu.msoe.envsim.utilities.apputils.FoodRadarChart?>
 
 <fx:root type="javafx.scene.layout.VBox" spacing="8" stylesheets="@style.css" styleClass="panel"
          style="-fx-background-color: rgba(30, 30, 30, 0.9); -fx-background-radius: 8; -fx-border-color: #555; -fx-border-radius: 8;"
@@ -23,6 +24,8 @@
         <Label text="Agent Inspector" styleClass="title-label"/>
         <HBox HBox.hgrow="ALWAYS"/>
         <Label fx:id="generationHeaderLabel" styleClass="telemetry-category-label" text="Gen 0"/>
+        <Button fx:id="unitsButton" styleClass="sim-button" focusTraversable="false" onAction="#cycleUnits"
+                style="-fx-font-size: 10px; -fx-padding: 2 8;"/>
     </HBox>
 
     <Separator style="-fx-stroke: #444;"/>
@@ -37,7 +40,7 @@
                 <HBox fx:id="vitalsHeader" alignment="CENTER_LEFT" style="-fx-padding: 8 10; -fx-cursor: hand;">
                     <Label fx:id="vitalsArrowLabel" text="▼" styleClass="telemetry-category-label" style="-fx-font-size: 9px;"/>
                     <HBox minWidth="6"/>
-                    <Label text="VITALS &amp; STATE" styleClass="telemetry-category-label"/>
+                    <Label text="STATE" styleClass="telemetry-category-label"/>
                 </HBox>
                 <VBox fx:id="vitalsContent" spacing="4" style="-fx-padding: 0 10 10 10;">
                     <GridPane hgap="10" vgap="3">
@@ -53,8 +56,8 @@
                         <Label text="Terrain:" styleClass="caption-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
                         <Label fx:id="terrainLabel" styleClass="value-label" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
-<!--                        <Label text="Predation:" styleClass="caption-label" GridPane.rowIndex="4" GridPane.columnIndex="0"/>-->
-<!--                        <Label fx:id="predationLabel" styleClass="value-label" GridPane.rowIndex="4" GridPane.columnIndex="1"/>-->
+                        <!--                        <Label text="Predation:" styleClass="caption-label" GridPane.rowIndex="4" GridPane.columnIndex="0"/>-->
+                        <!--                        <Label fx:id="predationLabel" styleClass="value-label" GridPane.rowIndex="4" GridPane.columnIndex="1"/>-->
 
                         <Label text="Priority:" styleClass="caption-label" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
                         <Label fx:id="actionLabel" styleClass="value-label" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
@@ -67,7 +70,7 @@
                 <HBox fx:id="dynamicsHeader" alignment="CENTER_LEFT" style="-fx-padding: 8 10; -fx-cursor: hand;">
                     <Label fx:id="dynamicsArrowLabel" text="▼" styleClass="telemetry-category-label" style="-fx-font-size: 9px;"/>
                     <HBox minWidth="6"/>
-                    <Label text="DYNAMICS &amp; MOVEMENT" styleClass="telemetry-category-label"/>
+                    <Label text="MOVEMENT" styleClass="telemetry-category-label"/>
                 </HBox>
                 <VBox fx:id="dynamicsContent" spacing="4" style="-fx-padding: 0 10 10 10;">
                     <GridPane hgap="10" vgap="3">
@@ -77,11 +80,14 @@
                         <Label text="Acceleration:" styleClass="caption-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                         <Label fx:id="accelerationLabel" styleClass="value-label" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-                        <Label text="Movement Effort:" styleClass="caption-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                        <Label fx:id="effortLabel" styleClass="value-label" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                        <Label text="Turn Rate:" styleClass="caption-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                        <Label fx:id="turnRateLabel" styleClass="value-label" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
-                        <Label text="Random Turn Requested:" styleClass="caption-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                        <Label fx:id="jitterLabel" styleClass="value-label" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                        <Label text="Movement Effort:" styleClass="caption-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                        <Label fx:id="effortLabel" styleClass="value-label" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+                        <Label text="Random Turn Requested:" styleClass="caption-label" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                        <Label fx:id="jitterLabel" styleClass="value-label" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
                     </GridPane>
                 </VBox>
             </VBox>
@@ -91,7 +97,7 @@
                 <HBox fx:id="attributesHeader" alignment="CENTER_LEFT" style="-fx-padding: 8 10; -fx-cursor: hand;">
                     <Label fx:id="attributesArrowLabel" text="▼" styleClass="telemetry-category-label" style="-fx-font-size: 9px;"/>
                     <HBox minWidth="6"/>
-                    <Label text="ATTRIBUTES &amp; COMBAT" styleClass="telemetry-category-label"/>
+                    <Label text="ATTRIBUTES" styleClass="telemetry-category-label"/>
                 </HBox>
                 <VBox fx:id="attributesContent" spacing="4" style="-fx-padding: 0 10 10 10;">
                     <GridPane hgap="10" vgap="3">
@@ -130,7 +136,7 @@
                     <Label text="FOOD PREFERENCES" styleClass="telemetry-category-label"/>
                 </HBox>
                 <VBox fx:id="foodContent" alignment="CENTER" spacing="4" style="-fx-padding: 0 10 10 10;">
-                    <Canvas fx:id="foodRadarCanvas" width="200" height="150"/>
+                    <FoodRadarChart fx:id="foodRadarChart" width="200" height="150"/>
                     <HBox spacing="15" alignment="CENTER">
                         <Label fx:id="food1Label" styleClass="value-label" style="-fx-font-size: 10px;"/>
                         <Label fx:id="food2Label" styleClass="value-label" style="-fx-font-size: 10px;"/>
@@ -144,7 +150,8 @@
 
     <!-- Footer Actions -->
     <HBox spacing="8" style="-fx-padding: 4 0 0 0;">
-        <Button text="Save Agent" styleClass="sim-button" focusTraversable="false" onAction="#saveCurrentAgent" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+        <Button text="Follow" styleClass="sim-button" focusTraversable="false" onAction="#goToAgent" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+        <Button text="Save" styleClass="sim-button" focusTraversable="false" onAction="#saveCurrentAgent" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
         <Button text="Close" styleClass="sim-button" focusTraversable="false" onAction="#hide" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
     </HBox>
 </fx:root>

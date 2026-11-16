@@ -4,17 +4,20 @@
 - [X] Move the generation
 - [X] Remove desires predation
 - [X] Dropdowns?
-- [ ] "Go To Agent" button
+- [X] "Go To Agent" button
 - [X] Add a radar chart for food preference?
-- [ ] Add units + a way to see stuff in metric, imperial, & pixels
-- [ ] Add current turn speed
-- [ ] Have the food preferences have the colors the refer to
+- [X] Add units + a way to see stuff in metric, imperial, & pixels
+- [X] Add current turn speed
+- [X] Have the food preferences have the colors they refer to
+- [X] Add commas in big numbers
+- [ ] Have the "Follow" button actually follow
 
 ### Agent Spawner
-- [ ] Make it wide enough to fit the whole names
-- [ ] Allow user to click on an agent to get details before spawning
-- [ ] Are agents shown at full health in the thumbnail?
-- [ ] A way to delete agents
+- [X] Make it wide enough to fit the whole names
+- [X] Allow user to click on an agent to get details before spawning
+- [X] A way to delete agents
+- [X] Show agents at full energy in the thumbnail?
+- [ ] Some stuff with this seems to run on the JFX thread, so it can cause the game to freeze.
 
 ### Agent Saving
 - [X] Make the window match the style of everything else
@@ -32,7 +35,7 @@
 
 ### Terrain Editing
 - [X] **Painting under food should reset the food's cached terrain**
-- [ ] Add circular brushes
+- [X] Add circular brushes
 - [ ] Add filling?
 
 ### Debug Panel
@@ -52,7 +55,7 @@
     - Could allow like having certain foods spawn more NEAR water, which would be super cool
 - [ ] Add memory?
 - [ ] Freezing stats for a run or just species?
-- [ ] Have poison food actually take health?
+- [X] Have poison food actually take health?
 - [ ] Maximizing the window should reset the camera
 
 ## Stats

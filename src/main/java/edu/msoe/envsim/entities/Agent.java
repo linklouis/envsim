@@ -129,7 +129,7 @@ public class Agent extends MobileEntity {
     private final static int TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 10000000;
     private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - GLOBAL_ENERGY_LOSS_FACTOR) / TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     private final static int TARGET_NUM_AGENTS_WHILE_ANNEALING = 3000;
-    private final static int MIN_NUM_AGENTS_WHILE_ANNEALING = 1000;
+    private final static int MIN_NUM_AGENTS_WHILE_ANNEALING = 800;
 
 
     // AGENT STATE PARAMETERS
@@ -240,6 +240,11 @@ public class Agent extends MobileEntity {
     private double mass = 0;
     private double movementEffort = 0;
     private double acceleration = 0;
+    /**
+     * How far the agent actually turned last tick, in degrees. Unlike {@link #turnSpeed}, which is the most it
+     * <i>can</i> ask to turn, this is after terrain resistance and body size are applied. Only used for display.
+     */
+    private double currentTurnRate = 0;
 
 
     public Agent(double radius, Color color, @NotNull Environment env) {
@@ -456,6 +461,7 @@ public class Agent extends MobileEntity {
 
         double effectiveTurnAmount = turnAmount * cachedTerrain.getTurningResistance() / getRadius();
         direction = direction.turn(effectiveTurnAmount);
+        currentTurnRate = effectiveTurnAmount;
 
         velocity = velocity.add(direction.scale(thrustAcceleration));
 
@@ -645,7 +651,7 @@ public class Agent extends MobileEntity {
     @Override
     public void getDecision() {
         float[] inputs = getInput();
-        float[] output = brain.predict69x16x4(inputs);
+        float[] output = brain.predict(inputs);
 
         double targetPrey = output[1];
         boolean desiresPredation;
@@ -837,6 +843,13 @@ public class Agent extends MobileEntity {
 
     public double getAcceleration() {
         return acceleration;
+    }
+
+    /**
+     * @return How far the agent turned last tick, in degrees. Positive and negative are opposite directions.
+     */
+    public double getTurnRate() {
+        return currentTurnRate;
     }
 
     public static double getDifficulty() {

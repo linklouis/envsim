@@ -33,6 +33,11 @@ public class Environment extends Canvas {
      */
     public static final int TERRAIN_RESOLUTION_RATIO = 20;
 
+    private static final double MIN_ZOOM = 0.03;
+    private static final double MAX_ZOOM = 8.0;
+    /** Going to an agent zooms in at least this far, so the agent is actually visible when you arrive. */
+    private static final double GO_TO_AGENT_MIN_SCALE = 0.1;
+
     /**
      * Food and any other entity that never moves. Rebuilt only when something is added.
      * Entities here must never grow beyond the radius they were registered with.
@@ -83,6 +88,7 @@ public class Environment extends Canvas {
     private Mode mode = Mode.EDIT;
     private TerrainType currentBrush = TerrainType.STANDARD;
     private int brushSize = 5;
+    private boolean roundBrush = false;
 
     private final int worldWidth;
     private final int worldHeight;
@@ -250,7 +256,7 @@ public class Environment extends Canvas {
         // Zooming controls
         setOnScroll(e -> {
             double rawZoomFactor = e.getDeltaY() > 0 ? 1.05 : 1 / 1.05;
-            double newScale = Math.clamp(scale * rawZoomFactor, 0.03, 8.0);
+            double newScale = Math.clamp(scale * rawZoomFactor, MIN_ZOOM, MAX_ZOOM);
             double actualZoomFactor = newScale / scale;
 
             double mouseX = e.getX();
@@ -577,8 +583,11 @@ public class Environment extends Canvas {
             // Divide by scale so the outline stays 1 pixel wide regardless of zoom level
             gc.setLineWidth(1.0 / scale);
 
-            // Option A: Square brush outline (matches your current square painting loop)
-            gc.strokeRect(brushWorldX, brushWorldY, brushWorldSize, brushWorldSize);
+            if (roundBrush) {
+                gc.strokeOval(brushWorldX, brushWorldY, brushWorldSize, brushWorldSize);
+            } else {
+                gc.strokeRect(brushWorldX, brushWorldY, brushWorldSize, brushWorldSize);
+            }
 
             /*
              * Option B: If you decide to switch to a circular brush later,
@@ -741,10 +750,9 @@ public class Environment extends Canvas {
     private void paintBrushAt(int centerTerrainX, int centerTerrainY, TerrainType brushType) {
         for (int x = centerTerrainX - brushSize; x <= centerTerrainX + brushSize; x++) {
             for (int y = centerTerrainY - brushSize; y <= centerTerrainY + brushSize; y++) {
-                // OPTIONAL: If you want a circular brush instead of square, change this to:
-                // if (Math.hypot(x - centerTerrainX, y - centerTerrainY) <= brushSize) {
-                setTerrainTile(x, y, brushType);
-                // }
+                if (!roundBrush || Math.hypot(x - centerTerrainX, y - centerTerrainY) <= brushSize + 0.5) {
+                    setTerrainTile(x, y, brushType);
+                }
             }
         }
     }
@@ -1024,6 +1032,30 @@ public class Environment extends Canvas {
 
     public void setBrushSize(int brushRadius) {
         this.brushSize = Math.max(0, brushRadius); // Prevent negative radius
+    }
+
+    public void setBrushRound(boolean roundBrush) {
+        this.roundBrush = roundBrush;
+    }
+
+    public boolean isEditMode() {
+        return mode == Mode.EDIT;
+    }
+
+    /**
+     * @return The point in the world that is at the center of the window right now
+     */
+    public @NotNull Vector getViewCenterWorldPosition() {
+        return new Vector((getWidth() / 2.0 - translateX) / scale, (getHeight() / 2.0 - translateY) / scale);
+    }
+
+    /**
+     * Moves the camera so that {@code agent} is in the middle of the window, zooming in if the view is too far out to see it.
+     */
+    public void goToAgent(@NotNull Agent agent) {
+        scale = Math.clamp(Math.max(scale, GO_TO_AGENT_MIN_SCALE), MIN_ZOOM, MAX_ZOOM);
+        translateX = getWidth() / 2.0 - agent.x() * scale;
+        translateY = getHeight() / 2.0 - agent.y() * scale;
     }
 
     public void setBrush(TerrainType newBrush) {

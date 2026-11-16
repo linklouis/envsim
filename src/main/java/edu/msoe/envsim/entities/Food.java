@@ -1,3 +1,4 @@
+
 package edu.msoe.envsim.entities;
 
 import edu.msoe.envsim.Environment;
@@ -166,6 +167,14 @@ public class Food extends StationaryEntity {
         return FoodType.values().length;
     }
 
+    /**
+     * @param foodTypeIndex The food type's ordinal, as returned by {@link #getFoodTypeIndex()}
+     * @return The color food of that type is drawn in
+     */
+    public static @NotNull Color getTypeColor(int foodTypeIndex) {
+        return FoodType.values()[foodTypeIndex].getColor();
+    }
+
     public int getFoodTypeIndex() {
         return foodType.ordinal();
     }
@@ -228,3 +237,4 @@ public class Food extends StationaryEntity {
         return (float) foodType.ordinal() / FoodType.values().length;
     }
 }
+ 
