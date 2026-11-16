@@ -216,6 +216,7 @@ public class Agent extends MobileEntity {
     private Food lastEatenFood; // TODO: Probably don't need this anymore with raycasts
     private boolean alive = true;
 
+    private record AgentDecision(double speed, double turn, boolean desiresPredation) {}
     private AgentDecision decision = new AgentDecision(0, 0, false);
     private String priority = "WANDER";
     private double jitterRequested = 0;

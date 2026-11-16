@@ -56,9 +56,7 @@ public class ControlPanel extends VBox {
     private final Environment environment;
     private final StackPane gamePane;
     private final Stage stage;
-    private final Runnable onOpenMainMenu;
 
-    private final HBox panelsRow = new HBox(10);
     private final VBox drawer = new VBox(10);
     private final AgentSpawnerPane libraryPanel;
 
@@ -77,9 +75,6 @@ public class ControlPanel extends VBox {
 
     private final Button libraryToggleButton;
 
-    private TerrainType selectedTerrain = TerrainType.STANDARD;
-    private boolean roundBrush = false;
-
     /**
      * @param stage          The window, used to size the panels and to anchor file dialogs
      * @param gamePane       The pane this panel sits in, which the environment manager dialog is added to
@@ -92,10 +87,10 @@ public class ControlPanel extends VBox {
         this.stage = stage;
         this.gamePane = gamePane;
         this.environment = environment;
-        this.onOpenMainMenu = onOpenMainMenu;
 
         // Clicks on the empty space around the panels fall through to the world (painting, panning)
         setPickOnBounds(false);
+        HBox panelsRow = new HBox(10);
         panelsRow.setPickOnBounds(false);
         panelsRow.setAlignment(Pos.TOP_LEFT);
         setAlignment(Pos.TOP_LEFT);
@@ -409,15 +404,13 @@ public class ControlPanel extends VBox {
      * Picks the terrain the brush paints.
      */
     public void selectTerrain(@NotNull TerrainType terrainType) {
-        selectedTerrain = terrainType;
         environment.setBrush(terrainType);
         for (Map.Entry<TerrainType, Button> entry : paletteButtons.entrySet()) {
-            setSelectedStyle(entry.getValue(), entry.getKey() == selectedTerrain);
+            setSelectedStyle(entry.getValue(), entry.getKey() == terrainType);
         }
     }
 
     private void selectBrushShape(boolean round) {
-        roundBrush = round;
         environment.setBrushRound(round);
         setSelectedStyle(squareBrushButton, !round);
         setSelectedStyle(roundBrushButton, round);

@@ -4,10 +4,8 @@ import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.utilities.apputils.AgentInspectorPane;
 import edu.msoe.envsim.utilities.apputils.ControlPanel;
-import edu.msoe.envsim.utilities.apputils.EnvironmentManagerDialog;
 import edu.msoe.envsim.utilities.apputils.MainMenuPane;
 import edu.msoe.envsim.utilities.apputils.TelemetryPanel;
-import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.apputils.GameSnapshot;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import edu.msoe.envsim.utilities.Vector;
@@ -18,27 +16,13 @@ import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Separator;
-import javafx.scene.control.Slider;
-import javafx.scene.image.ImageView;
-import javafx.scene.image.PixelWriter;
-import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.stage.FileChooser;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.jetbrains.annotations.NotNull;
@@ -46,24 +30,10 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-import static javafx.scene.control.PopupControl.USE_PREF_SIZE;
-
 public class App extends Application {
-//    // Styles shared with AgentInspectorPane so all floating panels look the same
-//    private static final String PANEL_STYLE =
-//            "-fx-background-color: rgba(30, 30, 30, 0.9); -fx-background-radius: 8; -fx-border-color: #555; -fx-border-radius: 8;";
-//    private static final String TITLE_STYLE = "-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: white;";
-//    private static final String CAPTION_STYLE = "-fx-text-fill: #aaa; -fx-font-weight: bold;";
-//    private static final String VALUE_STYLE = "-fx-text-fill: white;";
-//    private static final String BUTTON_STYLE = "-fx-background-color: #444; -fx-text-fill: white; -fx-cursor: hand;";
-//    private static final String SELECTED_BUTTON_STYLE = "-fx-background-color: #3b5998; -fx-text-fill: white; -fx-cursor: hand; -fx-border-color: #88c0d0; -fx-border-width: 2; -fx-border-radius: 4;";
-//    // Slider tick labels pull their color from this looked-up color
-//    private static final String SLIDER_STYLE = "-fx-text-background-color: white;";
-
     private static final int INITIAL_AGENT_COUNT = 12000;
     private static final int INITIAL_FOOD_COUNT = 9000;
 

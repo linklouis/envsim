@@ -11,8 +11,8 @@ import org.jetbrains.annotations.NotNull;
  * collapsible sections in the agent inspector.
  */
 public class CollapsibleSection extends VBox {
-    private static final String ARROW_EXPANDED = "\u25BC";
-    private static final String ARROW_COLLAPSED = "\u25B6";
+    private static final String ARROW_EXPANDED = "▼";
+    private static final String ARROW_COLLAPSED = "▶";
 
     private final Label arrowLabel = new Label();
     private final VBox contentBox = new VBox(10);

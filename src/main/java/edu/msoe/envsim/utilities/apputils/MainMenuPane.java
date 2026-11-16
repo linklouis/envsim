@@ -584,7 +584,7 @@ public class MainMenuPane extends StackPane {
             header = GameSnapshot.readHeader(saveFile);
             problem = describeSaveProblem(header);
             String savedAt = SAVE_DATE_FORMAT.format(Instant.ofEpochMilli(header.savedAtEpochMillis()).atZone(ZoneId.systemDefault()));
-            detailText = String.format(Locale.US, "Tick %,d  \u00B7  %,d agents  \u00B7  %,d food  \u00B7  %s",
+            detailText = String.format(Locale.US, "Tick %,d  ·  %,d agents  ·  %,d food  ·  %s",
                     header.tick(), header.agentCount(), header.foodCount(), savedAt);
         } catch (IOException exception) {
             problem = "Unreadable save: " + exception.getMessage();

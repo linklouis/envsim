@@ -11,6 +11,7 @@
 - [X] Have the food preferences have the colors they refer to
 - [X] Add commas in big numbers
 - [ ] Have the "Follow" button actually follow
+- [ ] Make it more clear when the agent you're following dies
 
 ### Agent Spawner
 - [X] Make it wide enough to fit the whole names
@@ -21,6 +22,7 @@
 
 ### Agent Saving
 - [X] Make the window match the style of everything else
+- [ ] Give names?
 
 ### Main Menu
 - [X] Make a main menu
@@ -57,6 +59,7 @@
 - [ ] Freezing stats for a run or just species?
 - [X] Have poison food actually take health?
 - [ ] Maximizing the window should reset the camera
+- [ ] Should probably add better error handling in some spots
 
 ## Stats
 - [ ] Add stats screen
@@ -68,5 +71,6 @@
 
 ## Bugs
 - [ ] Bug where an agent you're tracking will just disappear, but its stats don't give a reason for why it would be dead
-- [ ] All the Agents just randomly disappeared, but the number didn't change
-- [ ] Brain not using all the inputs?
+- [ ] All the Agents just randomly disappeared, but the number of agents shown didn't change
+- [X] Brain not using all the inputs?
+- [ ] The default environments should be recreated each time so they match the current screen size

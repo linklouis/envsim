@@ -79,7 +79,6 @@ public class AgentSpawnerPane extends VBox {
     private final FoodRadarChart foodRadarChart = new FoodRadarChart(200, 130);
     private final Button spawnInViewButton;
     private final Button spawnRandomlyButton;
-    private final Button deleteButton;
 
     private @Nullable File selectedFile = null;
 
@@ -123,7 +122,7 @@ public class AgentSpawnerPane extends VBox {
 
         spawnInViewButton = createButton("Spawn in View", this::spawnInView);
         spawnRandomlyButton = createButton("Spawn Randomly", this::spawnRandomly);
-        deleteButton = createButton("Delete", this::deleteSelected);
+        Button deleteButton = createButton("Delete", this::deleteSelected);
         deleteButton.getStyleClass().remove("sim-button");
         deleteButton.getStyleClass().add("danger-button");
 
@@ -250,7 +249,7 @@ public class AgentSpawnerPane extends VBox {
             return (problem != null) ? problem : "Unreadable";
         }
         UnitSystem unitSystem = AppSettings.getUnitSystem();
-        return "Gen " + UnitSystem.formatWholeNumber(data.generation()) + "  \u00B7  size " + unitSystem.formatLength(data.size());
+        return "Gen " + UnitSystem.formatWholeNumber(data.generation()) + "  ·  size " + unitSystem.formatLength(data.size());
     }
 
     private void restyleCards() {
