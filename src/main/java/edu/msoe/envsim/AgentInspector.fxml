@@ -61,6 +61,9 @@
 
                         <Label text="Priority:" styleClass="caption-label" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
                         <Label fx:id="actionLabel" styleClass="value-label" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+
+                        <Label text="Age:" styleClass="caption-label" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                        <Label fx:id="ageLabel" styleClass="value-label" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
                     </GridPane>
                 </VBox>
             </VBox>

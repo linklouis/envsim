@@ -5,6 +5,7 @@ import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.utilities.apputils.AgentInspectorPane;
 import edu.msoe.envsim.utilities.apputils.ControlPanel;
 import edu.msoe.envsim.utilities.apputils.MainMenuPane;
+import edu.msoe.envsim.utilities.apputils.StatsPane;
 import edu.msoe.envsim.utilities.apputils.TelemetryPanel;
 import edu.msoe.envsim.utilities.apputils.GameSnapshot;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
@@ -48,6 +49,8 @@ public class App extends Application {
 
     private ControlPanel controlPanel;
 
+    private StatsPane statsPane;
+
     @Override
     public void start(@NotNull Stage stage) {
         int viewWidth = 1080;
@@ -63,7 +66,7 @@ public class App extends Application {
 
         // Layer Controls over Canvas using StackPane
         StackPane gamePane = new StackPane();
-        controlPanel = new ControlPanel(stage, gamePane, environment, this::showMainMenu);
+        controlPanel = new ControlPanel(stage, gamePane, environment, this::showMainMenu, this::showStats);
 
         StackPane.setAlignment(environment, Pos.TOP_LEFT);
         gamePane.getChildren().addAll(environment, controlPanel, inspectorPane);
@@ -90,6 +93,7 @@ public class App extends Application {
                 App.this.quit();
             }
         });
+        statsPane = new StatsPane(gamePane, environment.getStatsRecorder(), this::goToAgentFromStats);
         mainMenuPane.open(false);
 
         setupDebugPane();
@@ -178,6 +182,22 @@ public class App extends Application {
         mainMenuPane.open(gameStarted);
     }
 
+    private void showStats() {
+        controlPanel.setOpen(false);
+        statsPane.open();
+    }
+
+    /**
+     * Closes the stats screen and takes the player to {@code agent}, with the inspector open on it.
+     */
+    private void goToAgentFromStats(@NotNull Agent agent) {
+        if (!agent.isAlive()) return;
+
+        statsPane.close();
+        environment.selectAgent(agent);
+        environment.goToAgent(agent);
+    }
+
     private void quit() {
         Platform.exit();
         System.exit(0);
@@ -219,7 +239,9 @@ public class App extends Application {
     private void setupKeyboardInputs(@NotNull Scene scene, Environment environment) {
         scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
             if (event.getCode() == KeyCode.ESCAPE) {
-                if (mainMenuPane.isShowing()) {
+                if (statsPane.isShowing()) {
+                    statsPane.close();
+                } else if (mainMenuPane.isShowing()) {
                     mainMenuPane.onEscapePressed();
                 } else {
                     showMainMenu();
@@ -229,6 +251,18 @@ public class App extends Application {
             }
             // The game's hotkeys shouldn't fire on the world hiding behind the menu
             if (mainMenuPane.isShowing()) return;
+
+            // The stats screen covers the world too, so only the keys that make sense while reading it work
+            if (statsPane.isShowing()) {
+                if (event.getCode() == KeyCode.S) {
+                    statsPane.close();
+                    event.consume();
+                } else if (event.getCode() == KeyCode.SPACE) {
+                    environment.toggleSimulation();
+                    event.consume();
+                }
+                return;
+            }
 
             switch (event.getCode()) {
                 case KeyCode.HOME -> {
@@ -245,6 +279,10 @@ public class App extends Application {
                 }
                 case KeyCode.R -> {
                     controlPanel.toggleSpeedPreset();
+                    event.consume();
+                }
+                case KeyCode.S -> {
+                    showStats();
                     event.consume();
                 }
                 case KeyCode.DIGIT1 -> selectTerrainWithHotkey(event, 0);

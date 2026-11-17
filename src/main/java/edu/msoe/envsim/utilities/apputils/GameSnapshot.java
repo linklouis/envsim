@@ -3,6 +3,7 @@ package edu.msoe.envsim.utilities.apputils;
 import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.simutils.AgentData;
+import edu.msoe.envsim.utilities.simutils.StatsHistory;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import org.jetbrains.annotations.NotNull;
 
@@ -32,21 +33,27 @@ import java.util.List;
  *     <li>{@link Header}, which is small enough to read on its own to list saves without loading them</li>
  *     <li>Terrain: one byte per tile holding the {@link TerrainType} ordinal, in {@code terrainData[x][y]} order</li>
  *     <li>Food: {@link Header#foodCount()} entries</li>
- *     <li>Agents: {@link Header#agentCount()} entries, each an {@link AgentData} followed by its movement state</li>
+ *     <li>Agents: {@link Header#agentCount()} entries, each an {@link AgentData} followed by its movement state and birth tick</li>
+ *     <li>Stats: the {@link StatsHistory} the stats screen draws (version 2 and later)</li>
  * </ol>
  * <p>
- * Bump {@link #FORMAT_VERSION} whenever the layout changes, so old files are rejected with a clear message
- * instead of being misread.
+ * Bump {@link #FORMAT_VERSION} whenever the layout changes. Versions from {@link #MIN_SUPPORTED_FORMAT_VERSION} up can still
+ * be read, and any other file is rejected with a clear message instead of being misread.
  * </p>
  *
  * @param header          Summary values, also written at the very start of the file
  * @param terrainOrdinals One byte per terrain tile
  * @param foods           Every piece of food
  * @param agents          Every living agent
+ * @param stats           The history behind the stats screen's charts
  */
 public record GameSnapshot(@NotNull Header header, byte @NotNull [] terrainOrdinals,
-                           @NotNull List<FoodState> foods, @NotNull List<AgentState> agents) {
-    public static final int FORMAT_VERSION = 1;
+                           @NotNull List<FoodState> foods, @NotNull List<AgentState> agents,
+                           @NotNull StatsHistory stats) {
+    public static final int FORMAT_VERSION = 2;
+    /** Version 1 saves have no birth ticks and no stats history, so they load with agents at age 0 and fresh charts. */
+    public static final int MIN_SUPPORTED_FORMAT_VERSION = 1;
+    private static final int FIRST_FORMAT_VERSION_WITH_STATS = 2;
 
     /** Spells "ENVS". Lets us reject files that aren't saves at all. */
     private static final int MAGIC_NUMBER = 0x454E5653;
@@ -89,9 +96,10 @@ public record GameSnapshot(@NotNull Header header, byte @NotNull [] terrainOrdin
      * @param velocity   The agent's current velocity
      * @param speed      The agent's current speed
      * @param wanderOffset The agent's current random-wander offset
+     * @param birthTick  The simulation tick the agent was born on, which is what its age is counted from
      */
     public record AgentState(@NotNull AgentData data, double health, @NotNull Vector direction,
-                             @NotNull Vector velocity, double speed, double wanderOffset) {
+                             @NotNull Vector velocity, double speed, double wanderOffset, int birthTick) {
     }
 
 
@@ -142,7 +150,10 @@ public record GameSnapshot(@NotNull Header header, byte @NotNull [] terrainOrdin
                     out.writeDouble(agent.velocity().y());
                     out.writeDouble(agent.speed());
                     out.writeDouble(agent.wanderOffset());
+                    out.writeInt(agent.birthTick());
                 }
+
+                snapshot.stats().writeTo(out);
             }
             Files.move(temporaryPath, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException | RuntimeException exception) {
@@ -224,10 +235,16 @@ public record GameSnapshot(@NotNull Header header, byte @NotNull [] terrainOrdin
                 Vector velocity = new Vector(in.readDouble(), in.readDouble());
                 double speed = in.readDouble();
                 double wanderOffset = in.readDouble();
-                agents.add(new AgentState(data, health, direction, velocity, speed, wanderOffset));
+                // Older saves didn't record when agents were born, so their agents start counting their age from the save
+                int birthTick = (header.formatVersion() >= FIRST_FORMAT_VERSION_WITH_STATS) ? in.readInt() : header.tick();
+                agents.add(new AgentState(data, health, direction, velocity, speed, wanderOffset, birthTick));
             }
 
-            return new GameSnapshot(header, terrainOrdinals, foods, agents);
+            // Older saves have no history, so the charts start fresh from the loaded game
+            StatsHistory stats = (header.formatVersion() >= FIRST_FORMAT_VERSION_WITH_STATS)
+                    ? StatsHistory.readFrom(in) : StatsHistory.EMPTY;
+
+            return new GameSnapshot(header, terrainOrdinals, foods, agents, stats);
         }
     }
 
@@ -236,9 +253,9 @@ public record GameSnapshot(@NotNull Header header, byte @NotNull [] terrainOrdin
             throw new IOException("Not an EnvSim save file.");
         }
         int formatVersion = in.readInt();
-        if (formatVersion != FORMAT_VERSION) {
+        if (formatVersion < MIN_SUPPORTED_FORMAT_VERSION || formatVersion > FORMAT_VERSION) {
             throw new IOException("Unsupported save format version " + formatVersion
-                    + " (this build reads version " + FORMAT_VERSION + ").");
+                    + " (this build reads versions " + MIN_SUPPORTED_FORMAT_VERSION + " to " + FORMAT_VERSION + ").");
         }
 
         Header header = new Header(

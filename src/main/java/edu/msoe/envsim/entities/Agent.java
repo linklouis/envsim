@@ -162,6 +162,11 @@ public class Agent extends MobileEntity {
     private final Color baseColor;
     private final int generation;
     private final long id;
+    /**
+     * The simulation tick this agent was created on. How many ticks have passed since is its age.
+     * Not final because {@link #restore} puts back the birth tick an agent had when it was saved.
+     */
+    private int birthTick;
 
 
     // GENETIC ATTRIBUTES
@@ -309,6 +314,7 @@ public class Agent extends MobileEntity {
         perTickFoodPreferenceCost = Math.pow(foodPreference.getTotalPreferenceAmount(), PASSIVE_FOOD_PREFERENCE_EXPONENT) * PASSIVE_FOOD_PREFERENCE_COST;
 
         generation = agentData.generation();
+        birthTick = env.getCurrentTick();
 
         direction = Vector.random(1);
 
@@ -394,7 +400,7 @@ public class Agent extends MobileEntity {
         return comparison;
     }
 
-    private boolean isSameSpecies(@NotNull Agent other) {
+    public boolean isSameSpecies(@NotNull Agent other) {
         return getGenomeComparison(other) < SPECIES_MAX_DIFFERENCE;
     }
 
@@ -886,12 +892,23 @@ public class Agent extends MobileEntity {
         return alive;
     }
 
+    public int getGeneration() {
+        return generation;
+    }
+
+    /**
+     * @return How many simulation ticks have passed since this agent was born
+     */
+    public int getAgeInTicks() {
+        return environment.getCurrentTick() - birthTick;
+    }
+
     /**
      * @return Everything about this agent that has to be saved: its {@link AgentData} plus the state that
-     * {@code AgentData} doesn't hold (current health, heading, velocity, speed and wander offset).
+     * {@code AgentData} doesn't hold (current health, heading, velocity, speed, wander offset and birth tick).
      */
     public @NotNull AgentState captureState() {
-        return new AgentState(getAgentData(), getRadius(), direction, velocity, speed, currentWanderOffset);
+        return new AgentState(getAgentData(), getRadius(), direction, velocity, speed, currentWanderOffset, birthTick);
     }
 
     /**
@@ -910,6 +927,7 @@ public class Agent extends MobileEntity {
         velocity = state.velocity();
         speed = state.speed();
         currentWanderOffset = state.wanderOffset();
+        birthTick = state.birthTick();
         updateColor();
     }
 }

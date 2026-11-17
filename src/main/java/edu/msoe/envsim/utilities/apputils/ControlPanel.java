@@ -80,9 +80,10 @@ public class ControlPanel extends VBox {
      * @param gamePane       The pane this panel sits in, which the environment manager dialog is added to
      * @param environment    The environment these controls drive
      * @param onOpenMainMenu Called when the Main Menu button is pressed
+     * @param onOpenStats    Called when the Statistics button is pressed
      */
     public ControlPanel(@NotNull Stage stage, @NotNull StackPane gamePane, @NotNull Environment environment,
-                        @NotNull Runnable onOpenMainMenu) {
+                        @NotNull Runnable onOpenMainMenu, @NotNull Runnable onOpenStats) {
         super(8);
         this.stage = stage;
         this.gamePane = gamePane;
@@ -108,9 +109,10 @@ public class ControlPanel extends VBox {
             environment.resetCamera(stage.getWidth());
             setOpen(false);
         });
+        Button statsButton = createButton("Statistics  (S)", onOpenStats);
         Button mainMenuButton = createButton("Main Menu", onOpenMainMenu);
         unitsButton = createButton("", () -> AppSettings.setUnitSystem(AppSettings.getUnitSystem().next()));
-        stretch(pauseButton, resetCameraButton, mainMenuButton, unitsButton);
+        stretch(pauseButton, resetCameraButton, statsButton, mainMenuButton, unitsButton);
 
         HBox pauseAndCameraRow = new HBox(8, pauseButton, resetCameraButton);
         Label unitsCaption = createCaption("Units");
@@ -118,7 +120,7 @@ public class ControlPanel extends VBox {
         unitsRow.setAlignment(Pos.CENTER_LEFT);
 
         CollapsibleSection simulationSection = new CollapsibleSection("SIMULATION", true,
-                simSpeedLabel, simSpeedSlider, pauseAndCameraRow, unitsRow, mainMenuButton);
+                simSpeedLabel, simSpeedSlider, pauseAndCameraRow, unitsRow, statsButton, mainMenuButton);
 
         // ---- Terrain section (with the editor) ----
         editToggleButton = createButton("", environment::toggleEditMode);

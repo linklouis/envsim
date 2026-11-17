@@ -31,7 +31,7 @@ import java.util.function.Consumer;
 public class AgentInspectorPane extends VBox {
     @FXML private Label generationHeaderLabel;
     @FXML private Button unitsButton;
-    @FXML private Label energyLabel, healthLabel, massLabel, terrainLabel;
+    @FXML private Label energyLabel, healthLabel, massLabel, terrainLabel, ageLabel;
     @FXML private Label actionLabel, jitterLabel, speedLabel, turnRateLabel, effortLabel, accelerationLabel;
     @FXML private Label maxSpeedLabel, turnSpeedLabel, visionLabel, regenLabel, swimSkillLabel;
     @FXML private Label attackLabel, defenseLabel, fovLabel, food1Label, food2Label, food3Label;
@@ -145,6 +145,7 @@ public class AgentInspectorPane extends VBox {
         massLabel.setText(units.formatMass(agent.getMass()));
         terrainLabel.setText(agent.getTerrainType().name());
         actionLabel.setText(agent.getPriority());
+        ageLabel.setText(units.formatDuration(agent.getAgeInTicks()));
 
         // Dynamics
         speedLabel.setText(units.formatSpeed(agent.getSpeed()));

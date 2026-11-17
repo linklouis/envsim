@@ -137,6 +137,30 @@ public enum UnitSystem {
 
 
     /*
+     * Time (the simulation's unit of time is the tick):
+     */
+
+    /**
+     * @param ticks A length of simulated time. Shown as it is for pixels, and as clock time for the real-world systems.
+     */
+    public @NotNull String formatDuration(double ticks) {
+        if (this == PIXELS) {
+            return formatWholeNumber(Math.round(ticks)) + " ticks";
+        }
+
+        long totalSeconds = Math.round(ticks / TICKS_PER_SECOND);
+        long days = totalSeconds / 86_400;
+        long hours = (totalSeconds % 86_400) / 3_600;
+        long minutes = (totalSeconds % 3_600) / 60;
+        long seconds = totalSeconds % 60;
+        if (days > 0) return days + "d " + hours + "h";
+        if (hours > 0) return hours + "h " + minutes + "m";
+        if (minutes > 0) return minutes + "m " + seconds + "s";
+        return seconds + "s";
+    }
+
+
+    /*
      * Plain numbers:
      */
 

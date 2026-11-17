@@ -6,6 +6,7 @@ import edu.msoe.envsim.utilities.apputils.Clock;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.apputils.GameSnapshot;
 import edu.msoe.envsim.utilities.simutils.SpatialGrid;
+import edu.msoe.envsim.utilities.simutils.StatsRecorder;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
@@ -54,6 +55,9 @@ public class Environment extends Canvas {
     private final Queue<MobileEntity> mobileEntitiesToRemove = new ConcurrentLinkedQueue<>();
 
     private final List<StationaryEntity> stationaryEntities = new ArrayList<>();
+
+    /** Keeps the history the stats screen draws. Fed by the simulation thread, read by the JavaFX thread. */
+    private final StatsRecorder statsRecorder = new StatsRecorder();
 
     private boolean debugMode;
 
@@ -376,6 +380,7 @@ public class Environment extends Canvas {
             clearWorld();
             populateWorld.run();
             flushPendingMobileEntities();
+            statsRecorder.startNewHistory(currentTick, mobileEntities);
         }
         resetCanvas();
     }
@@ -400,7 +405,7 @@ public class Environment extends Canvas {
 
     /**
      * Captures everything needed to restore the game later: the terrain, every piece of food and every living agent
-     * (including its movement state), the tick counter, the difficulty, and the camera.
+     * (including its movement state), the tick counter, the difficulty, the camera, and the stats history.
      * <p>
      * Takes the simulation lock only while copying, so the snapshot is consistent, and writing it to disk can then
      * happen on another thread while the simulation carries on. Agents' brains are shared rather than copied, which is
@@ -436,7 +441,7 @@ public class Environment extends Canvas {
                     Agent.getExpectedBrainInputCount(), currentTick, Agent.getGlobalEnergyLossFactor(),
                     scale, translateX, translateY,
                     agentStates.size(), foodStates.size());
-            return new GameSnapshot(header, terrainOrdinals, foodStates, agentStates);
+            return new GameSnapshot(header, terrainOrdinals, foodStates, agentStates, statsRecorder.captureHistory());
         }
     }
 
@@ -495,6 +500,7 @@ public class Environment extends Canvas {
             }
 
             flushPendingMobileEntities();
+            statsRecorder.continueHistory(snapshot.stats(), currentTick, mobileEntities);
         }
         resetCanvas();
     }
@@ -654,6 +660,10 @@ public class Environment extends Canvas {
                 agentGrid.rebuild(mobileEntities);
                 agentGridCurrent = true;
             }
+
+            // Everything dead has just been removed and every newborn added, so this is when the population is easiest to count.
+            // Counted as part of the list time.
+            statsRecorder.recordSampleIfDue(currentTick, mobileEntities);
             long t1 = System.nanoTime();
 
             mobileEntities.parallelStream().forEach(MobileEntity::getDecision);
@@ -913,9 +923,17 @@ public class Environment extends Canvas {
         selectedAgent = null;
     }
 
+    /**
+     * Selects {@code agent}, so the inspector shows it.
+     */
+    public void selectAgent(@NotNull Agent agent) {
+        selectedAgent = agent;
+    }
+
     public void addEntity(Entity entity) {
         if (entity instanceof MobileEntity mEntity) {
             pendingMobileEntities.add(mEntity);
+            statsRecorder.recordBirth();
         } else if (entity instanceof StationaryEntity sEntity) {
             stationaryEntities.add(sEntity);
             entity.onRegistered();
@@ -926,6 +944,9 @@ public class Environment extends Canvas {
     public void removeEntity(Entity entity) {
         if (entity instanceof MobileEntity mEntity) {
             mobileEntitiesToRemove.add(mEntity);
+            if (mEntity instanceof Agent agent) {
+                statsRecorder.recordDeath(agent.getAgeInTicks());
+            }
         } else {
             throw new RuntimeException("Cannot remove entity of type " + entity.getClass().getName() + ". Must inherit from MobileEntity.");
         }
@@ -987,6 +1008,7 @@ public class Environment extends Canvas {
 
     public void countPredation() {
         numPredationsCounter++;
+        statsRecorder.recordPredation();
     }
 
 
@@ -1095,6 +1117,10 @@ public class Environment extends Canvas {
 
     public Agent getSelectedAgent() {
         return selectedAgent;
+    }
+
+    public @NotNull StatsRecorder getStatsRecorder() {
+        return statsRecorder;
     }
 
     public void flushPendingMobileEntities() {
