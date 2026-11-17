@@ -15,8 +15,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class Food extends StationaryEntity {
     private final static double RADIUS_VALUE_SCALE = 2;
-    private static final double GROWTH_SPEED = 0.002;
-    private static final int REGROWTH_TIME = 100;
+    private static final double GROWTH_SPEED = 0.001;
+    private static final int REGROWTH_TIME = 500;
     private static final double MIN_FOOD_PREFERENCE_WITHOUT_POISON = 0.3;
 
     private final double maxSize;
@@ -42,6 +42,28 @@ public class Food extends StationaryEntity {
 
     public record FoodPreference(double type1Preference, double type2Preference, double type3Preference) {
         // TODO: Could update a few of these functions to be general for any number of food types using arrays, but would technically be slower
+        private static final double POLARIZATION_THRESHOLD = 0.5;
+        private static final double POLARIZATION_EXPONENT = 5.0 / 9.0;
+
+        // Precomputed constant term: (a / (1 - a))^(1/b)
+        private static final double OFFSET_TERM = Math.pow(
+                POLARIZATION_THRESHOLD / (1.0 - POLARIZATION_THRESHOLD),
+                POLARIZATION_EXPONENT
+        );
+        private static final double DENOMINATOR = 1.0 + OFFSET_TERM;
+
+         /**
+         * Applies a polarization curve:
+         * \frac{\frac{x-a}{1-a}^{\frac{1}{b}}+\frac{a}{1-a}^{\frac{1}{b}}}{1+\frac{a}{1-a}^{\frac{1}{b}}}
+         *
+         * @param n Double between 0 and 1, inclusive
+         * @return Polarized value between 0 and 1
+         */
+        private static double polarize(double n) {
+            double normalized = (n - POLARIZATION_THRESHOLD) / (1.0 - POLARIZATION_THRESHOLD);
+            double curved = Math.signum(normalized) * Math.pow(Math.abs(normalized), POLARIZATION_EXPONENT);
+            return (curved + OFFSET_TERM) / DENOMINATOR;
+        }
 
         /**
          * Source: Google Gemini
@@ -54,29 +76,36 @@ public class Food extends StationaryEntity {
                 throw new IllegalArgumentException("Input array must not be null or empty");
             }
 
-            // 1. Find the maximum value for numerical stability
-            double max = Double.NEGATIVE_INFINITY;
-            for (double val : logits) {
-                if (val > max) {
-                    max = val;
-                }
-            }
-
-            // 2. Compute exponentials (shifted by max) and their sum
-            double[] exps = new double[logits.length];
-            double sum = 0.0;
             for (int i = 0; i < logits.length; i++) {
-                exps[i] = Math.exp(logits[i] - max);
-                sum += exps[i];
+                logits[i] = polarize(logits[i]);
             }
 
-            // 3. Normalize to get probabilities
-            double[] probabilities = new double[logits.length];
-            for (int i = 0; i < logits.length; i++) {
-                probabilities[i] = Math.min(2 * exps[i] / sum, 1);
-            }
+            return logits;
 
-            return probabilities;
+//            // 1. Find the maximum value for numerical stability
+//            double max = Double.NEGATIVE_INFINITY;
+//            for (double val : logits) {
+//                if (val > max) {
+//                    max = val;
+//                }
+//            }
+//
+//            // 2. Compute exponentials (shifted by max) and their sum
+//            double[] exps = new double[logits.length];
+//            double sum = 0.0;
+//            for (int i = 0; i < logits.length; i++) {
+//                exps[i] = Math.exp(logits[i] - max);
+//                sum += exps[i];
+//            }
+//
+//            // 3. Normalize to get probabilities
+//            double[] probabilities = new double[logits.length];
+//            for (int i = 0; i < logits.length; i++) {
+////                probabilities[i] = Math.min(2 * exps[i] / sum, 1);
+//                probabilities[i] = exps[i] / sum;
+//            }
+//
+//            return probabilities;
         }
 
         @Contract(" -> new")
@@ -86,7 +115,7 @@ public class Food extends StationaryEntity {
                     ThreadLocalRandom.current().nextDouble(),
                     ThreadLocalRandom.current().nextDouble()
             };
-//            preferences = softmax(preferences);
+            preferences = softmax(preferences);
             return new FoodPreference(
                     preferences[0],
                     preferences[1],

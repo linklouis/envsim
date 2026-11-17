@@ -12,6 +12,8 @@
 - [X] Add commas in big numbers
 - [ ] Have the "Follow" button actually follow
 - [ ] Make it more clear when the agent you're following dies
+- [ ] Add current wander angle
+- [ ] You can follow a dead agent
 
 ### Agent Spawner
 - [X] Make it wide enough to fit the whole names
@@ -22,7 +24,8 @@
 
 ### Agent Saving
 - [X] Make the window match the style of everything else
-- [ ] Give names?
+- [ ] Generate names?
+- [ ] Should be typing by default when the window opens
 
 ### Main Menu
 - [X] Make a main menu
@@ -60,17 +63,21 @@
 - [X] Have poison food actually take health?
 - [ ] Maximizing the window should reset the camera
 - [ ] Should probably add better error handling in some spots
+- [ ] !! **Only allow agents to eat or attack when facing the other**
 
 ## Stats
 - [ ] Add stats screen
-- [ ] Population
-- [ ] Latest generation
-- [ ] Earliest generation
+- [ ] Population over time
+- [ ] Latest generation (the highest generation agent in the sim)
+- [ ] Earliest generation (the lowest generation agent in the sim)
 - [ ] Oldest agent alive rn
-- [ ] How much of the genome space is currently occupied, plus over time
+- [ ] How much of the genome space is currently occupied, plus over time (Hopefully give the user an idea of how genetically diverse their ecosystem is)
+- [ ] How many predations are happening over time (Maybe augmented with the number of agents alive at that time)
+- [ ] The death rate, probably augmented with the population (Shows the agent turnover vs long-living agents)
 
 ## Bugs
 - [ ] Bug where an agent you're tracking will just disappear, but its stats don't give a reason for why it would be dead
 - [ ] All the Agents just randomly disappeared, but the number of agents shown didn't change
 - [X] Brain not using all the inputs?
 - [ ] The default environments should be recreated each time so they match the current screen size
+- [ ] When you start a new game, the interface freezes until it's loaded, then it pops up. Should add loading screen, or at least load the terrain up while we're waiting for the agents to spawn and stuff

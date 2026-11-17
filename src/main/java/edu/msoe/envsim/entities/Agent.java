@@ -96,6 +96,7 @@ public class Agent extends MobileEntity {
      * The cost per tick of having a 100% preference for a single food type.
      */
     private static final double PASSIVE_FOOD_PREFERENCE_COST = 4;
+    private static final double PASSIVE_FOOD_PREFERENCE_EXPONENT = 4;
     /**
      * TODO: Actually acceleration now
      */
@@ -119,7 +120,7 @@ public class Agent extends MobileEntity {
 
 
     // DIFFICULTY PARAMETERS
-    private static final double INITIAL_GELF = 0.0000000001;//0.00001;//
+    private static final double INITIAL_GELF = 0.00000000001;//0.00001;//
     /**
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
@@ -141,6 +142,7 @@ public class Agent extends MobileEntity {
      * Prevents looping.
      */
     private static final double RANDOM_WANDER_CHANGE_SPEED = 0.17;
+    private static final double MAX_WANDER_ANGLE = 0.8;
 
 
     // ARCHITECTURE PARAMETERS
@@ -304,7 +306,7 @@ public class Agent extends MobileEntity {
         foodPreference = agentData.foodPreference();
         brain =  agentData.brain();
 
-        perTickFoodPreferenceCost = Math.pow(foodPreference.getTotalPreferenceAmount(), 2) * PASSIVE_FOOD_PREFERENCE_COST;
+        perTickFoodPreferenceCost = Math.pow(foodPreference.getTotalPreferenceAmount(), PASSIVE_FOOD_PREFERENCE_EXPONENT) * PASSIVE_FOOD_PREFERENCE_COST;
 
         generation = agentData.generation();
 
@@ -665,7 +667,7 @@ public class Agent extends MobileEntity {
         }
 
         currentWanderOffset += ThreadLocalRandom.current().nextDouble(-RANDOM_WANDER_CHANGE_SPEED, RANDOM_WANDER_CHANGE_SPEED);
-        currentWanderOffset = Math.clamp(currentWanderOffset, -1.0, 1.0);
+        currentWanderOffset = Math.clamp(currentWanderOffset, -MAX_WANDER_ANGLE, MAX_WANDER_ANGLE);
 
         double nnTurn = (output[2] * 2 - 1) * turnSpeed;
 
