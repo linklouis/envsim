@@ -1,8 +1,10 @@
-package edu.msoe.envsim.utilities.apputils;
+package edu.msoe.envsim.utilities.apputils.ui;
 
 import edu.msoe.envsim.Environment;
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.utilities.Vector;
+import edu.msoe.envsim.utilities.apputils.AppSettings;
+import edu.msoe.envsim.utilities.apputils.UnitSystem;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.simutils.SpeciesColorMapper;
 import javafx.geometry.Insets;

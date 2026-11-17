@@ -2,11 +2,11 @@ package edu.msoe.envsim;
 
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Food;
-import edu.msoe.envsim.utilities.apputils.AgentInspectorPane;
-import edu.msoe.envsim.utilities.apputils.ControlPanel;
-import edu.msoe.envsim.utilities.apputils.MainMenuPane;
-import edu.msoe.envsim.utilities.apputils.StatsPane;
-import edu.msoe.envsim.utilities.apputils.TelemetryPanel;
+import edu.msoe.envsim.utilities.apputils.ui.AgentInspectorPane;
+import edu.msoe.envsim.utilities.apputils.ui.ControlPanel;
+import edu.msoe.envsim.utilities.apputils.ui.MainMenuPane;
+import edu.msoe.envsim.utilities.apputils.ui.StatsPane;
+import edu.msoe.envsim.utilities.apputils.ui.TelemetryPanel;
 import edu.msoe.envsim.utilities.apputils.GameSnapshot;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import edu.msoe.envsim.utilities.Vector;

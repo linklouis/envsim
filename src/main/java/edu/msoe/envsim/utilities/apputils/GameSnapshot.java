@@ -3,7 +3,7 @@ package edu.msoe.envsim.utilities.apputils;
 import edu.msoe.envsim.entities.Food;
 import edu.msoe.envsim.utilities.Vector;
 import edu.msoe.envsim.utilities.simutils.AgentData;
-import edu.msoe.envsim.utilities.simutils.StatsHistory;
+import edu.msoe.envsim.utilities.apputils.stats.StatsHistory;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import org.jetbrains.annotations.NotNull;
 

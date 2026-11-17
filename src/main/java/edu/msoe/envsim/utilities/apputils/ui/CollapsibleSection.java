@@ -1,4 +1,4 @@
-package edu.msoe.envsim.utilities.apputils;
+package edu.msoe.envsim.utilities.apputils.ui;
 
 import javafx.scene.Node;
 import javafx.scene.control.Label;

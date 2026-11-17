@@ -1,7 +1,9 @@
-package edu.msoe.envsim.utilities.apputils;
+package edu.msoe.envsim.utilities.apputils.ui;
 
 import edu.msoe.envsim.entities.Agent;
 import edu.msoe.envsim.entities.Food;
+import edu.msoe.envsim.utilities.apputils.AppSettings;
+import edu.msoe.envsim.utilities.apputils.UnitSystem;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;

@@ -6,7 +6,7 @@ import edu.msoe.envsim.utilities.apputils.Clock;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.apputils.GameSnapshot;
 import edu.msoe.envsim.utilities.simutils.SpatialGrid;
-import edu.msoe.envsim.utilities.simutils.StatsRecorder;
+import edu.msoe.envsim.utilities.apputils.stats.StatsRecorder;
 import edu.msoe.envsim.utilities.simutils.TerrainType;
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;

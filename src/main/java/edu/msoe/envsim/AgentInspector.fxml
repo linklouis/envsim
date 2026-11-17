@@ -9,7 +9,7 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-<?import edu.msoe.envsim.utilities.apputils.FoodRadarChart?>
+<?import edu.msoe.envsim.utilities.apputils.ui.FoodRadarChart?>
 
 <fx:root type="javafx.scene.layout.VBox" spacing="8" stylesheets="@style.css" styleClass="panel"
          style="-fx-background-color: rgba(30, 30, 30, 0.9); -fx-background-radius: 8; -fx-border-color: #555; -fx-border-radius: 8;"

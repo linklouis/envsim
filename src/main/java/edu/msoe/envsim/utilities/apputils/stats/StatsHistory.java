@@ -1,4 +1,4 @@
-package edu.msoe.envsim.utilities.simutils;
+package edu.msoe.envsim.utilities.apputils.stats;
 
 import org.jetbrains.annotations.NotNull;
 

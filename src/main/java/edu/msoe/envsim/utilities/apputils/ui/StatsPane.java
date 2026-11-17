@@ -1,9 +1,11 @@
-package edu.msoe.envsim.utilities.apputils;
+package edu.msoe.envsim.utilities.apputils.ui;
 
 import edu.msoe.envsim.entities.Agent;
-import edu.msoe.envsim.utilities.apputils.TimeSeriesChart.SeriesStyle;
-import edu.msoe.envsim.utilities.simutils.StatsRecorder;
-import edu.msoe.envsim.utilities.simutils.StatsSample;
+import edu.msoe.envsim.utilities.apputils.AppSettings;
+import edu.msoe.envsim.utilities.apputils.UnitSystem;
+import edu.msoe.envsim.utilities.apputils.ui.TimeSeriesChart.SeriesStyle;
+import edu.msoe.envsim.utilities.apputils.stats.StatsRecorder;
+import edu.msoe.envsim.utilities.apputils.stats.StatsSample;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;

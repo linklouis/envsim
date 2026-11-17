@@ -1,4 +1,4 @@
-package edu.msoe.envsim.utilities.apputils;
+package edu.msoe.envsim.utilities.apputils.ui;
 
 import edu.msoe.envsim.entities.Food;
 import javafx.scene.canvas.Canvas;
