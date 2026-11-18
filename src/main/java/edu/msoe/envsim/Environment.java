@@ -667,23 +667,23 @@ public class Environment extends Canvas {
             statsRecorder.recordSampleIfDue(currentTick, mobileEntities);
             long t1 = System.nanoTime();
 
-            averageSize = 0;
-
             mobileEntities.parallelStream().forEach(MobileEntity::getDecision);
             long t2 = System.nanoTime();
             Stream.concat(mobileEntities.stream(), stationaryEntities.stream())
                     .parallel().forEach(Entity::parallelStep);
             agentGrid.rebuild(mobileEntities);   // positions just changed; collision queries need the new ones
-            mobileEntities.parallelStream().forEach(mobileEntity -> {
-                mobileEntity.findCollisions();
-                averageSize += mobileEntity.getRadius();
-            });
+            mobileEntities.parallelStream().forEach(MobileEntity::findCollisions);
 
-            averageSize /= mobileEntities.size();
+            averageSize = 0;
 
             numPredationsCounter = 0;
-            for (MobileEntity e : mobileEntities) e.step();
+            for (MobileEntity e : mobileEntities) {
+                e.step();
+                averageSize += e.getRadius();
+            }
             numPredations += numPredationsCounter;
+
+            averageSize /= mobileEntities.size();
 
             long t3 = System.nanoTime();
             listMs = listMs * 0.99 + (t1 - t0) / 1e6 * 0.01;   // moving averages

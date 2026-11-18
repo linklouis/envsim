@@ -69,7 +69,7 @@
 - [ ] Keyboard shortcut for resetting the camera?
 - [ ] Are the ui files named well/consistently?
 - [ ] Low difficulty keeps allowing agents to get really big. Have difficulty annealing depend on both number and size?
-- [ ] !! **Is difficulty saved in save files?**
+- [X] !! **Is difficulty saved in save files?**
 
 ## User Settings
 - [ ] Give the user control over the difficulty annealing
@@ -85,9 +85,10 @@
 - [X] How many predations are happening over time (Maybe augmented with the number of agents alive at that time)
 - [X] The death rate, probably augmented with the population (Shows the agent turnover vs long-living agents)
   - Needs work
-- [ ] Num species
+- [X] Num species
 - [ ] Remove that description at the top of the panel
 - [ ] Add average size
+- [ ] Log button in kinda a weird spot, covering up the numbers for the right side y axis
 
 ## Bugs
 - [ ] Bug where an agent you're tracking will just disappear, but its stats don't give a reason for why it would be dead
