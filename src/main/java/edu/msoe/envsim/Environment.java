@@ -35,6 +35,7 @@ public class Environment extends Canvas {
     private static final double MAX_ZOOM = 8.0;
     /** Going to an agent zooms in at least this far, so the agent is actually visible when you arrive. */
     private static final double GO_TO_AGENT_MIN_SCALE = 0.1;
+    private static double averageSize = 0;
 
     /**
      * Food and any other entity that never moves. Rebuilt only when something is added.
@@ -666,12 +667,19 @@ public class Environment extends Canvas {
             statsRecorder.recordSampleIfDue(currentTick, mobileEntities);
             long t1 = System.nanoTime();
 
+            averageSize = 0;
+
             mobileEntities.parallelStream().forEach(MobileEntity::getDecision);
             long t2 = System.nanoTime();
             Stream.concat(mobileEntities.stream(), stationaryEntities.stream())
                     .parallel().forEach(Entity::parallelStep);
             agentGrid.rebuild(mobileEntities);   // positions just changed; collision queries need the new ones
-            mobileEntities.parallelStream().forEach(MobileEntity::findCollisions);
+            mobileEntities.parallelStream().forEach(mobileEntity -> {
+                mobileEntity.findCollisions();
+                averageSize += mobileEntity.getRadius();
+            });
+
+            averageSize /= mobileEntities.size();
 
             numPredationsCounter = 0;
             for (MobileEntity e : mobileEntities) e.step();
@@ -1139,5 +1147,9 @@ public class Environment extends Canvas {
             agentGrid.rebuild(mobileEntities);
             agentGridCurrent = true;
         }
+    }
+
+    public static double getAverageSize() {
+        return averageSize;
     }
 }

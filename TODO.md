@@ -35,9 +35,11 @@
   - Scale agent positions
   - Respawn all food?
 - [ ] Double-clicking a save should launch it, you shouldn't have to hit the start button. Also, clicking one then hitting enter should work.
+- [ ] Typing in a save name, then hitting enter should save it.
 
 ### Hamburger Menu
 - [X] Make the sim speed slider logarithmic
+- [ ] No way to get rid of the agent suummary?
 
 ### Terrain Editing
 - [X] **Painting under food should reset the food's cached terrain**
@@ -65,6 +67,9 @@
 - [ ] Should probably add better error handling in some spots
 - [ ] !! **Only allow agents to eat or attack when facing the other**
 - [ ] Keyboard shortcut for resetting the camera?
+- [ ] Are the ui files named well/consistently?
+- [ ] Low difficulty keeps allowing agents to get really big. Have difficulty annealing depend on both number and size?
+- [ ] !! **Is difficulty saved in save files?**
 
 ## User Settings
 - [ ] Give the user control over the difficulty annealing
@@ -82,6 +87,7 @@
   - Needs work
 - [ ] Num species
 - [ ] Remove that description at the top of the panel
+- [ ] Add average size
 
 ## Bugs
 - [ ] Bug where an agent you're tracking will just disappear, but its stats don't give a reason for why it would be dead

@@ -1,5 +1,6 @@
 package edu.msoe.envsim.utilities;
 
+import edu.msoe.envsim.entities.Agent;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
@@ -85,6 +86,34 @@ public class NeuralNetwork implements Serializable {
         return layerBuffers[layerSizes.length - 1];
     }
 
+    public float[] predictFast(float @NotNull [] in) {
+        float[] w = weights;
+        float[] h = layerBuffers[1];   // size 16 hidden layer
+        float[] out = layerBuffers[2]; // size 4 output layer
+
+        int wIdx = 0;
+
+        // --- Hidden Layer (16 neurons, Agent.NUM_INPUTS inputs + bias) ---
+        for (int j = 0; j < 16; j++) {
+            float sum = w[wIdx++]; // Bias
+            for (int k = 0; k < Agent.NUM_INPUTS; k++) {
+                sum += w[wIdx++] * in[k];
+            }
+            h[j] = Math.max(sum, 0f); // ReLU activation
+        }
+
+        // --- Output Layer (4 neurons, 16 hidden inputs + bias = 17 weights each) ---
+        for (int j = 0; j < 4; j++) {
+            float sum = w[wIdx++]; // Bias
+            for (int k = 0; k < 16; k++) {
+                sum += w[wIdx++] * h[k];
+            }
+            out[j] = fastSigmoid(sum);
+        }
+
+        return out;
+    }
+
     /**
      * Optimized forward pass for the 69 -> 16 -> 4 agent brain.
      * Uses clean loops that the JVM JIT compiler can easily auto-vectorize (SIMD)
@@ -101,6 +130,39 @@ public class NeuralNetwork implements Serializable {
         for (int j = 0; j < 16; j++) {
             float sum = w[wIdx++]; // Bias
             for (int k = 0; k < 69; k++) {
+                sum += w[wIdx++] * in[k];
+            }
+            h[j] = Math.max(sum, 0f); // ReLU activation
+        }
+
+        // --- Output Layer (4 neurons, 16 hidden inputs + bias = 17 weights each) ---
+        for (int j = 0; j < 4; j++) {
+            float sum = w[wIdx++]; // Bias
+            for (int k = 0; k < 16; k++) {
+                sum += w[wIdx++] * h[k];
+            }
+            out[j] = fastSigmoid(sum);
+        }
+
+        return out;
+    }
+
+    /**
+     * Optimized forward pass for the 81 -> 16 -> 4 agent brain.
+     * Uses clean loops that the JVM JIT compiler can easily auto-vectorize (SIMD)
+     * and fully inline, avoiding instruction cache thrashing.
+     */
+    public float[] predict81x16x4(float @NotNull [] in) {
+        float[] w = weights;
+        float[] h = layerBuffers[1];   // size 16 hidden layer
+        float[] out = layerBuffers[2]; // size 4 output layer
+
+        int wIdx = 0;
+
+        // --- Hidden Layer (16 neurons, 81 inputs + bias = 82 weights each) ---
+        for (int j = 0; j < 16; j++) {
+            float sum = w[wIdx++]; // Bias
+            for (int k = 0; k < 81; k++) {
                 sum += w[wIdx++] * in[k];
             }
             h[j] = Math.max(sum, 0f); // ReLU activation
