@@ -176,13 +176,6 @@ public class StatsPane extends StackPane {
         HBox headerRow = new HBox(12, titleLabel, headerSpacer, tickLabel, closeButton);
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label hintLabel = new Label("Hover over a chart for exact values. Charts cover the whole run, "
-                + "and older history is condensed as the run gets longer. The Log button gives a chart's left axis a "
-                + "logarithmic scale, so small values stay readable next to huge ones.");
-        hintLabel.getStyleClass().add("caption-label");
-        hintLabel.setStyle("-fx-font-size: 10px;");
-        hintLabel.setWrapText(true);
-
         // ---- Cards ----
         populationCard = new StatCard("POPULATION", null);
         earliestGenerationCard = new StatCard("EARLIEST GENERATION", onGoToAgent);
@@ -246,7 +239,7 @@ public class StatsPane extends StackPane {
         VBox.setVgrow(chartScrollPane, Priority.ALWAYS);
 
         // ---- Dialog ----
-        VBox dialog = new VBox(14, headerRow, hintLabel, cardsRow, chartScrollPane);
+        VBox dialog = new VBox(14, headerRow, cardsRow, chartScrollPane);
         dialog.setPadding(new Insets(25));
         dialog.getStyleClass().add("panel");
         dialog.setStyle("-fx-background-color: rgba(25, 25, 25, 0.95);");

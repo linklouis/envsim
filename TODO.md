@@ -86,7 +86,7 @@
 - [X] The death rate, probably augmented with the population (Shows the agent turnover vs long-living agents)
   - Needs work
 - [X] Num species
-- [ ] Remove that description at the top of the panel
+- [X] Remove that description at the top of the panel
 - [ ] Add average size
 - [ ] Log button in kinda a weird spot, covering up the numbers for the right side y axis
 
