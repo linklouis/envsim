@@ -3,6 +3,8 @@ package edu.msoe.envsim.utilities.apputils.ui;
 import javafx.geometry.VPos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.Region;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -22,7 +24,14 @@ import java.util.Locale;
  * over the births and deaths) without the two needing the same scale. The two axes share their grid lines.
  * </p>
  * <p>
- * All axes start at zero. Hovering over the chart shows the exact values of the sample nearest the mouse.
+ * The axes start at zero, except that the Log button in the corner gives the left axis a logarithmic scale.
+ * That keeps small values readable next to huge ones, such as the crowded first moments of a run.
+ * Zeros sit on the bottom edge of a logarithmic axis. The right axis is always linear.
+ * </p>
+ * <p>
+ * If every series on an axis has the same unit, the axis labels show it, and an axis with a single series
+ * is labeled in that series' color so it is clear which line it belongs to.
+ * Hovering over the chart shows the exact values of the sample nearest the mouse.
  * </p>
  */
 public class TimeSeriesChart extends Region {
@@ -50,11 +59,29 @@ public class TimeSeriesChart extends Region {
     }
 
     /**
-     * @param maximum   The value at the top of the axis
-     * @param step      The distance in value between two grid lines
-     * @param divisions How many gaps the grid lines make, which is {@code maximum / step}
+     * @param minimum     The value at the bottom of the axis. 0 for a linear axis.
+     * @param maximum     The value at the top of the axis
+     * @param divisions   How many gaps the grid lines make
+     * @param logarithmic Whether each gap is ten times the one below it, instead of the same distance in value
      */
-    private record Axis(double maximum, double step, int divisions) {
+    private record Axis(double minimum, double maximum, int divisions, boolean logarithmic) {
+        double valueAtDivision(int divisionIndex) {
+            if (logarithmic) {
+                return minimum * Math.pow(10, divisionIndex);
+            }
+            return minimum + (maximum - minimum) * divisionIndex / divisions;
+        }
+
+        /**
+         * @return How far up the axis {@code value} is, from 0 at the bottom to 1 at the top. A value off the axis
+         * is put on the nearest edge, and so is zero on a logarithmic axis, which has no position for it.
+         */
+        double fractionOf(double value) {
+            double fraction = logarithmic
+                    ? ((value > 0) ? Math.log10(value / minimum) / divisions : 0)
+                    : (value - minimum) / (maximum - minimum);
+            return Math.clamp(fraction, 0.0, 1.0);
+        }
     }
 
     private static final double MIN_HEIGHT = 150;
@@ -81,6 +108,7 @@ public class TimeSeriesChart extends Region {
     private static final double LEGEND_CENTER_Y = 10;
     private static final double LEGEND_SWATCH_LENGTH = 14;
     private static final double LEGEND_SPACING = 16;
+    private static final double LOGARITHMIC_BUTTON_MARGIN = 3;
 
     private static final double TOOLTIP_PADDING = 7;
     private static final double TOOLTIP_LINE_HEIGHT = 14;
@@ -98,6 +126,7 @@ public class TimeSeriesChart extends Region {
     private static final Color TOOLTIP_TEXT_COLOR = Color.web("#eceff4");
 
     private final Canvas canvas = new Canvas();
+    private final Button logarithmicButton = new Button("Log");
     private final List<SeriesStyle> seriesStyles;
     private final boolean hasSecondaryAxis;
 
@@ -107,11 +136,23 @@ public class TimeSeriesChart extends Region {
      */
     private double[][] seriesValues;
     private double hoverMouseX = Double.NaN;
+    private boolean logarithmicPrimaryAxis;
 
     /**
+     * Makes a chart whose left axis starts out linear.
+     *
      * @param seriesStyles How each series looks. {@link #setData} takes its values in this order.
      */
     public TimeSeriesChart(@NotNull List<SeriesStyle> seriesStyles) {
+        this(seriesStyles, false);
+    }
+
+    /**
+     * @param seriesStyles        How each series looks. {@link #setData} takes its values in this order.
+     * @param logarithmicByDefault Whether the left axis starts out logarithmic. The player can switch it either way.
+     */
+    public TimeSeriesChart(@NotNull List<SeriesStyle> seriesStyles, boolean logarithmicByDefault) {
+        this.logarithmicPrimaryAxis = logarithmicByDefault;
         this.seriesStyles = List.copyOf(seriesStyles);
         this.hasSecondaryAxis = seriesStyles.stream().anyMatch(SeriesStyle::onSecondaryAxis);
         this.seriesValues = new double[seriesStyles.size()][0];
@@ -128,6 +169,22 @@ public class TimeSeriesChart extends Region {
         canvas.widthProperty().addListener(_ -> redraw());
         canvas.heightProperty().addListener(_ -> redraw());
         getChildren().add(canvas);
+
+        // A small button in the corner of the legend strip switches the left axis between linear and logarithmic
+        logarithmicButton.setFocusTraversable(false);
+        logarithmicButton.setStyle("-fx-font-size: 10px; -fx-padding: 1 7;");
+        logarithmicButton.setOnAction(_ -> {
+            logarithmicPrimaryAxis = !logarithmicPrimaryAxis;
+            updateLogarithmicButton();
+            redraw();
+        });
+        logarithmicButton.layoutXProperty().bind(
+                widthProperty().subtract(logarithmicButton.widthProperty()).subtract(LOGARITHMIC_BUTTON_MARGIN));
+        logarithmicButton.setLayoutY(LOGARITHMIC_BUTTON_MARGIN);
+        Tooltip.install(logarithmicButton, new Tooltip("Use a logarithmic scale for the left axis, so small values stay "
+                + "readable next to huge ones. Each grid line is ten times the one below it."));
+        updateLogarithmicButton();
+        getChildren().add(logarithmicButton);
 
         setOnMouseMoved(event -> {
             hoverMouseX = event.getX();
@@ -159,6 +216,11 @@ public class TimeSeriesChart extends Region {
         this.ticks = ticks;
         this.seriesValues = seriesValues;
         redraw();
+    }
+
+    private void updateLogarithmicButton() {
+        logarithmicButton.getStyleClass().removeAll("sim-button", "selected-button");
+        logarithmicButton.getStyleClass().add(logarithmicPrimaryAxis ? "selected-button" : "sim-button");
     }
 
 
@@ -193,7 +255,9 @@ public class TimeSeriesChart extends Region {
 
         double firstTick = ticks[0];
         double lastTick = ticks[ticks.length - 1];
-        Axis primaryAxis = createAxis(maximumValueOnAxis(false), MAX_GRID_DIVISIONS);
+        Axis primaryAxis = logarithmicPrimaryAxis
+                ? createLogarithmicAxis(minimumPositiveValueOnAxis(false), maximumValueOnAxis(false))
+                : createAxis(maximumValueOnAxis(false), MAX_GRID_DIVISIONS);
         Axis secondaryAxis = hasSecondaryAxis ? createAxisWithDivisions(maximumValueOnAxis(true), primaryAxis.divisions()) : null;
 
         drawGridAndLabels(gc, plotArea, primaryAxis, secondaryAxis, firstTick, lastTick);
@@ -227,18 +291,16 @@ public class TimeSeriesChart extends Region {
                                    @Nullable Axis secondaryAxis, double firstTick, double lastTick) {
         gc.setStroke(GRID_COLOR);
         gc.setLineWidth(1);
-        gc.setFill(LABEL_COLOR);
         for (int divisionIndex = 0; divisionIndex <= primaryAxis.divisions(); divisionIndex++) {
             double y = plotArea.bottom() - plotArea.height() * divisionIndex / primaryAxis.divisions();
             gc.strokeLine(plotArea.left(), y, plotArea.right(), y);
-
-            gc.setTextAlign(TextAlignment.RIGHT);
-            gc.fillText(formatAxisValue(primaryAxis.step() * divisionIndex), plotArea.left() - 6, y);
-            if (secondaryAxis != null) {
-                gc.setTextAlign(TextAlignment.LEFT);
-                gc.fillText(formatAxisValue(secondaryAxis.step() * divisionIndex), plotArea.right() + 6, y);
-            }
         }
+        drawAxisLabels(gc, plotArea, primaryAxis, false);
+        if (secondaryAxis != null) {
+            drawAxisLabels(gc, plotArea, secondaryAxis, true);
+        }
+
+        gc.setFill(LABEL_COLOR);
 
         for (int labelIndex = 0; labelIndex < X_LABEL_COUNT; labelIndex++) {
             double fraction = (double) labelIndex / (X_LABEL_COUNT - 1);
@@ -252,6 +314,17 @@ public class TimeSeriesChart extends Region {
             }
             gc.fillText(formatAxisValue(firstTick + fraction * (lastTick - firstTick)),
                     plotArea.left() + fraction * plotArea.width(), plotArea.bottom() + 11);
+        }
+    }
+
+    private void drawAxisLabels(@NotNull GraphicsContext gc, @NotNull PlotArea plotArea, @NotNull Axis axis, boolean secondaryAxis) {
+        String unitSuffix = commonUnitSuffix(secondaryAxis);
+        double labelX = secondaryAxis ? plotArea.right() + 6 : plotArea.left() - 6;
+        gc.setFill(axisLabelColor(secondaryAxis));
+        gc.setTextAlign(secondaryAxis ? TextAlignment.LEFT : TextAlignment.RIGHT);
+        for (int divisionIndex = 0; divisionIndex <= axis.divisions(); divisionIndex++) {
+            double y = plotArea.bottom() - plotArea.height() * divisionIndex / axis.divisions();
+            gc.fillText(formatAxisValue(axis.valueAtDivision(divisionIndex)) + unitSuffix, labelX, y);
         }
     }
 
@@ -360,7 +433,7 @@ public class TimeSeriesChart extends Region {
     }
 
     private double verticalPosition(double value, @NotNull PlotArea plotArea, @NotNull Axis axis) {
-        return plotArea.bottom() - value / axis.maximum() * plotArea.height();
+        return plotArea.bottom() - axis.fractionOf(value) * plotArea.height();
     }
 
     private int findNearestSampleIndex(double mouseX, @NotNull PlotArea plotArea, double firstTick, double lastTick) {
@@ -390,13 +463,77 @@ public class TimeSeriesChart extends Region {
     }
 
     /**
+     * @return The smallest value above zero on the axis, or infinity if there isn't one
+     */
+    private double minimumPositiveValueOnAxis(boolean secondaryAxis) {
+        double minimum = Double.POSITIVE_INFINITY;
+        for (int seriesIndex = 0; seriesIndex < seriesStyles.size(); seriesIndex++) {
+            if (seriesStyles.get(seriesIndex).onSecondaryAxis() != secondaryAxis) continue;
+            for (double value : seriesValues[seriesIndex]) {
+                if (value > 0 && value < minimum) {
+                    minimum = value;
+                }
+            }
+        }
+        return minimum;
+    }
+
+    /**
+     * @return The unit all the series on the axis share, such as "%", or an empty string if they don't share one
+     */
+    private @NotNull String commonUnitSuffix(boolean secondaryAxis) {
+        String commonSuffix = null;
+        for (SeriesStyle style : seriesStyles) {
+            if (style.onSecondaryAxis() != secondaryAxis) continue;
+            if (commonSuffix == null) {
+                commonSuffix = style.unitSuffix();
+            } else if (!commonSuffix.equals(style.unitSuffix())) {
+                return "";
+            }
+        }
+        return (commonSuffix != null) ? commonSuffix : "";
+    }
+
+    /**
+     * @return The color of the one series on the axis, so it is clear what the axis measures, or the usual
+     * label color if several series share it
+     */
+    private @NotNull Color axisLabelColor(boolean secondaryAxis) {
+        Color onlySeriesColor = null;
+        for (SeriesStyle style : seriesStyles) {
+            if (style.onSecondaryAxis() != secondaryAxis) continue;
+            if (onlySeriesColor != null) {
+                return LABEL_COLOR;
+            }
+            onlySeriesColor = style.color();
+        }
+        return (onlySeriesColor != null) ? onlySeriesColor : LABEL_COLOR;
+    }
+
+    /**
      * Makes an axis that reaches {@code maximumValue}, with round-numbered grid lines and as few of them as fit well.
      */
     private static @NotNull Axis createAxis(double maximumValue, int maxDivisions) {
         double safeMaximumValue = (maximumValue > 0) ? maximumValue : 1;
         double step = smallestNiceStepCovering(safeMaximumValue, maxDivisions);
         int divisions = Math.max(1, (int) Math.ceil(safeMaximumValue / step - 1e-9));
-        return new Axis(step * divisions, step, divisions);
+        return new Axis(0, step * divisions, divisions, false);
+    }
+
+    /**
+     * Makes an axis with a grid line at every power of ten, from the one at or below {@code minimumPositiveValue}
+     * up to the one at or above {@code maximumValue}. No more than {@link #MAX_GRID_DIVISIONS} powers of ten are shown,
+     * so the very smallest values can fall below the bottom of the axis, and are drawn on its edge.
+     */
+    private static @NotNull Axis createLogarithmicAxis(double minimumPositiveValue, double maximumValue) {
+        double safeMaximumValue = (maximumValue > 0) ? maximumValue : 1;
+        double ceilingExponent = Math.ceil(Math.log10(safeMaximumValue));
+        double floorExponent = Double.isInfinite(minimumPositiveValue)
+                ? ceilingExponent - 1
+                : Math.floor(Math.log10(minimumPositiveValue));
+        floorExponent = Math.max(floorExponent, ceilingExponent - MAX_GRID_DIVISIONS);
+        floorExponent = Math.min(floorExponent, ceilingExponent - 1);
+        return new Axis(Math.pow(10, floorExponent), Math.pow(10, ceilingExponent), (int) (ceilingExponent - floorExponent), true);
     }
 
     /**
@@ -406,7 +543,7 @@ public class TimeSeriesChart extends Region {
     private static @NotNull Axis createAxisWithDivisions(double maximumValue, int divisions) {
         double safeMaximumValue = (maximumValue > 0) ? maximumValue : 1;
         double step = smallestNiceStepCovering(safeMaximumValue, divisions);
-        return new Axis(step * divisions, step, divisions);
+        return new Axis(0, step * divisions, divisions, false);
     }
 
     /**
@@ -446,6 +583,9 @@ public class TimeSeriesChart extends Region {
         }
         if (magnitude >= 1_000) {
             return trimTrailingZeros(String.format(Locale.US, "%.1f", value / 1_000)) + "k";
+        }
+        if (magnitude > 0 && magnitude < 0.01) {
+            return String.format(Locale.US, "%.0e", value);
         }
         return trimTrailingZeros(String.format(Locale.US, "%.2f", value));
     }

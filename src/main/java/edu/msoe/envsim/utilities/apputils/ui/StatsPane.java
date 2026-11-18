@@ -177,7 +177,8 @@ public class StatsPane extends StackPane {
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
         Label hintLabel = new Label("Hover over a chart for exact values. Charts cover the whole run, "
-                + "and older history is condensed as the run gets longer.");
+                + "and older history is condensed as the run gets longer. The Log button gives a chart's left axis a "
+                + "logarithmic scale, so small values stay readable next to huge ones.");
         hintLabel.getStyleClass().add("caption-label");
         hintLabel.setStyle("-fx-font-size: 10px;");
         hintLabel.setWrapText(true);
@@ -206,15 +207,15 @@ public class StatsPane extends StackPane {
         birthsAndDeathsChart = new TimeSeriesChart(List.of(
                 new SeriesStyle("Births", BIRTH_COLOR, false),
                 new SeriesStyle("Deaths", DEATH_COLOR, false),
-                new SeriesStyle("Population", POPULATION_COLOR, true)));
+                new SeriesStyle("Population", POPULATION_COLOR, true)), true);
         predationChart = new TimeSeriesChart(List.of(
                 new SeriesStyle("Predations", PREDATION_COLOR, false),
-                new SeriesStyle("Population", POPULATION_COLOR, true)));
+                new SeriesStyle("Population", POPULATION_COLOR, true)), true);
         diversityChart = new TimeSeriesChart(List.of(
                 new SeriesStyle("Species", SPECIES_COLOR, false),
-                new SeriesStyle("Largest species' share", LARGEST_SPECIES_COLOR, true, "%")));
+                new SeriesStyle("Largest species' share", LARGEST_SPECIES_COLOR, true, "%")), true);
         ageChart = new TimeSeriesChart(List.of(
-                new SeriesStyle("Oldest alive", OLDEST_AGE_COLOR, false),
+                new SeriesStyle("Oldest alive", OLDEST_AGE_COLOR, true),
                 new SeriesStyle("Average alive", AVERAGE_AGE_COLOR, false),
                 new SeriesStyle("Average at death", AGE_AT_DEATH_COLOR, false)));
 
@@ -370,7 +371,7 @@ public class StatsPane extends StackPane {
                 extract(samples, StatsSample::averageLifespanAtDeath));
     }
 
-    private static double @NotNull [] extract(@NotNull List<StatsSample> samples, @NotNull ToDoubleFunction<StatsSample> valueGetter) {
+    private static <StatsSample> double @NotNull [] extract(@NotNull List<StatsSample> samples, @NotNull ToDoubleFunction<StatsSample> valueGetter) {
         double[] values = new double[samples.size()];
         for (int sampleIndex = 0; sampleIndex < values.length; sampleIndex++) {
             values[sampleIndex] = valueGetter.applyAsDouble(samples.get(sampleIndex));
