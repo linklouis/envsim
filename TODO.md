@@ -94,6 +94,7 @@
 - [ ] Should births, deaths, and predations be per capita?
 - [ ] Do the stats calculations happen in the sim thread? (Probably shouldn't)
 - [ ] Adding a new chart is kinda hard
+- [ ] We already iterate through every agent, why not just do the stats tracking there? Wouldn't that be faster than 2 loops? (Unless we move to a new thread)
 
 ## Bugs
 - [ ] Bug where an agent you're tracking will just disappear, but its stats don't give a reason for why it would be dead

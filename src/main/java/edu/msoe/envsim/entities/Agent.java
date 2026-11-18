@@ -844,34 +844,61 @@ public class Agent extends MobileEntity {
 
     private static double difficultyVelocity = 0;
 
-    public static void updateDifficulty(double numAgents, double step) {
-        if (step < 50000 && numAgents > MIN_NUM_AGENTS_WHILE_ANNEALING) return;
+//    public static void updateDifficulty(double numAgents, double step) {
+//        if (step < 50000 && numAgents > MIN_NUM_AGENTS_WHILE_ANNEALING) return;
+//
+//        if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
+//            double sizeFactor = Environment.getAverageSize() / TARGET_MEAN_RADIUS_WHILE_ANNEALING;
+//            double populationFactor = (Math.min(numAgents, 50000) - MIN_NUM_AGENTS_WHILE_ANNEALING) / TARGET_NUM_AGENTS_WHILE_ANNEALING;
+//
+//            // 1. Your target instantaneous change based on current population
+//            double targetChange = GLOBAL_ENERGY_LOSS_ANNEALING_RATE
+//                    * Math.signum(populationFactor)
+//                    * Math.pow(Math.abs(populationFactor), 0.6)
+//                    * sizeFactor;
+//
+//            // 2. MOMENTUM / SMOOTHING COMPONENT (Exponential Moving Average / Low-Pass Filter)
+//            // Adjust 'smoothingAlpha' to tune how sluggish or responsive it is:
+//            // - 0.005 to 0.02 = Very heavy momentum, ultra-smooth, filters out all population jitter.
+//            // - 0.05 to 0.1 = Faster response, but still dampens sudden spikes.
+//            double smoothingAlpha = 0.02;
+//            difficultyVelocity = (1.0 - smoothingAlpha) * difficultyVelocity + smoothingAlpha * targetChange;
+//
+//            // 3. Apply the smoothed velocity (allowing it to move both forward and backward smoothly)
+//            GLOBAL_ENERGY_LOSS_FACTOR = Math.clamp(
+//                    GLOBAL_ENERGY_LOSS_FACTOR + difficultyVelocity,
+//                    INITIAL_GELF,
+//                    FINAL_GLOBAL_ENERGY_LOSS_FACTOR
+//            );
+//        }
+//    }
+public static void updateDifficulty(double numAgents, double step) {
+    if (step < 50000 && numAgents > MIN_NUM_AGENTS_WHILE_ANNEALING) return;
 
-        if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
-            double sizeFactor = Environment.getAverageSize() / TARGET_MEAN_RADIUS_WHILE_ANNEALING;
-            double populationFactor = (Math.min(numAgents, 50000) - MIN_NUM_AGENTS_WHILE_ANNEALING) / TARGET_NUM_AGENTS_WHILE_ANNEALING;
+    if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
+        double sizeFactor = Environment.getAverageSize() / TARGET_MEAN_RADIUS_WHILE_ANNEALING;
+        double populationFactor = (Math.min(numAgents * sizeFactor, 5000) - MIN_NUM_AGENTS_WHILE_ANNEALING)/TARGET_NUM_AGENTS_WHILE_ANNEALING;
 
-            // 1. Your target instantaneous change based on current population
-            double targetChange = GLOBAL_ENERGY_LOSS_ANNEALING_RATE
-                    * Math.signum(populationFactor)
-                    * Math.pow(Math.abs(populationFactor), 0.6)
-                    * sizeFactor;
+        // 1. Your target instantaneous change based on current population
+        double targetChange = GLOBAL_ENERGY_LOSS_ANNEALING_RATE
+                * Math.signum(populationFactor)
+                * Math.pow(Math.abs(populationFactor), 0.6);
 
-            // 2. MOMENTUM / SMOOTHING COMPONENT (Exponential Moving Average / Low-Pass Filter)
-            // Adjust 'smoothingAlpha' to tune how sluggish or responsive it is:
-            // - 0.005 to 0.02 = Very heavy momentum, ultra-smooth, filters out all population jitter.
-            // - 0.05 to 0.1 = Faster response, but still dampens sudden spikes.
-            double smoothingAlpha = 0.02;
-            difficultyVelocity = (1.0 - smoothingAlpha) * difficultyVelocity + smoothingAlpha * targetChange;
+        // 2. MOMENTUM / SMOOTHING COMPONENT (Exponential Moving Average / Low-Pass Filter)
+        // Adjust 'smoothingAlpha' to tune how sluggish or responsive it is:
+        // - 0.005 to 0.02 = Very heavy momentum, ultra-smooth, filters out all population jitter.
+        // - 0.05 to 0.1 = Faster response, but still dampens sudden spikes.
+        double smoothingAlpha = 0.02;
+        difficultyVelocity = (1.0 - smoothingAlpha) * difficultyVelocity + smoothingAlpha * targetChange;
 
-            // 3. Apply the smoothed velocity (allowing it to move both forward and backward smoothly)
-            GLOBAL_ENERGY_LOSS_FACTOR = Math.clamp(
-                    GLOBAL_ENERGY_LOSS_FACTOR + difficultyVelocity,
-                    INITIAL_GELF,
-                    FINAL_GLOBAL_ENERGY_LOSS_FACTOR
-            );
-        }
+        // 3. Apply the smoothed velocity (allowing it to move both forward and backward smoothly)
+        GLOBAL_ENERGY_LOSS_FACTOR = Math.clamp(
+                GLOBAL_ENERGY_LOSS_FACTOR + difficultyVelocity,
+                INITIAL_GELF,
+                FINAL_GLOBAL_ENERGY_LOSS_FACTOR
+        );
     }
+}
 
     public double getJitterRequested() {
         return jitterRequested;

@@ -679,7 +679,7 @@ public class Environment extends Canvas {
             numPredationsCounter = 0;
             for (MobileEntity e : mobileEntities) {
                 e.step();
-                averageSize += e.getRadius();
+                averageSize += e.getRadius(); // TODO: SHOULD PROBABLY REPLACE WITH THE STAT TRACKING'S AVERAGE SIZE CALCULATION
             }
             numPredations += numPredationsCounter;
 
