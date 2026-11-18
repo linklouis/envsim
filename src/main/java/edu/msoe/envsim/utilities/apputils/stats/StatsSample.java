@@ -34,7 +34,7 @@ public record StatsSample(int tick, int windowTicks, double population, double d
                           int birthCount, int deathCount, int predationCount, long totalAgeAtDeath,
                           double earliestGeneration, double averageGeneration, double latestGeneration,
                           double oldestAge, double averageAge,
-                          double speciesCount, double largestSpeciesShare) {
+                          double speciesCount, double largestSpeciesShare, double averageSize) {
     /**
      * Rates are shown per this many ticks, since per single tick they would all be tiny fractions.
      */
@@ -103,7 +103,8 @@ public record StatsSample(int tick, int windowTicks, double population, double d
                 weightedAverage(oldestAge, later.oldestAge, earlierWeight, laterWeight),
                 weightedAverage(averageAge, later.averageAge, earlierWeight, laterWeight),
                 weightedAverage(speciesCount, later.speciesCount, earlierWeight, laterWeight),
-                weightedAverage(largestSpeciesShare, later.largestSpeciesShare, earlierWeight, laterWeight)
+                weightedAverage(largestSpeciesShare, later.largestSpeciesShare, earlierWeight, laterWeight),
+                weightedAverage(averageSize, later.averageSize, earlierWeight, laterWeight)
         );
     }
 
@@ -142,6 +143,7 @@ public record StatsSample(int tick, int windowTicks, double population, double d
                 in.readInt(),
                 in.readInt(),
                 in.readLong(),
+                in.readDouble(),
                 in.readDouble(),
                 in.readDouble(),
                 in.readDouble(),

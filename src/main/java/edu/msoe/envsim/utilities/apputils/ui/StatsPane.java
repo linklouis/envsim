@@ -47,6 +47,7 @@ public class StatsPane extends StackPane {
             + "-fx-background-radius: 8; -fx-border-radius: 8; -fx-padding: 10 14;";
 
     private static final Color POPULATION_COLOR = Color.web("#88c0d0");
+    private static final Color SIZE_COLOR = Color.web("#88c0d0");   // TODO: Should this be something else?
     private static final Color DIFFICULTY_COLOR = Color.web("#ebcb8b");
     private static final Color EARLIEST_GENERATION_COLOR = Color.web("#81a1c1");
     private static final Color AVERAGE_GENERATION_COLOR = Color.web("#a3be8c");
@@ -71,6 +72,7 @@ public class StatsPane extends StackPane {
     private final StatCard speciesCard;
 
     private final TimeSeriesChart populationChart;
+    private final TimeSeriesChart sizeChart;
     private final TimeSeriesChart generationChart;
     private final TimeSeriesChart birthsAndDeathsChart;
     private final TimeSeriesChart predationChart;
@@ -193,10 +195,17 @@ public class StatsPane extends StackPane {
         populationChart = new TimeSeriesChart(List.of(
                 new SeriesStyle("Population", POPULATION_COLOR, false),
                 new SeriesStyle("Difficulty", DIFFICULTY_COLOR, true, "%")));
+        sizeChart = new TimeSeriesChart(List.of(
+                new SeriesStyle("Radius", SIZE_COLOR, false),
+                new SeriesStyle("Difficulty", DIFFICULTY_COLOR, true, "%")));
         generationChart = new TimeSeriesChart(List.of(
                 new SeriesStyle("Earliest", EARLIEST_GENERATION_COLOR, false),
                 new SeriesStyle("Average", AVERAGE_GENERATION_COLOR, false),
                 new SeriesStyle("Latest", LATEST_GENERATION_COLOR, false)));
+        ageChart = new TimeSeriesChart(List.of(
+                new SeriesStyle("Oldest alive", OLDEST_AGE_COLOR, true),
+                new SeriesStyle("Average alive", AVERAGE_AGE_COLOR, false),
+                new SeriesStyle("Average at death", AGE_AT_DEATH_COLOR, false)));
         birthsAndDeathsChart = new TimeSeriesChart(List.of(
                 new SeriesStyle("Births", BIRTH_COLOR, false),
                 new SeriesStyle("Deaths", DEATH_COLOR, false),
@@ -207,18 +216,15 @@ public class StatsPane extends StackPane {
         diversityChart = new TimeSeriesChart(List.of(
                 new SeriesStyle("Species", SPECIES_COLOR, false),
                 new SeriesStyle("Largest species' share", LARGEST_SPECIES_COLOR, true, "%")), true);
-        ageChart = new TimeSeriesChart(List.of(
-                new SeriesStyle("Oldest alive", OLDEST_AGE_COLOR, true),
-                new SeriesStyle("Average alive", AVERAGE_AGE_COLOR, false),
-                new SeriesStyle("Average at death", AGE_AT_DEATH_COLOR, false)));
 
         List<CollapsibleSection> chartSections = List.of(
                 createChartSection("POPULATION", populationChart),
+                createChartSection("SIZE", sizeChart),
                 createChartSection("GENERATIONS", generationChart),
+                createChartSection("AGES (TICKS)", ageChart),
                 createChartSection("BIRTHS AND DEATHS (PER 1,000 TICKS)", birthsAndDeathsChart),
                 createChartSection("PREDATIONS (PER 1,000 TICKS)", predationChart),
-                createChartSection("GENETIC DIVERSITY", diversityChart),
-                createChartSection("AGES (TICKS)", ageChart));
+                createChartSection("GENETIC DIVERSITY", diversityChart));
 
         GridPane chartGrid = new GridPane();
         chartGrid.setHgap(12);
@@ -346,6 +352,9 @@ public class StatsPane extends StackPane {
         double[] population = extract(samples, StatsSample::population);
 
         populationChart.setData(ticks, population, extract(samples, sample -> sample.difficulty() * 100.0));
+        sizeChart.setData(ticks,
+                extract(samples, StatsSample::averageSize),
+                extract(samples, sample -> sample.difficulty() * 100.0));
         generationChart.setData(ticks,
                 extract(samples, StatsSample::earliestGeneration),
                 extract(samples, StatsSample::averageGeneration),

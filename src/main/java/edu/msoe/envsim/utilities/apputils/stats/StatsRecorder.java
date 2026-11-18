@@ -46,7 +46,7 @@ public class StatsRecorder {
     }
 
     private record PopulationScan(int population, int earliestGeneration, double averageGeneration, int latestGeneration,
-                                  int oldestAge, double averageAge, @Nullable Agent oldestAgent,
+                                  int oldestAge, double averageAge, double averageRadius, @Nullable Agent oldestAgent,
                                   @Nullable Agent earliestGenerationAgent, @Nullable Agent latestGenerationAgent) {
     }
 
@@ -148,7 +148,7 @@ public class StatsRecorder {
                 deathAgeCounter.sumThenReset(),
                 scan.earliestGeneration(), scan.averageGeneration(), scan.latestGeneration(),
                 scan.oldestAge(), scan.averageAge(),
-                speciesCensus.speciesCount(), speciesCensus.largestSpeciesShare());
+                speciesCensus.speciesCount(), speciesCensus.largestSpeciesShare(), scan.averageRadius());
 
         samples.add(sample);
         lastSampleTick = tick;
@@ -173,6 +173,7 @@ public class StatsRecorder {
         long generationTotal = 0;
         long ageTotal = 0;
         int oldestAge = 0;
+        double sizeTotal = 0;
         Agent oldestAgent = null;
         Agent earliestGenerationAgent = null;
         Agent latestGenerationAgent = null;
@@ -197,6 +198,8 @@ public class StatsRecorder {
                     oldestAgent = agent;
                 }
 
+                sizeTotal += agent.getRadius();
+
                 if (random.nextDouble() < speciesKeepProbability) {
                     speciesCandidates.add(agent);
                 }
@@ -204,12 +207,12 @@ public class StatsRecorder {
         }
 
         if (population == 0) {
-            return new PopulationScan(0, 0, 0, 0, 0, 0, null, null, null);
+            return new PopulationScan(0, 0, 0, 0, 0, 0, 0, null, null, null);
         }
         return new PopulationScan(population,
                 earliestGenerationAgent.getGeneration(), (double) generationTotal / population,
                 latestGenerationAgent.getGeneration(),
-                oldestAge, (double) ageTotal / population,
+                oldestAge, (double) ageTotal / population, sizeTotal / population,
                 oldestAgent, earliestGenerationAgent, latestGenerationAgent);
     }
 

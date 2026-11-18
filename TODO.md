@@ -36,6 +36,7 @@
   - Respawn all food?
 - [ ] Double-clicking a save should launch it, you shouldn't have to hit the start button. Also, clicking one then hitting enter should work.
 - [ ] Typing in a save name, then hitting enter should save it.
+- [ ] The background could be the default terrain
 
 ### Hamburger Menu
 - [X] Make the sim speed slider logarithmic
@@ -70,6 +71,7 @@
 - [ ] Are the ui files named well/consistently?
 - [ ] Low difficulty keeps allowing agents to get really big. Have difficulty annealing depend on both number and size?
 - [X] !! **Is difficulty saved in save files?**
+- [ ] Hitting crtl+S should save the game
 
 ## User Settings
 - [ ] Give the user control over the difficulty annealing
@@ -89,6 +91,9 @@
 - [X] Remove that description at the top of the panel
 - [ ] Add average size
 - [ ] Log button in kinda a weird spot, covering up the numbers for the right side y axis
+- [ ] Should births, deaths, and predations be per capita?
+- [ ] Do the stats calculations happen in the sim thread? (Probably shouldn't)
+- [ ] Adding a new chart is kinda hard
 
 ## Bugs
 - [ ] Bug where an agent you're tracking will just disappear, but its stats don't give a reason for why it would be dead
