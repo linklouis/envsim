@@ -2,6 +2,7 @@ package edu.msoe.envsim;
 
 import edu.msoe.envsim.entities.*;
 import edu.msoe.envsim.utilities.Vector;
+import edu.msoe.envsim.utilities.apputils.BoundedIntQueue;
 import edu.msoe.envsim.utilities.apputils.Clock;
 import edu.msoe.envsim.utilities.simutils.AgentData;
 import edu.msoe.envsim.utilities.apputils.GameSnapshot;
@@ -691,11 +692,14 @@ public class Environment extends Canvas {
             stepMs = stepMs * 0.99 + (t3 - t2) / 1e6 * 0.01;
         }
 
-        Agent.updateDifficulty(mobileEntities.size(), currentTick);
+        numAgents.push(mobileEntities.size());
+        Agent.updateDifficulty(numAgents.array(), currentTick);
         simClock.update();
 
         currentTick++;
     }
+
+    private BoundedIntQueue numAgents = new BoundedIntQueue(100);
 
 
     /**

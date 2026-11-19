@@ -849,6 +849,99 @@ public class Agent extends MobileEntity {
     private static double sizeDifficultyFactor = 1;
     private static double difficultyVelocity = 0;
 
+
+    /**
+     * Determines if a slice of a time series is stable using proportional thresholds.
+     * Source: Google Gemini
+     *
+     * @param data                 The time series section values.
+     * @param maxRelativeStdDev    Max allowed standard deviation as a fraction of the mean (e.g., 0.05 = 5%).
+     * @param maxRelativeSlope     Max allowed slope per step as a fraction of the mean (e.g., 0.01 = 1% per step).
+     * @return                     True if the section meets both relative stability criteria.
+     */
+    public static boolean isStable(int @NotNull [] data, double maxRelativeStdDev, double maxRelativeSlope) {
+        int n = data.length;
+        if (n < 2) {
+            throw new IllegalArgumentException("Window size must be at least 2.");
+        }
+
+        // 1. Calculate the mean of the window
+        double sum = 0.0;
+        for (double num : data) {
+            sum += num;
+        }
+        double mean = sum / n;
+        double absMean = Math.abs(mean);
+
+        // Edge case: If the mean is effectively zero, proportional division fails.
+        // Fall back to checking if values are near zero within the given tolerances.
+        if (absMean < 1e-9) {
+            for (double num : data) {
+                if (Math.abs(num) > maxRelativeStdDev) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // 2. Calculate variance and linear regression components
+        double varianceSum = 0.0;
+        double xMean = (n - 1) / 2.0;
+        double numerator = 0.0;
+        double denominator = 0.0;
+
+        for (int i = 0; i < n; i++) {
+            double y = data[i];
+            double yDiff = y - mean;
+            double xDiff = i - xMean;
+
+            varianceSum += yDiff * yDiff;
+            numerator += xDiff * yDiff;
+            denominator += xDiff * xDiff;
+        }
+
+        // 3. Relative Standard Deviation (Coefficient of Variation) check
+        double stdDev = Math.sqrt(varianceSum / (n - 1));
+        double relativeStdDev = stdDev / absMean;
+        if (relativeStdDev > maxRelativeStdDev) {
+            return false;
+        }
+
+        // 4. Relative Slope check
+        double slope = (denominator == 0) ? 0.0 : numerator / denominator;
+        double relativeSlope = Math.abs(slope) / absMean;
+        return relativeSlope <= maxRelativeSlope;
+    }
+
+    public static void updateDifficulty(int @NotNull [] numAgents, double step) {
+        // TODO: Also take into account the size of the largest agents?
+        // TODO: Base difficulty also on trying not to kill off a species
+        double currentNumAgents = numAgents[numAgents.length - 1];
+//        if (step < 50000 && currentNumAgents > MIN_NUM_AGENTS_WHILE_ANNEALING) return;
+
+        double sizeSizeFactor = (Environment.getAverageSize() - TARGET_AVERAGE_SIZE_WHILE_ANNEALING)/MAX_EXPECTED_AVERAGE_SIZE_WHILE_ANNEALING;
+        // Always trying to move it towards the intended value
+        double sizeDifficultyDisplacement = 1 - sizeDifficultyFactor;   // TODO: Should probably scale with the max/min size diff factors and/or their distance from 1.
+        double sizeDifficultyChange = (sizeSizeFactor + sizeDifficultyDisplacement * 0.1) * SIZE_DIFFICULTY_CHANGE_SPEED;
+        sizeDifficultyFactor = Math.clamp(sizeDifficultyFactor + sizeDifficultyChange,
+                MIN_SIZE_DIFF_FACTOR,
+                MAX_SIZE_DIFF_FACTOR);
+
+        if (globalEnergyLossFactor < FINAL_GLOBAL_ENERGY_LOSS_FACTOR && !isStable(numAgents, 0.1, 0.05)) {
+            double populationFactor = (Math.min(currentNumAgents, 5000) - MIN_NUM_AGENTS_WHILE_ANNEALING)/TARGET_NUM_AGENTS_WHILE_ANNEALING;
+
+            double change = GELF_ANNEALING_RATE
+                    * Math.signum(populationFactor)
+                    * Math.pow(Math.abs(populationFactor), 0.6);
+
+            globalEnergyLossFactor = Math.clamp(
+                    globalEnergyLossFactor + change,
+                    INITIAL_GELF,
+                    FINAL_GLOBAL_ENERGY_LOSS_FACTOR
+            );
+        }
+    }
+
 //    public static void updateDifficulty(double numAgents, double step) {
 //        if (step < 50000 && numAgents > MIN_NUM_AGENTS_WHILE_ANNEALING) return;
 //
@@ -877,46 +970,46 @@ public class Agent extends MobileEntity {
 //            );
 //        }
 //    }
-public static void updateDifficulty(double numAgents, double step) {
-    // TODO: Also take into account the size of the largest agents?
-    // TODO: INSTEAD OF HAVING A TARGET POPULATION, JUST WAIT UNTIL THE POPULATION STABELIZES, THEN INCREASE DIFFICULTY, WAIT UNTIL IT STABELIZES, ETC.
-    // TODO: Base difficulty also on trying not to kill off a species
-    if (step < 50000 && numAgents > MIN_NUM_AGENTS_WHILE_ANNEALING) return;
-
-    double sizeSizeFactor = (Environment.getAverageSize() - TARGET_AVERAGE_SIZE_WHILE_ANNEALING)/MAX_EXPECTED_AVERAGE_SIZE_WHILE_ANNEALING;
-    // Always trying to move it towards the intended value
-    double sizeDifficultyDisplacement = 1 - sizeDifficultyFactor;   // TODO: Should probably scale with the max/min size diff factors and/or their distance from 1.
-    double sizeDifficultyChange = (sizeSizeFactor + sizeDifficultyDisplacement * 0.1) * SIZE_DIFFICULTY_CHANGE_SPEED;
-    sizeDifficultyFactor = Math.clamp(sizeDifficultyFactor + sizeDifficultyChange,
-            MIN_SIZE_DIFF_FACTOR,
-            MAX_SIZE_DIFF_FACTOR);
-
-    if (globalEnergyLossFactor < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
-        double sizeFactor = Environment.getAverageSize() / TARGET_MEAN_RADIUS_WHILE_ANNEALING;
-
-        double populationFactor = (Math.min(numAgents/* * sizeFactor*/, 5000) - MIN_NUM_AGENTS_WHILE_ANNEALING)/TARGET_NUM_AGENTS_WHILE_ANNEALING;
-
-        // 1. Your target instantaneous change based on current population
-        double targetChange = GELF_ANNEALING_RATE
-                * Math.signum(populationFactor)
-                * Math.pow(Math.abs(populationFactor), 0.6);
-
-        // TODO: Remove momentum completely? Totally did the opposite of what it was supposed to do
-        // 2. MOMENTUM / SMOOTHING COMPONENT (Exponential Moving Average / Low-Pass Filter)
-        // Adjust 'smoothingAlpha' to tune how sluggish or responsive it is:
-        // - 0.005 to 0.02 = Very heavy momentum, ultra-smooth, filters out all population jitter.
-        // - 0.05 to 0.1 = Faster response, but still dampens sudden spikes.
-        double smoothingAlpha = 0.1;
-        difficultyVelocity = targetChange;//(1.0 - smoothingAlpha) * difficultyVelocity + smoothingAlpha * targetChange;
-
-        // 3. Apply the smoothed velocity (allowing it to move both forward and backward smoothly)
-        globalEnergyLossFactor = Math.clamp(
-                globalEnergyLossFactor + difficultyVelocity,
-                INITIAL_GELF,
-                FINAL_GLOBAL_ENERGY_LOSS_FACTOR
-        );
-    }
-}
+//    public static void updateDifficulty(double numAgents, double step) {
+//        // TODO: Also take into account the size of the largest agents?
+//        // TODO: INSTEAD OF HAVING A TARGET POPULATION, JUST WAIT UNTIL THE POPULATION STABELIZES, THEN INCREASE DIFFICULTY, WAIT UNTIL IT STABELIZES, ETC.
+//        // TODO: Base difficulty also on trying not to kill off a species
+//        if (step < 50000 && numAgents > MIN_NUM_AGENTS_WHILE_ANNEALING) return;
+//
+//        double sizeSizeFactor = (Environment.getAverageSize() - TARGET_AVERAGE_SIZE_WHILE_ANNEALING)/MAX_EXPECTED_AVERAGE_SIZE_WHILE_ANNEALING;
+//        // Always trying to move it towards the intended value
+//        double sizeDifficultyDisplacement = 1 - sizeDifficultyFactor;   // TODO: Should probably scale with the max/min size diff factors and/or their distance from 1.
+//        double sizeDifficultyChange = (sizeSizeFactor + sizeDifficultyDisplacement * 0.1) * SIZE_DIFFICULTY_CHANGE_SPEED;
+//        sizeDifficultyFactor = Math.clamp(sizeDifficultyFactor + sizeDifficultyChange,
+//                MIN_SIZE_DIFF_FACTOR,
+//                MAX_SIZE_DIFF_FACTOR);
+//
+//        if (globalEnergyLossFactor < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
+//            double sizeFactor = Environment.getAverageSize() / TARGET_MEAN_RADIUS_WHILE_ANNEALING;
+//
+//            double populationFactor = (Math.min(numAgents/* * sizeFactor*/, 5000) - MIN_NUM_AGENTS_WHILE_ANNEALING)/TARGET_NUM_AGENTS_WHILE_ANNEALING;
+//
+//            // 1. Your target instantaneous change based on current population
+//            double targetChange = GELF_ANNEALING_RATE
+//                    * Math.signum(populationFactor)
+//                    * Math.pow(Math.abs(populationFactor), 0.6);
+//
+//            // TODO: Remove momentum completely? Totally did the opposite of what it was supposed to do
+//            // 2. MOMENTUM / SMOOTHING COMPONENT (Exponential Moving Average / Low-Pass Filter)
+//            // Adjust 'smoothingAlpha' to tune how sluggish or responsive it is:
+//            // - 0.005 to 0.02 = Very heavy momentum, ultra-smooth, filters out all population jitter.
+//            // - 0.05 to 0.1 = Faster response, but still dampens sudden spikes.
+//            double smoothingAlpha = 0.1;
+//            difficultyVelocity = targetChange;//(1.0 - smoothingAlpha) * difficultyVelocity + smoothingAlpha * targetChange;
+//
+//            // 3. Apply the smoothed velocity (allowing it to move both forward and backward smoothly)
+//            globalEnergyLossFactor = Math.clamp(
+//                    globalEnergyLossFactor + difficultyVelocity,
+//                    INITIAL_GELF,
+//                    FINAL_GLOBAL_ENERGY_LOSS_FACTOR
+//            );
+//        }
+//    }
 
     public double getJitterRequested() {
         return jitterRequested;
