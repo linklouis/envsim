@@ -141,7 +141,8 @@ public class StatsRecorder {
         SpeciesCensus speciesCensus = takeSpeciesCensus();
 
         StatsSample sample = new StatsSample(
-                tick, tick - lastSampleTick, scan.population(), Agent.getDifficulty(),
+                tick, tick - lastSampleTick, scan.population(),
+                Agent.getDifficulty(), Agent.getSizeDifficulty(),
                 (int) birthCounter.sumThenReset(),
                 (int) deathCounter.sumThenReset(),
                 (int) predationCounter.sumThenReset(),

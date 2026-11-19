@@ -77,7 +77,7 @@ public class Agent extends MobileEntity {
     /**
      * The passive energy an Agent loses each tick per pixel of its radius squared.
      */
-    private static final double PASSIVE_SIZE_COST = 0.0003;
+    private static final double PASSIVE_SIZE_COST = 0.003;
     /**
      * Kleiber's Law dictates that basal metabolic rate scales with mass to the 3/4 power.
      * In 3D, mass scales with R^3.
@@ -125,10 +125,10 @@ public class Agent extends MobileEntity {
      * The multiplier for how much energy an Agent actually loses each tick.
      * Allows for overall simulation difficulty control without messing with other parameters
      */
-    private static double GLOBAL_ENERGY_LOSS_FACTOR = INITIAL_GELF;
+    private static double globalEnergyLossFactor = INITIAL_GELF;
     private final static double FINAL_GLOBAL_ENERGY_LOSS_FACTOR = 0.013;
-    private final static int TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 10000000;
-    private final static double GLOBAL_ENERGY_LOSS_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - INITIAL_GELF) / TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
+    private final static int TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME = 100000000;
+    private final static double GELF_ANNEALING_RATE = (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - INITIAL_GELF) / TARGET_GLOBAL_ENERGY_LOSS_ANNEALING_TIME;
     private final static int TARGET_NUM_AGENTS_WHILE_ANNEALING = 3000;
     private final static int MIN_NUM_AGENTS_WHILE_ANNEALING = 800;
     private final static int TARGET_MEAN_RADIUS_WHILE_ANNEALING = 15;
@@ -757,9 +757,9 @@ public class Agent extends MobileEntity {
         return PASSIVE_LIFE_COST
                 + turnSpeed * getRadius() * PASSIVE_TURN_SPEED_COST
                 + visionRadius * PASSIVE_VISION_QUALITY_COST
-                + Math.pow(getRadius(), PASSIVE_SIZE_EXPONENT) * PASSIVE_SIZE_COST
+                + Math.pow(getRadius(), PASSIVE_SIZE_EXPONENT) * PASSIVE_SIZE_COST * sizeDifficultyFactor
                 + defense * PASSIVE_DEFENSE_COST
-                + perTickFoodPreferenceCost / Math.pow(GLOBAL_ENERGY_LOSS_FACTOR / FINAL_GLOBAL_ENERGY_LOSS_FACTOR, 0.5);
+                + perTickFoodPreferenceCost / Math.pow(globalEnergyLossFactor / FINAL_GLOBAL_ENERGY_LOSS_FACTOR, 0.5);
     }
 
     @Contract(" -> new")
@@ -788,7 +788,7 @@ public class Agent extends MobileEntity {
     }
 
     private double calculateEffectiveEnergyCost(double cost) {
-        return cost * GLOBAL_ENERGY_LOSS_FACTOR;
+        return cost * globalEnergyLossFactor;
     }
 
     private void changeEnergy(double change) {
@@ -826,11 +826,11 @@ public class Agent extends MobileEntity {
         cachedTerrain = environment.getStandingTerrainType(this);
     }
 
-    /**
-     * TODO: Make constants / hyperparameters
-     * @param numAgents
-     * @param step
-     */
+//    /**
+//     * TODO: Make constants / hyperparameters
+//     * @param numAgents
+//     * @param step
+//     */
 //    public static void updateDifficulty(double numAgents, double step) {
 //        if (step < 50000 && numAgents > MIN_NUM_AGENTS_WHILE_ANNEALING) return;
 //        if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
@@ -841,7 +841,12 @@ public class Agent extends MobileEntity {
 //            GLOBAL_ENERGY_LOSS_FACTOR = Math.max(GLOBAL_ENERGY_LOSS_FACTOR + change, INITIAL_GELF);
 //        }
 //    }
-
+    private static final double MAX_EXPECTED_AVERAGE_SIZE_WHILE_ANNEALING = 23;
+    private static final double TARGET_AVERAGE_SIZE_WHILE_ANNEALING = 15;   // TODO: Make smaller? There's a lot more bugs * rodents than elephants, and this allows for some too big stuff
+    private static final double SIZE_DIFFICULTY_CHANGE_SPEED = 10000 * GELF_ANNEALING_RATE;
+    private static final double MIN_SIZE_DIFF_FACTOR = Double.NEGATIVE_INFINITY;//0.4;
+    private static final double MAX_SIZE_DIFF_FACTOR = Double.POSITIVE_INFINITY;//2;
+    private static double sizeDifficultyFactor = 1;
     private static double difficultyVelocity = 0;
 
 //    public static void updateDifficulty(double numAgents, double step) {
@@ -873,27 +878,40 @@ public class Agent extends MobileEntity {
 //        }
 //    }
 public static void updateDifficulty(double numAgents, double step) {
+    // TODO: Also take into account the size of the largest agents?
+    // TODO: INSTEAD OF HAVING A TARGET POPULATION, JUST WAIT UNTIL THE POPULATION STABELIZES, THEN INCREASE DIFFICULTY, WAIT UNTIL IT STABELIZES, ETC.
+    // TODO: Base difficulty also on trying not to kill off a species
     if (step < 50000 && numAgents > MIN_NUM_AGENTS_WHILE_ANNEALING) return;
 
-    if (GLOBAL_ENERGY_LOSS_FACTOR < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
+    double sizeSizeFactor = (Environment.getAverageSize() - TARGET_AVERAGE_SIZE_WHILE_ANNEALING)/MAX_EXPECTED_AVERAGE_SIZE_WHILE_ANNEALING;
+    // Always trying to move it towards the intended value
+    double sizeDifficultyDisplacement = 1 - sizeDifficultyFactor;   // TODO: Should probably scale with the max/min size diff factors and/or their distance from 1.
+    double sizeDifficultyChange = (sizeSizeFactor + sizeDifficultyDisplacement * 0.1) * SIZE_DIFFICULTY_CHANGE_SPEED;
+    sizeDifficultyFactor = Math.clamp(sizeDifficultyFactor + sizeDifficultyChange,
+            MIN_SIZE_DIFF_FACTOR,
+            MAX_SIZE_DIFF_FACTOR);
+
+    if (globalEnergyLossFactor < FINAL_GLOBAL_ENERGY_LOSS_FACTOR) {
         double sizeFactor = Environment.getAverageSize() / TARGET_MEAN_RADIUS_WHILE_ANNEALING;
-        double populationFactor = (Math.min(numAgents * sizeFactor, 5000) - MIN_NUM_AGENTS_WHILE_ANNEALING)/TARGET_NUM_AGENTS_WHILE_ANNEALING;
+
+        double populationFactor = (Math.min(numAgents/* * sizeFactor*/, 5000) - MIN_NUM_AGENTS_WHILE_ANNEALING)/TARGET_NUM_AGENTS_WHILE_ANNEALING;
 
         // 1. Your target instantaneous change based on current population
-        double targetChange = GLOBAL_ENERGY_LOSS_ANNEALING_RATE
+        double targetChange = GELF_ANNEALING_RATE
                 * Math.signum(populationFactor)
                 * Math.pow(Math.abs(populationFactor), 0.6);
 
+        // TODO: Remove momentum completely? Totally did the opposite of what it was supposed to do
         // 2. MOMENTUM / SMOOTHING COMPONENT (Exponential Moving Average / Low-Pass Filter)
         // Adjust 'smoothingAlpha' to tune how sluggish or responsive it is:
         // - 0.005 to 0.02 = Very heavy momentum, ultra-smooth, filters out all population jitter.
         // - 0.05 to 0.1 = Faster response, but still dampens sudden spikes.
-        double smoothingAlpha = 0.02;
-        difficultyVelocity = (1.0 - smoothingAlpha) * difficultyVelocity + smoothingAlpha * targetChange;
+        double smoothingAlpha = 0.1;
+        difficultyVelocity = targetChange;//(1.0 - smoothingAlpha) * difficultyVelocity + smoothingAlpha * targetChange;
 
         // 3. Apply the smoothed velocity (allowing it to move both forward and backward smoothly)
-        GLOBAL_ENERGY_LOSS_FACTOR = Math.clamp(
-                GLOBAL_ENERGY_LOSS_FACTOR + difficultyVelocity,
+        globalEnergyLossFactor = Math.clamp(
+                globalEnergyLossFactor + difficultyVelocity,
                 INITIAL_GELF,
                 FINAL_GLOBAL_ENERGY_LOSS_FACTOR
         );
@@ -928,7 +946,11 @@ public static void updateDifficulty(double numAgents, double step) {
     }
 
     public static double getDifficulty() {
-        return (GLOBAL_ENERGY_LOSS_FACTOR - INITIAL_GELF) / (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - INITIAL_GELF);
+        return (globalEnergyLossFactor - INITIAL_GELF) / (FINAL_GLOBAL_ENERGY_LOSS_FACTOR - INITIAL_GELF);
+    }
+
+    public static double getSizeDifficulty() {
+        return sizeDifficultyFactor;
     }
 
     /**
@@ -936,15 +958,15 @@ public static void updateDifficulty(double numAgents, double step) {
      * The difficulty is static, so without this a second game would begin at the difficulty the last one ended on.
      */
     public static void resetDifficulty() {
-        GLOBAL_ENERGY_LOSS_FACTOR = INITIAL_GELF;
+        globalEnergyLossFactor = INITIAL_GELF;
     }
 
     public static double getGlobalEnergyLossFactor() {
-        return GLOBAL_ENERGY_LOSS_FACTOR;
+        return globalEnergyLossFactor;
     }
 
     public static void setGlobalEnergyLossFactor(double globalEnergyLossFactor) {
-        GLOBAL_ENERGY_LOSS_FACTOR = globalEnergyLossFactor;
+        Agent.globalEnergyLossFactor = globalEnergyLossFactor;
     }
 
     /**

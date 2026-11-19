@@ -197,7 +197,8 @@ public class StatsPane extends StackPane {
                 new SeriesStyle("Difficulty", DIFFICULTY_COLOR, true, "%")));
         sizeChart = new TimeSeriesChart(List.of(
                 new SeriesStyle("Radius", SIZE_COLOR, false),
-                new SeriesStyle("Difficulty", DIFFICULTY_COLOR, true, "%")));
+//                new SeriesStyle("Difficulty", DIFFICULTY_COLOR, true, "%"),
+                new SeriesStyle("Size Difficulty", LARGEST_SPECIES_COLOR, true, "%")));
         generationChart = new TimeSeriesChart(List.of(
                 new SeriesStyle("Earliest", EARLIEST_GENERATION_COLOR, false),
                 new SeriesStyle("Average", AVERAGE_GENERATION_COLOR, false),
@@ -354,7 +355,8 @@ public class StatsPane extends StackPane {
         populationChart.setData(ticks, population, extract(samples, sample -> sample.difficulty() * 100.0));
         sizeChart.setData(ticks,
                 extract(samples, StatsSample::averageSize),
-                extract(samples, sample -> sample.difficulty() * 100.0));
+//                extract(samples, sample -> sample.difficulty() * 100.0),
+                extract(samples, sample -> sample.sizeDifficulty() * 100.0));
         generationChart.setData(ticks,
                 extract(samples, StatsSample::earliestGeneration),
                 extract(samples, StatsSample::averageGeneration),

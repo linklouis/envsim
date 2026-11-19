@@ -30,7 +30,7 @@ import java.io.IOException;
  * @param speciesCount          How many species the agents belong to (estimated from a sample of the agents)
  * @param largestSpeciesShare   The portion of agents in the biggest species, from 0 to 1
  */
-public record StatsSample(int tick, int windowTicks, double population, double difficulty,
+public record StatsSample(int tick, int windowTicks, double population, double difficulty, double sizeDifficulty,
                           int birthCount, int deathCount, int predationCount, long totalAgeAtDeath,
                           double earliestGeneration, double averageGeneration, double latestGeneration,
                           double oldestAge, double averageAge,
@@ -93,6 +93,7 @@ public record StatsSample(int tick, int windowTicks, double population, double d
                 windowTicks + later.windowTicks,
                 weightedAverage(population, later.population, earlierWeight, laterWeight),
                 weightedAverage(difficulty, later.difficulty, earlierWeight, laterWeight),
+                weightedAverage(sizeDifficulty, later.sizeDifficulty, earlierWeight, laterWeight),
                 birthCount + later.birthCount,
                 deathCount + later.deathCount,
                 predationCount + later.predationCount,
@@ -117,6 +118,7 @@ public record StatsSample(int tick, int windowTicks, double population, double d
         out.writeInt(windowTicks);
         out.writeDouble(population);
         out.writeDouble(difficulty);
+        out.writeDouble(sizeDifficulty);
         out.writeInt(birthCount);
         out.writeInt(deathCount);
         out.writeInt(predationCount);
@@ -128,6 +130,7 @@ public record StatsSample(int tick, int windowTicks, double population, double d
         out.writeDouble(averageAge);
         out.writeDouble(speciesCount);
         out.writeDouble(largestSpeciesShare);
+        out.writeDouble(averageSize);
     }
 
     /**
@@ -137,6 +140,7 @@ public record StatsSample(int tick, int windowTicks, double population, double d
         return new StatsSample(
                 in.readInt(),
                 in.readInt(),
+                in.readDouble(),
                 in.readDouble(),
                 in.readDouble(),
                 in.readInt(),

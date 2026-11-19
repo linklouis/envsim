@@ -72,6 +72,7 @@
 - [ ] Low difficulty keeps allowing agents to get really big. Have difficulty annealing depend on both number and size?
 - [X] !! **Is difficulty saved in save files?**
 - [ ] Hitting crtl+S should save the game
+- [ ] !! ** ADD NEW DIFFICULTY VARIABLES TO SAVES**
 
 ## User Settings
 - [ ] Give the user control over the difficulty annealing
@@ -95,6 +96,12 @@
 - [ ] Do the stats calculations happen in the sim thread? (Probably shouldn't)
 - [ ] Adding a new chart is kinda hard
 - [ ] We already iterate through every agent, why not just do the stats tracking there? Wouldn't that be faster than 2 loops? (Unless we move to a new thread)
+- [ ] % y-axis labels can get over 100%.
+- [ ] No matter how gently & slowly the difficulty starts to ramp up, it looks like huge spikes cuz we scale the y-axis on the population chart. Add a minimum y-axis zoom/stretch so it looks slower (Doesn't actually change anything, but should make the user feel better about it)
+- [ ] Need a way for the y-axis min to come up to meet the range of seen values, so we can see how the size difficulty is changing while still keeping 1 = 100%
+- [ ] REALLY WANT SOME WAY TO SHOW SIZE, SIZE DIFFICULTY, AND NORMAL DIFFICULTY ALL ONE ONE CHART
+- [ ] Remember the user's choice of what graphs to have the log setting turned on
+- [ ] Add average food preference spread
 
 ## Bugs
 - [ ] Bug where an agent you're tracking will just disappear, but its stats don't give a reason for why it would be dead

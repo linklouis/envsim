@@ -166,8 +166,36 @@ public class Food extends StationaryEntity {
             out.writeDouble(type3Preference);
         }
 
+        /**
+         * Calculates a balanced score for a 3-element array of values in range [0, 1].
+         *
+         * @param values An array of 3 values between 0.0 and 1.0.
+         * @param inequalityPenaltyWeight Sensitivity to imbalance (0.0 to ~0.707).
+         * @return Score between 0.0 and 1.0.
+         */
+        public static double calculateBalancedScore(double[] values, double inequalityPenaltyWeight) {
+            if (values == null || values.length != 3) {
+                throw new IllegalArgumentException("Input must be an array of exactly 3 values.");
+            }
+
+            double mean = (values[0] + values[1] + values[2]) / 3.0;
+
+            double sumSquaredDifferences = Math.pow(values[0] - mean, 2)
+                    + Math.pow(values[1] - mean, 2)
+                    + Math.pow(values[2] - mean, 2);
+
+            double variance = sumSquaredDifferences / 3.0;
+            double standardDeviation = Math.sqrt(variance);
+
+            double rawScore = mean - (inequalityPenaltyWeight * standardDeviation);
+
+            // Clamp output to guarantee strict [0.0, 1.0] range against precision errors
+            return Math.clamp(rawScore, 0.0, 1.0);
+        }
+
         public double getTotalPreferenceAmount() {
-            return type1Preference + type2Preference + type3Preference;
+            return calculateBalancedScore(new  double[]{type1Preference, type2Preference, type3Preference}, 0.5); // TODO: Shouldn't need array, weight tunable
+//            return type1Preference + type2Preference + type3Preference;
         }
     }
 
